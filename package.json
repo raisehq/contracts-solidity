@@ -1,0 +1,25 @@
+{
+  "name": "loan-token-smart-contract",
+  "version": "1.0.0",
+  "description": "## Design (Work In Progress)",
+  "main": "index.js",
+  "scripts": {
+    "ganache": "ganache-cli",
+    "compile": "truffle compile",
+    "test": "NODE_ENV=test truffle test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@bitbucket.org/Sam-Jeston/loan-token-smart-contract.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "homepage": "https://bitbucket.org/Sam-Jeston/loan-token-smart-contract#readme",
+  "dependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "ganache-cli": "^6.3.0",
+    "openzeppelin-solidity": "^2.1.2",
+    "truffle": "^5.0.4"
+  }
+}
