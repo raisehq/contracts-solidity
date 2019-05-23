@@ -1,5 +1,5 @@
 {
-  "name": "loan-token-smart-contract",
+  "name": "herotoken-smart-contract",
   "version": "1.0.0",
   "description": "## Design (Work In Progress)",
   "main": "index.js",
@@ -10,11 +10,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@bitbucket.org/Sam-Jeston/loan-token-smart-contract.git"
+    "url": "git+ssh://git@bitbucket.org:herodevteam/herotoken-smartcontract.git"
   },
-  "author": "",
+  "author": "Alvaro Gomez",
   "license": "ISC",
-  "homepage": "https://bitbucket.org/Sam-Jeston/loan-token-smart-contract#readme",
+  "homepage": "https://bitbucket.org/herodevteam/herotoken-smartcontract/#readme",
   "dependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
