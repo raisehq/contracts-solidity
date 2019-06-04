@@ -1,25 +1,42 @@
 {
-  "name": "herotoken-smart-contract",
+  "name": "blockchain-test",
   "version": "1.0.0",
-  "description": "## Design (Work In Progress)",
-  "main": "index.js",
+  "description": "Prototype Blockchain",
+  "private": true,
+  "proxy": "http://localhost:3001",
   "scripts": {
+    "start": "nodemon ./server/index.js",
+    "dev:front": "react-scripts start",
+    "dev:back": "nodemon ./server/index.js",
+    "dev": "concurrently --kill-others \"npm run dev:back\" \"npm run dev:front\"",
+    "build": "react-scripts build",
     "ganache": "ganache-cli",
     "compile": "truffle compile",
+    "migration": "truffle migration --network development",
+    "migration:reset": "truffle migration --reset --network development",
+    "console": "truffle console --network development",
     "test": "NODE_ENV=test truffle test"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@bitbucket.org:herodevteam/herotoken-smartcontract.git"
-  },
-  "author": "Alvaro Gomez",
+  "author": "",
   "license": "ISC",
-  "homepage": "https://bitbucket.org/herodevteam/herotoken-smartcontract/#readme",
   "dependencies": {
-    "chai": "^4.2.0",
-    "chai-as-promised": "^7.1.1",
+    "concurrently": "^4.1.0",
+    "dotenv": "^6.2.0",
+    "env-cmd": "^8.0.2",
     "ganache-cli": "^6.3.0",
-    "openzeppelin-solidity": "^2.1.2",
-    "truffle": "^5.0.4"
-  }
+    "openzeppelin-solidity": "^2.3.0",
+    "polished": "^2.3.3",
+    "truffle": "^5.0.4",
+    "truffle-contract": "^4.0.9",
+    "use-force-update": "^1.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.10"
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
 }
