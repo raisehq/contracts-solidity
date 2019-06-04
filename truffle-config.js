@@ -23,6 +23,9 @@
 //
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
+const kovanApi = 'https://kovan.infura.io/v3/b707e018ae6f427384b54ad4df490a78'
+const PrivateKeyProvider = require("truffle-privatekey-provider");
+const privateKey = "AEA9FEC40083CE180FE6E7F3EF11AD9D0E6BBC50657A96388FB7118B6C180A84"
 
 module.exports = {
   /**
@@ -42,12 +45,19 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
-    development: {
-     host: "127.0.0.1",     // Localhost (default: none)
-     port: 7545,            // Standard Ethereum port (default: none)
-     network_id: "*",       // Any network (default: none)
-    },
-
+   
+  development: {
+     gas: 5000000,
+     provider: function () { return new PrivateKeyProvider(privateKey, 'localhost:8545'); },
+     network_id: "*" // Match any network id
+  },
+  kovan: {
+    gas: 5000000,
+    gasPrice: 100000000000,
+    provider: function () { return new PrivateKeyProvider(privateKey, kovanApi); },
+    network_id: "42", // Kovan network id
+    skipDryRun: true 
+  }
     // Another network with more advanced options...
     // advanced: {
       // port: 8777,             // Custom port
@@ -85,15 +95,10 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
-       version: "0.4.11",    // Fetch exact version from solc-bin (default: truffle's version)
-      // docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
-      // settings: {          // See the solidity docs for advice about optimization and evmVersion
-      //  optimizer: {
-      //    enabled: false,
-      //    runs: 200
-      //  },
-      //  evmVersion: "byzantium"
-      // }
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
     }
   }
 }

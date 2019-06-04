@@ -12,14 +12,16 @@
     "build": "react-scripts build",
     "ganache": "ganache-cli",
     "compile": "truffle compile",
-    "migration": "truffle migration --network development",
-    "migration:reset": "truffle migration --reset --network development",
-    "console": "truffle console --network development",
+    "migration": "truffle migration --network kovan",
+    "migration:reset": "truffle migration --reset --network kovan",
+    "console": "truffle console --network kovan",
     "test": "NODE_ENV=test truffle test"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
     "concurrently": "^4.1.0",
     "dotenv": "^6.2.0",
     "env-cmd": "^8.0.2",
@@ -28,6 +30,7 @@
     "polished": "^2.3.3",
     "truffle": "^5.0.4",
     "truffle-contract": "^4.0.9",
+    "truffle-privatekey-provider": "^1.1.0",
     "use-force-update": "^1.0.3"
   },
   "devDependencies": {

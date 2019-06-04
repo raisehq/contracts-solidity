@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import '../installed_contracts/zeppelin/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
 
 contract KYCRegistry is Ownable {

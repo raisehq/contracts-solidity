@@ -1,25 +1,23 @@
 pragma solidity ^0.5.0;
 
-import '../installed_contracts/zeppelin/contracts/ownership/Ownable.sol';
-import '../installed_contracts/zeppelin/contracts/token/ERC20.sol';
-
-contract HeroToken is ERC20 {}
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
 contract DepositRegistry is Ownable {
   mapping(address => bool) deposited;
-  UINT256 DEPOSIT_AMNT = 200;
-  HeroToken token;
+  uint256 DEPOSIT_AMNT = 200;
+  ERC20 token;
 
   event Deposited(address indexed user);
   event Withdrawn(address indexed user);
 
   constructor(address tokenAddress) public {
-    token = HeroToken(tokenAddress);
+    token = ERC20(tokenAddress);
   }
   function deposit() public {
     require(!deposited[msg.sender], 'not again');
-    remaining = token.allowance(msg.sender, address(this));
-    balance = token.balanceOf(msg.sender);
+    uint256 remaining = token.allowance(msg.sender, address(this));
+    uint256 balance = token.balanceOf(msg.sender);
     require(balance >= DEPOSIT_AMNT, 'no enough founds');
     require(remaining >= DEPOSIT_AMNT, 'not allowed');
     token.transferFrom(msg.sender, address(this), DEPOSIT_AMNT);
@@ -27,9 +25,9 @@ contract DepositRegistry is Ownable {
 
     emit Deposited(msg.sender);
   }
-  function withdraw(address to) public onlyDeposited {
+  function withdraw(address to) public {
     require(deposited[msg.sender], 'you are not in');
-    balance = token.balanceOf(address(this));
+    uint256 balance = token.balanceOf(address(this));
     require(balance >= DEPOSIT_AMNT, 'no enough founds');
     token.transfer(to, DEPOSIT_AMNT);
 
