@@ -4,7 +4,6 @@ const Auth = artifacts.require('Authorization')
 const HeroToken = artifacts.require('HeroOrigenToken')
 
 module.exports = (deployer, network, accounts) => {
-    try {
 
         // const deployerAddress = accounts[0];
 
@@ -12,9 +11,4 @@ module.exports = (deployer, network, accounts) => {
         //deployer.deploy(Deposit, HeroToken.address, {from: deployerAddress});
 		//deployer.deploy(KYC, {from: deployerAddress})
 		//deployer.deploy(Auth, KYC.address, Deposit.address, {from: deployerAddress})
-
-        
-    } catch (error) {
-        throw error;
-    }
 }

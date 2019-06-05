@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Prototype Blockchain",
   "private": true,
-  "proxy": "http://localhost:3001",
   "scripts": {
     "start": "nodemon ./server/index.js",
     "dev:front": "react-scripts start",
@@ -12,8 +11,9 @@
     "build": "react-scripts build",
     "ganache": "ganache-cli",
     "compile": "truffle compile",
-    "migration": "truffle migration --network kovan",
-    "migration:reset": "truffle migration --reset --network kovan",
+    "migration": "truffle migration --network development",
+    "migration:kovan": "truffle migration --network kovan",
+    "migration:reset": "truffle migration --reset --network development",
     "console": "truffle console --network kovan",
     "test": "NODE_ENV=test truffle test"
   },
@@ -28,18 +28,12 @@
     "ganache-cli": "^6.3.0",
     "openzeppelin-solidity": "^2.3.0",
     "polished": "^2.3.3",
-    "truffle": "^5.0.4",
+    "truffle": "5.0.4",
     "truffle-contract": "^4.0.9",
-    "truffle-privatekey-provider": "^1.1.0",
+    "truffle-privatekey-provider": "1.1.0",
     "use-force-update": "^1.0.3"
   },
   "devDependencies": {
     "nodemon": "^1.18.10"
-  },
-  "browserslist": [
-    ">0.2%",
-    "not dead",
-    "not ie <= 11",
-    "not op_mini all"
-  ]
+  }
 }
