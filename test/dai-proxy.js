@@ -14,15 +14,19 @@ contract('DAIProxy Contract', function (accounts) {
     let HeroFakeToken;
     let DepositRegistry;
     let KYCRegistry;
+    let DAIToken;
 
     const owner = accounts[0];
     const user = accounts[1];
-    const user2 = accounts[2];
 
-    describe('deploy', () => {
-        it('should be able to deploy and create associated token contract', async () => {
+    describe('deploy DAIProxy contract', () => {
+        it('Expects ', async () => {
             HeroFakeToken = await HeroFakeTokenContract.new({from: owner});
+            DAIToken = await HeroFakeTokenContract.new({from: owner});
+
             await HeroFakeToken.transferFakeHeroTokens(user, {from: owner});
+            await DAIToken.transferFakeHeroTokens(user, {from: owner});
+
             DepositRegistry = await DepositRegistryContract.new(HeroFakeToken.address,  { from: owner});
 
             await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
@@ -32,9 +36,11 @@ contract('DAIProxy Contract', function (accounts) {
             await KYCRegistry.add(user);
             Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
             
-            // DAIProxy = await DAIProxyContract.new(Auth.address, );
 
-            expect(await DepositRegistry.hasDeposited(user)).toEqual(true);
+
+            DAIProxy = await DAIProxyContract.new(Auth.address, DAIToken.address);
+
+            expect(await DepositRegistry.hasDeposited(user)).to.equal(true);
         });
     });
 })

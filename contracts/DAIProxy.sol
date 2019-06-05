@@ -11,9 +11,9 @@ contract DAIProxy {
     event LoanFunded(address indexed funder, address indexed loanAddress, uint256 amount);
     event RepaymentReceived(address indexed repayer, address indexed loanAddress, uint256 amount);
 
-    constructor(address authAddress, uint256 tokenId) public {
+    constructor(address authAddress, address daiAddress) public {
         auth = Authorization(authAddress);
-        DAIToken = ERC20(tokenId);
+        DAIToken = ERC20(daiAddress);
     }
 
     function fund(address loanAddress, uint256 fundingAmount) public onlyKYCanFund onlyHasDepositCandFund  {
