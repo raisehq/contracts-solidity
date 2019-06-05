@@ -23,9 +23,9 @@
 //
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
-const kovanApi = 'https://kovan.infura.io/v3/b707e018ae6f427384b54ad4df490a78'
-const PrivateKeyProvider = require("truffle-privatekey-provider");
-const privateKey = "AEA9FEC40083CE180FE6E7F3EF11AD9D0E6BBC50657A96388FB7118B6C180A84"
+const kovanApi = 'https://kovan.infura.io/v3/b707e018ae6f427384b54ad4df490a78';
+const PrivateKeyProvider = require('truffle-privatekey-provider');
+const privateKey = require('private.key');
 
 module.exports = {
   /**
@@ -45,45 +45,49 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
-   
-  development: {
-     gas: 5000000,
-     provider: function () { return new PrivateKeyProvider(privateKey, 'localhost:8545'); },
-     network_id: "*" // Match any network id
-  },
-  kovan: {
-    gas: 5000000,
-    gasPrice: 100000000000,
-    provider: function () { return new PrivateKeyProvider(privateKey, kovanApi); },
-    network_id: "42", // Kovan network id
-    skipDryRun: true 
-  }
+
+    development: {
+      gas: 5000000,
+      provider: function() {
+        return new PrivateKeyProvider(privateKey, 'localhost:8545');
+      },
+      network_id: '*' // Match any network id
+    },
+    kovan: {
+      gas: 5000000,
+      gasPrice: 100000000000,
+      provider: function() {
+        return new PrivateKeyProvider(privateKey, kovanApi);
+      },
+      network_id: '42', // Kovan network id
+      skipDryRun: true
+    }
     // Another network with more advanced options...
     // advanced: {
-      // port: 8777,             // Custom port
-      // network_id: 1342,       // Custom network
-      // gas: 8500000,           // Gas sent with each transaction (default: ~6700000)
-      // gasPrice: 20000000000,  // 20 gwei (in wei) (default: 100 gwei)
-      // from: <address>,        // Account to send txs from (default: accounts[0])
-      // websockets: true        // Enable EventEmitter interface for web3 (default: false)
+    // port: 8777,             // Custom port
+    // network_id: 1342,       // Custom network
+    // gas: 8500000,           // Gas sent with each transaction (default: ~6700000)
+    // gasPrice: 20000000000,  // 20 gwei (in wei) (default: 100 gwei)
+    // from: <address>,        // Account to send txs from (default: accounts[0])
+    // websockets: true        // Enable EventEmitter interface for web3 (default: false)
     // },
 
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
     // ropsten: {
-      // provider: () => new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/YOUR-PROJECT-ID`),
-      // network_id: 3,       // Ropsten's id
-      // gas: 5500000,        // Ropsten has a lower block limit than mainnet
-      // confirmations: 2,    // # of confs to wait between deployments. (default: 0)
-      // timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
-      // skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
+    // provider: () => new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/YOUR-PROJECT-ID`),
+    // network_id: 3,       // Ropsten's id
+    // gas: 5500000,        // Ropsten has a lower block limit than mainnet
+    // confirmations: 2,    // # of confs to wait between deployments. (default: 0)
+    // timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
+    // skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     // },
 
     // Useful for private networks
     // private: {
-      // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
-      // network_id: 2111,   // This network is yours, in the cloud.
-      // production: true    // Treats this network as if it was a public net. (default: false)
+    // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
+    // network_id: 2111,   // This network is yours, in the cloud.
+    // production: true    // Treats this network as if it was a public net. (default: false)
     // }
   },
 
@@ -101,4 +105,4 @@ module.exports = {
       }
     }
   }
-}
+};
