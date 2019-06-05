@@ -9,9 +9,16 @@ import './Authorization.sol';
 contract LoanToken is ERC721Mintable, ERC721Burnable, ERC721KYC {
     Authorization auth;
 
-    constructor(address authAddress, address minterAddress) public {}
+    constructor(address authAddress, address minterAddress) public {
+        auth = Authorization(authAddress);
+
+    }
+
     function mint(address to, uint256 tokenId) public onlyMinter {}
+    
     function burn(uint256 tokenId) public onlyMinter {}
+    
     function ownerOf(uint256 tokenId) public {}
+    
     function transferFrom(address from, address to, uint256 tokenId) public onlyKYC {}
 }

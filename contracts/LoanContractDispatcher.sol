@@ -9,8 +9,18 @@ contract LoanContractDispatcher {
     LoanToken loanToken;
     mapping(address => bool) isLoanContract;
 
-    constructor(address authAddress, address loanTokenAddress) public {
+    modifier onlyKYC { // check if user is kyced
+        require(auth.isKYCConfirmed(msg.sender), 'user does not have KYC');
+        _;
+    }
 
+    modifier onlyLoanContract {
+        // no idea what to do here
+    }
+
+    constructor(address authAddress, address loanTokenAddress) public {
+        auth = Authorization(authAddress);
+        loanToken = LoanToken(loanTokenAddress);
     }
 
     function deploy(uint256[] curveData, uint25 lengthBlocks, uint256 amount) public onlyKYC returns (address) {
