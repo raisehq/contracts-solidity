@@ -3,17 +3,12 @@ const KYC = artifacts.require('KYCRegistry')
 const Auth = artifacts.require('Authorization')
 const HeroToken = artifacts.require('HeroOrigenToken')
 
-module.exports = async (deployer, network, accounts) => {
+module.exports = (deployer, network, accounts) => {
 
-   
-		const myaccount = await accounts();
-        const deployerAddress = myaccount[0];
+        // const deployerAddress = accounts[0];
 
-        await deployer.deploy(HeroToken, {from: deployerAddress});
-        await deployer.deploy(Deposit, HeroToken.address, {from: deployerAddress});
-		await deployer.deploy(KYC, {from: deployerAddress})
-		await deployer.deploy(Auth, KYC.address, Deposit.address, {from: deployerAddress})
-
-        
-   
+        // deployer.deploy(HeroToken, {from: deployerAddress});
+        //deployer.deploy(Deposit, HeroToken.address, {from: deployerAddress});
+		//deployer.deploy(KYC, {from: deployerAddress})
+		//deployer.deploy(Auth, KYC.address, Deposit.address, {from: deployerAddress})
 }
