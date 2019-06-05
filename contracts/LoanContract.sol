@@ -21,8 +21,10 @@ contract LoanContract {
 
     LoanPhase currentPhase; // does this need to be defined somewhere??
 
-    constructor(uint256[] curveData, uint256 lengthBlocks, uint256 amount, address originator, address creator, address authAddress) public {
-
+    constructor(uint256[] curveData, uint256 lengthBlocks, uint256 amount, address _originator, address creator, address authAddress) public {
+        originator = _originator;
+        totalAmount = amount;
+        
     }
 
     function onFundingReceived(address lender, uint256 amount) public onlyActive onlyProxy {}
