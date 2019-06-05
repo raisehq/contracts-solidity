@@ -1,12 +1,13 @@
 pragma solidity ^0.5.0;
 
 import './Authorization.sol';
-import './LoanToken.sol';
 import './LoanContract.sol';
 
 contract LoanContractDispatcher {
     Authorization auth;
-    LoanToken loanToken;
+    address DAITokenAddress;
+    address DAIProxyAddress;
+
     mapping(address => bool) isLoanContract;
 
     modifier onlyKYC { // check if user is kyced
@@ -14,29 +15,40 @@ contract LoanContractDispatcher {
         _;
     }
 
-    modifier onlyLoanContract {
-        // no idea what to do here
-    }
-
-    constructor(address authAddress, address loanTokenAddress) public {
+    constructor(
+        address authAddress,
+        address _DAITokenAddress,
+        address _DAIProxyAddress
+    ) public {
         auth = Authorization(authAddress);
-        loanToken = LoanToken(loanTokenAddress);
+        DAITokenAddress = _DAITokenAddress;
+        DAIProxyAddress = _DAIProxyAddress;
     }
 
-    function deploy(uint256[] curveData, uint25 lengthBlocks, uint256 amount) public onlyKYC returns (address) {
-
-    }
-
-    function mintRequest(address to, uint256 tokenId) public onlyLoanContract {
-
-    }
-
-    function burnRequest(uint256 tokenId) public onlyLoanContract {
-
-    }
-
-    function checkOwnership(address addr, uint256 tokenId) public returns (bool) {
-
+    function deploy(
+        uint256 lengthBlocks,
+        uint256 amount,
+        uint256 bpMaxInterestRate,
+        uint256 termLength,
+        uint256 graceLength
+    )
+    public
+    onlyKYC
+    returns (address)
+    {
+        LoanContract loanContract = new LoanContract(
+            lengthBlocks,
+            amount,
+            bpMaxInterestRate,
+            termLength,
+            graceLength,
+            msg.sender,
+            address(this),
+            DAITokenAddress,
+            DAIProxyAddress
+        );
+        isLoanContract[address(loanContract)] = true;
+        return address(loanContract);
     }
 
 }
