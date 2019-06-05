@@ -18,18 +18,13 @@ pipeline {
         }
       }
     }
-    stage('MOUNT PRIVATE KEY') {
-      steps{
-        withCredentials([string(credentialsId: 'kovan_id', variable: 'KOVAN_KEY')]) {
-            sh '''echo "$KOVAN_KEY" > private.key'''
-        } 
-      }
-    }
-    stage('DEPLOY KOVAN'){
+    stage('DEPLOY KOVAN') {
       steps{
         nodejs(nodeJSInstallationName: 'node_11') {
-          sh 'npm run migration:kovan'
-        }
+            withCredentials([string(credentialsId: 'kovan_id', variable: 'KOVAN_KEY')]) {
+                sh '''PRIVATE_KEY="$KOVAN_KEY" npm run migration:kovan '''
+            } 
+         }
       }
     }
   }

@@ -25,7 +25,7 @@
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 const kovanApi = 'https://kovan.infura.io/v3/b707e018ae6f427384b54ad4df490a78';
 const PrivateKeyProvider = require('truffle-privatekey-provider');
-const privateKey = require('private.key');
+const privateKey = process.env.PRIVATE_KEY || require('./private.key');
 
 module.exports = {
   /**
