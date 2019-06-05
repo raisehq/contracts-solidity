@@ -8,7 +8,7 @@ module.exports = function(deployer, network, accounts)  {
 
         const deployerAddress = accounts[0];
 
-        deployer.deploy(HeroToken, {from: deployerAddress});
+        // deployer.deploy(HeroToken, {from: deployerAddress});
         //deployer.deploy(Deposit, HeroToken.address, {from: deployerAddress});
 		//deployer.deploy(KYC, {from: deployerAddress})
 		//deployer.deploy(Auth, KYC.address, Deposit.address, {from: deployerAddress})

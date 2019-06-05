@@ -45,11 +45,11 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
-   
+  
   development: {
-     gas: 5000000,
-     provider: function () { return new PrivateKeyProvider(privateKey, 'localhost:8545'); },
-     network_id: "*" // Match any network id
+    gas: 5000000,
+    provider: function () { return new PrivateKeyProvider(privateKey, 'localhost:8545'); },
+    network_id: "*" // Match any network id
   },
   kovan: {
     gas: 5000000,
