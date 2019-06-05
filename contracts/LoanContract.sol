@@ -1,11 +1,11 @@
 pragma solidity ^0.5.0;
 
-import './DAI.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './DAIProxy.sol';
 import './LoanContractDispatcher.sol';
 
 contract LoanContract {
-    DAI DAIToken;
+    ERC20 DAIToken;
     DAIProxy proxy;
     LoanContractDispatcher dispatcher;
     address originator;
@@ -98,7 +98,7 @@ contract LoanContract {
         gracePeriodLength = _gracePeriodLength;
 
         dispatcher = LoanContractDispatcher(creator);
-        DAIToken = DAI(DAITokenAddress);
+        DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxy(proxyAddress);
     }
 

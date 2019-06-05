@@ -26,15 +26,15 @@ contract('DAIProxy Contract', function (accounts) {
             DepositRegistry = await DepositRegistryContract.new(HeroFakeToken.address,  { from: owner});
 
             await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
-            await DepositRegistry.depositFor(owner, {from: owner});
+            await DepositRegistry.depositFor(user, {from: owner});
 
             KYCRegistry = await KYCContract.new();
             await KYCRegistry.add(user);
-            Auth = await Authorization.new(KYCRegistry.address, DepositRegistry.address);
+            Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
+            
             // DAIProxy = await DAIProxyContract.new(Auth.address, );
 
-            expect(await DepositRegistry.hasDeposited(owner)).toEqual(true);
-        })
-    })
-
+            expect(await DepositRegistry.hasDeposited(user)).toEqual(true);
+        });
+    });
 })
