@@ -3,3 +3,4 @@ package-lock.json
 # production
 /build
 private.key
+contracts.json

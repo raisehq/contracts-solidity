@@ -22,14 +22,27 @@ pipeline {
       steps{
         nodejs(nodeJSInstallationName: 'node_11') {
             withCredentials([string(credentialsId: 'kovan_id', variable: 'KOVAN_KEY')]) {
-                sh '''PRIVATE_KEY="$KOVAN_KEY" npm run migration:kovan '''
+                sh '''PRIVATE_KEY="$KOVAN_KEY" npm run migration:kovan:reset '''
             } 
          }
       }
     }
+    stage('UPLOAD BUCKET') { 
+      steps {
+        withAWS(credentials: env.AWSUSER) {
+          //Upload Files to root path
+          s3Upload(bucket: env.BUCKETNAME, file: env.BUILD_PATH)
+          s3Upload(bucket: env.BUCKETNAME, file: env.CONTRACT_PATH)
+        }
+      }  
+    }
   }
 
   environment {
+    AWSUSER = 'aws_cred_id'
+    BUILD_PATH = './build'
+    CONTRACT_PATH = './contracts.json'
+    BUCKETNAME = 'blockchain-definitions/v1'
     PROJECT   = 'herotoken-smartcontract'
     DEPLOY_TO = utils.deployToByEnv()
     VERSION   = utils.calculateEnvVersion()
