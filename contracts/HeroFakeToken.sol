@@ -5,19 +5,17 @@ import 'openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol';
 import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 
 
-contract HeroFakeToken is MintableToken {
+contract HeroFakeToken is ERC20Mintable {
     using SafeMath for uint256;
     string public constant name = "Hero Fake Token";
     string public constant symbol = "HEROFake";
     uint8 public constant decimals = 18;
 
-    mapping(address => uint256) balances;
-
     constructor() public {
-        balances[msg.sender] = 1000000000;
+        super.mint(msg.sender, 10000000);
     }
 
     function transferFakeHeroTokens(address destinationAddress) public {
-        balances[destinationAddress] = 10000;
+        super.mint(destinationAddress, 100000000);
     }
 }

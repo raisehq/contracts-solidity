@@ -3,31 +3,37 @@ const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
 const { expect } = chai
 const DAIProxyContract = artifacts.require('DAIProxy');
-const DAIContract = artifacts.require('DAI');
 const AuthContract = artifacts.require('Authorization');
-const DepositRegistryContract = artifacts.require('DepositRegistry')
-const HeroTokenContract = artifacts.require('HeroOrigenToken')
+const DepositRegistryContract = artifacts.require('DepositRegistry');
+const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
+const KYCContract = artifacts.require('KYCRegistry');
 
 contract('DAIProxy Contract', function (accounts) {
-    let token;
     let DAIProxy;
     let Auth;
-    let DAI;
+    let HeroFakeToken;
+    let DepositRegistry;
+    let KYCRegistry;
 
-    const owner = accounts[0]
-    const firstUser = accounts[1]
+    const owner = accounts[0];
+    const user = accounts[1];
+    const user2 = accounts[2];
 
-    xdescribe('deploy', () => {
+    describe('deploy', () => {
         it('should be able to deploy and create associated token contract', async () => {
-            HeroToken = await HeroTokenContract.new()
-            Auth = await Authorization.new()
-            DAI = await DAIContract.new();
-            DAIProxy = await DAIProxyContract.new(DAI.address)
-            DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner});
+            HeroFakeToken = await HeroFakeTokenContract.new({from: owner});
+            await HeroFakeToken.transferFakeHeroTokens(user, {from: owner});
+            DepositRegistry = await DepositRegistryContract.new(HeroFakeToken.address,  { from: owner});
 
-            await HeroToken.approve(DepositRegistry.address, 200,{ from: owner });
-            await DepositRegistry.deposit({ from: owner });
-            console.log(await DepositRegistry.hasDeposited(owner));
+            await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
+            await DepositRegistry.depositFor(owner, {from: owner});
+
+            KYCRegistry = await KYCContract.new();
+            await KYCRegistry.add(user);
+            Auth = await Authorization.new(KYCRegistry.address, DepositRegistry.address);
+            // DAIProxy = await DAIProxyContract.new(Auth.address, );
+
+            expect(await DepositRegistry.hasDeposited(owner)).toEqual(true);
         })
     })
 

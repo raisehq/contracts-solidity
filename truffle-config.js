@@ -50,7 +50,7 @@ module.exports = {
     //
 
     development: {
-      gas: 5000000,
+      gas: 500000000000,
       provider: function() {
         return new HDWalletProvider(privateKey, 'localhost:8545');
       },
