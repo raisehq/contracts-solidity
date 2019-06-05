@@ -41,7 +41,7 @@ pipeline {
     AWSUSER = 'aws_cred_id'
     BUILD_PATH = './build'
     CONTRACT_PATH = './contracts.json'
-    BUCKETNAME = 'blockchain-definitions/v1'
+    BUCKETNAME = 'static.herodev.es'
     PROJECT   = 'herotoken-smartcontract'
     DEPLOY_TO = utils.deployToByEnv()
     VERSION   = utils.calculateEnvVersion()
