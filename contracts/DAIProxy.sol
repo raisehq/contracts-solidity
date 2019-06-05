@@ -11,12 +11,12 @@ contract DAIProxy {
     event LoanFunded(address indexed funder, address indexed loanAddress, uint256 amount);
     event RepaymentReceived(address indexed repayer, address indexed loanAddress, uint256 amount);
 
-    constructor(address authAddress, address daiAddress) public {
+    constructor(address authAddress, address DAIAddress) public {
         auth = Authorization(authAddress);
-        DAIToken = ERC20(daiAddress);
+        DAIToken = ERC20(DAIAddress);
     }
 
-    function fund(address loanAddress, uint256 fundingAmount) public onlyKYCanFund onlyHasDepositCandFund  {
+    function fund(address loanAddress, uint256 fundingAmount) public onlyKYCanFund onlyHasDepositCanFund  {
         transfer(loanAddress, fundingAmount);
 
         LoanContract loanContract = LoanContract(loanAddress);
@@ -40,7 +40,7 @@ contract DAIProxy {
             'funding not approved'
         );
         uint256 balance = DAIToken.balanceOf(msg.sender);
-        require(balance >= amount, 'Not enough founds');
+        require(balance >= amount, 'Not enough funds');
         DAIToken.transferFrom(msg.sender, loanAddress, amount);
     }
 
@@ -49,7 +49,7 @@ contract DAIProxy {
         _;
     }
 
-    modifier onlyHasDepositCandFund {
+    modifier onlyHasDepositCanFund {
         require(auth.hasDeposited(msg.sender), 'user does not have a deposit');
         _;
     }

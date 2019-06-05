@@ -74,6 +74,11 @@ contract LoanContract {
         require(msg.sender == address(proxy), "Caller is not the proxy");
         _;
     }
+    
+    modifier onlyOriginator() {
+        require(msg.sender == originator, "Caller is not the originator");
+        _;
+    }
 
     constructor(
         uint256 lengthBlocks,
@@ -135,7 +140,7 @@ contract LoanContract {
         lenderAmount[msg.sender] = 0;
     }
 
-    function withdrawLoan(address to) public onlyFinished onlyProxy returns (uint256) {
+    function withdrawLoan(address to) public onlyFinished onlyOriginator returns (uint256) {
         require(!alreadyWithdrawn, "Already withdrawn");
         DAIToken.transfer(to, totalAmount);
         alreadyWithdrawn = true;
