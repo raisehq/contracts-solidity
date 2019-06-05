@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 /**
  * Use this file to configure your truffle project. It's seeded with some
  * common settings for different networks and features like migrations,
@@ -25,8 +27,8 @@
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 const kovanApi = 'https://kovan.infura.io/v3/b707e018ae6f427384b54ad4df490a78';
 const PrivateKeyProvider = require('truffle-privatekey-provider');
-const privateKey = process.env.PRIVATE_KEY || require('./private.key');
-
+const privateKey = process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
+ 
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
