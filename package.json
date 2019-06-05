@@ -13,6 +13,7 @@
     "compile": "truffle compile",
     "migration": "truffle migration --network development",
     "migration:kovan": "truffle migration --network kovan",
+    "migration:kovan:reset": "truffle migration --reset --network kovan",
     "migration:reset": "truffle migration --reset --network development",
     "console": "truffle console --network kovan",
     "test": "NODE_ENV=test truffle test"
@@ -30,6 +31,7 @@
     "polished": "^2.3.3",
     "truffle": "5.0.4",
     "truffle-contract": "^4.0.9",
+    "truffle-hdwallet-provider": "^1.0.10",
     "truffle-privatekey-provider": "1.1.0",
     "use-force-update": "^1.0.3"
   },

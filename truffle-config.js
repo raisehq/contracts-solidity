@@ -26,9 +26,10 @@ const fs = require('fs');
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 const kovanApi = 'https://kovan.infura.io/v3/b707e018ae6f427384b54ad4df490a78';
-const PrivateKeyProvider = require('truffle-privatekey-provider');
-const privateKey = process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
- 
+const HDWalletProvider = require('truffle-hdwallet-provider');
+const privateKey =
+  process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
+
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -51,7 +52,7 @@ module.exports = {
     development: {
       gas: 5000000,
       provider: function() {
-        return new PrivateKeyProvider(privateKey, 'localhost:8545');
+        return new HDWalletProvider(privateKey, 'localhost:8545');
       },
       network_id: '*' // Match any network id
     },
@@ -59,7 +60,7 @@ module.exports = {
       gas: 5000000,
       gasPrice: 100000000000,
       provider: function() {
-        return new PrivateKeyProvider(privateKey, kovanApi);
+        return new HDWalletProvider(privateKey, kovanApi);
       },
       network_id: '42', // Kovan network id
       skipDryRun: true
