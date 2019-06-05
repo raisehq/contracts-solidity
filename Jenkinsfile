@@ -22,7 +22,7 @@ pipeline {
       steps{
         nodejs(nodeJSInstallationName: 'node_11') {
             withCredentials([string(credentialsId: 'kovan_id', variable: 'KOVAN_KEY')]) {
-                sh '''PRIVATE_KEY="$KOVAN_KEY" npm run migration:kovan:reset '''
+                sh '''PRIVATE_KEY="$KOVAN_KEY" npm run migration:kovan '''
             } 
          }
       }
@@ -31,7 +31,6 @@ pipeline {
       steps {
         withAWS(credentials: env.AWSUSER) {
           //Upload Files to root path
-          s3Upload(bucket: env.BUCKETNAME, file: env.BUILD_PATH)
           s3Upload(bucket: env.BUCKETNAME, file: env.CONTRACT_PATH)
         }
       }  

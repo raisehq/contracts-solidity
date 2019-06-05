@@ -30,16 +30,20 @@ module.exports = async (deployer, network, accounts) => {
 
   const data = {
     HeroToken: {
-      address: HeroToken.address
+      address: HeroToken.address,
+      abi: HeroToken.abi
     },
     Deposit: {
-      address: Deposit.address
+      address: Deposit.address,
+      abi: Deposit.abi
     },
     KYC: {
-      address: KYC.address
+      address: KYC.address,
+      abi: KYC.abi
     },
     Auth: {
-      address: Auth.address
+      address: Auth.address,
+      abi: Auth.abi
     }
   };
 
