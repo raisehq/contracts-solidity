@@ -45,21 +45,6 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
-<<<<<<< HEAD
-  
-  development: {
-    gas: 5000000,
-    provider: function () { return new PrivateKeyProvider(privateKey, 'localhost:8545'); },
-    network_id: "*" // Match any network id
-  },
-  kovan: {
-    gas: 5000000,
-    gasPrice: 100000000000,
-    provider: function () { return new PrivateKeyProvider(privateKey, kovanApi); },
-    network_id: "42", // Kovan network id
-    skipDryRun: true 
-  }
-=======
 
     development: {
       gas: 5000000,
@@ -77,7 +62,6 @@ module.exports = {
       network_id: '42', // Kovan network id
       skipDryRun: true
     }
->>>>>>> 6ce6f5064a87bde6a5dfb4d9ba6b24f166478da4
     // Another network with more advanced options...
     // advanced: {
     // port: 8777,             // Custom port
