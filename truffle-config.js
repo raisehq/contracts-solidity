@@ -58,7 +58,7 @@ module.exports = {
     },
     kovan: {
       gas: 5000000,
-      gasPrice: 100000000000,
+      gasPrice: 10000000000,
       provider: function() {
         return new HDWalletProvider(privateKey, kovanApi);
       },
