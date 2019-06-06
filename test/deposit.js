@@ -12,8 +12,6 @@ contract('Deposit Contract', function (accounts) {
 
   const owner = accounts[0]
   const user = accounts[1]
-  
-  console.log('-------------------------> ', user)
 
   describe('deploy', () => {
     it('should be able to deploy and create associated token contract', async () => {

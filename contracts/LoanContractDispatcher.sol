@@ -43,7 +43,6 @@ contract LoanContractDispatcher {
             termLength,
             graceLength,
             msg.sender,
-            address(this),
             DAITokenAddress,
             DAIProxyAddress
         );

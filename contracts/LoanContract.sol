@@ -1,13 +1,12 @@
 pragma solidity ^0.5.0;
 
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
-import './DAIProxy.sol';
-import './LoanContractDispatcher.sol';
+import './DAIProxyInterface.sol';
+import './LoanContractInterface.sol';
 
-contract LoanContract {
+contract LoanContract is LoanContractInterface{
     ERC20 DAIToken;
-    DAIProxy proxy;
-    LoanContractDispatcher dispatcher;
+    DAIProxyInterface proxy;
     address originator;
 
     uint256 blockStart;
@@ -87,7 +86,6 @@ contract LoanContract {
         uint256 _termLength,
         uint256 _gracePeriodLength,
         address _originator,
-        address creator,
         address DAITokenAddress,
         address proxyAddress
     )
@@ -102,9 +100,16 @@ contract LoanContract {
         termLength = _termLength;
         gracePeriodLength = _gracePeriodLength;
 
-        dispatcher = LoanContractDispatcher(creator);
         DAIToken = ERC20(DAITokenAddress);
-        proxy = DAIProxy(proxyAddress);
+        proxy = DAIProxyInterface(proxyAddress);
+    }
+
+    function getAlreadyFundedAmount() public view returns (uint256) {
+        return alreadyFunded;
+    }
+
+    function getLenderAmount(address lender) public view returns (uint256) {
+        return lenderAmount[lender];
     }
 
     function onFundingReceived(address lender, uint256 amount) public onlyActive onlyProxy {
@@ -117,12 +122,15 @@ contract LoanContract {
 
         lenderAmount[lender] += amount;
         alreadyFunded += amount;
-        uint256 diff = (alreadyFunded - totalAmount);
 
-        if (diff > 0) {
-            DAIToken.transfer(lender, diff);
-            alreadyFunded -= diff;
-            emit LoanFunded(lender, diff);
+        if (alreadyFunded > totalAmount) {
+            uint256 overflow = alreadyFunded - totalAmount;
+            DAIToken.transfer(lender, overflow);
+            alreadyFunded -= overflow;
+            lenderAmount[lender] -= overflow;
+            emit LoanFunded(lender, amount - overflow);
+        } else {
+            emit LoanFunded(lender, amount);
         }
 
         if (alreadyFunded == totalAmount) {
