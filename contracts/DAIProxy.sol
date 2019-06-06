@@ -3,8 +3,9 @@ pragma solidity ^0.5.0;
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './Authorization.sol';
 import './LoanContractInterface.sol';
+import './DAIProxyInterface.sol';
 
-contract DAIProxy {
+contract DAIProxy is DAIProxyInterface {
     ERC20 DAIToken;
     Authorization auth;
 

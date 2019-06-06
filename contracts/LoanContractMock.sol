@@ -23,14 +23,17 @@ contract LoanContractMock is LoanContractInterface {
     }
 
     function withdrawRepayment(address to) public {
-
+        to;
     }
 
     function withdrawLoan(address to) public returns (uint256) {
+        to;
         return 3;
     }
 
     function onRepaymentReceived(address from, uint256 amount) public returns (uint256) {
+        from;
+        amount;
         return 3;
     }
 
@@ -46,5 +49,8 @@ contract LoanContractMock is LoanContractInterface {
         return value;
     }
 
-    function getLenderWithdrawnAmount(address lender) public view returns (uint256){}
+    function getLenderWithdrawnAmount(address lender) public view returns (uint256){
+        lender;
+        return 2;
+    }
 }

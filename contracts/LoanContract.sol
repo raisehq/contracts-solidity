@@ -104,6 +104,14 @@ contract LoanContract is LoanContractInterface{
         proxy = DAIProxyInterface(proxyAddress);
     }
 
+    function getAlreadyFundedAmount() public view returns (uint256) {
+        return alreadyFunded;
+    }
+
+    function getLenderAmount(address lender) public view returns (uint256) {
+        return lenderAmount[lender];
+    }
+
     function onFundingReceived(address lender, uint256 amount) public onlyActive onlyProxy {
 
         if (block.number > blockEnd) {
@@ -114,12 +122,15 @@ contract LoanContract is LoanContractInterface{
 
         lenderAmount[lender] += amount;
         alreadyFunded += amount;
-        uint256 diff = (alreadyFunded - totalAmount);
 
-        if (diff > 0) {
-            DAIToken.transfer(lender, diff);
-            alreadyFunded -= diff;
-            emit LoanFunded(lender, diff);
+        if (alreadyFunded > totalAmount) {
+            uint256 overflow = alreadyFunded - totalAmount;
+            DAIToken.transfer(lender, overflow);
+            alreadyFunded -= overflow;
+            lenderAmount[lender] -= overflow;
+            emit LoanFunded(lender, amount - overflow);
+        } else {
+            emit LoanFunded(lender, amount);
         }
 
         if (alreadyFunded == totalAmount) {
