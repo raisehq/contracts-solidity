@@ -221,6 +221,10 @@ contract LoanContract is LoanContractInterface{
         }
     }
 
+    function getTotalAmountWithInterest() public view returns(uint256) {
+        return calculateValueWithInterest(totalAmount);
+    }
+
     function calculateValueWithInterest(uint256 value) public view returns(uint256) {
         return value + (value * getInterestRate() / 10000);
     }

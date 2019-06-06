@@ -12,7 +12,7 @@ contract HeroFakeToken is ERC20Mintable {
     uint8 public constant decimals = 18;
 
     constructor() public {
-        super.mint(msg.sender, 10000000);
+        // super.mint(msg.sender, 10000000);
     }
 
     function transferFakeHeroTokens(address destinationAddress) public {
