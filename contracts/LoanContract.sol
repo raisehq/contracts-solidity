@@ -3,8 +3,9 @@ pragma solidity ^0.5.0;
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './DAIProxy.sol';
 import './LoanContractDispatcher.sol';
+import './LoanContractInterface.sol';
 
-contract LoanContract {
+contract LoanContract is LoanContractInterface{
     ERC20 DAIToken;
     DAIProxy proxy;
     LoanContractDispatcher dispatcher;
