@@ -1,9 +1,9 @@
-const chai = require('chai')
-const chaiAsPromised = require('chai-as-promised')
-chai.use(chaiAsPromised)
-const { expect } = chai
-const HeroTokenContract = artifacts.require('HeroOrigenToken')
-const DepositRegistryContract = artifacts.require('DepositRegistry')
+const chai = require('chai');
+const chaiAsPromised = require('chai-as-promised');
+chai.use(chaiAsPromised);
+const { expect } = chai;
+const DepositRegistryContract = artifacts.require('DepositRegistry');
+const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 contract('Deposit Contract', function (accounts) {
  
   let token
@@ -11,16 +11,20 @@ contract('Deposit Contract', function (accounts) {
   let DepositRegistry;
 
   const owner = accounts[0]
-  const firstUser = accounts[1]
+  const user = accounts[1]
   
+  console.log('-------------------------> ', user)
 
   describe('deploy', () => {
     it('should be able to deploy and create associated token contract', async () => {
-      HeroToken = await HeroTokenContract.new()
-      DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner});
-      await HeroToken.approve(DepositRegistry.address, 200,{ from: owner });
-      await DepositRegistry.deposit({ from: owner });
-      console.log(await DepositRegistry.hasDeposited(owner));
+      HeroToken = await HeroFakeTokenContract.new()
+      DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner, gas:200000000});
+      await HeroToken.transferFakeHeroTokens(user);
+      await HeroToken.approve(DepositRegistry.address, 200,{ from: user, gas:200000000 });
+
+      await DepositRegistry.depositFor(user, { from: owner, gas:200000000 });
+      assert.equal(await DepositRegistry.hasDeposited(user), true);
+      
     })
   })
 
