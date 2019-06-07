@@ -24,6 +24,14 @@ contract LoanContract is LoanContractInterface{
 
     mapping(address => uint256) lenderAmount;
     enum LoanPhase {Active, Finished, Repaid, Failed}
+    enum NewLoanPhase {
+        CREATED, // accepts bids until timelimit initial state
+        FAILED_TO_FUND, // not fully funded in timelimit
+        ACTIVE, // fully funded, inside timelimit
+        DEFAULTED, // not repaid in time termlength
+        REPAID, // the borrower repaid in full, lenders have yet to reclaim funds
+        CLOSED // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
+    }
 
     LoanPhase currentPhase;
 
@@ -45,38 +53,38 @@ contract LoanContract is LoanContractInterface{
     event RepaymentWithdrawn(address to, uint256 amount);
 
     modifier onlyActive() {
-        require(currentPhase == LoanPhase.Active, "Incorrect loan status");
+        require(currentPhase == LoanPhase.Active, 'Incorrect loan status');
         _;
     }
 
     modifier onlyRepaidOrFailed() {
         require(
             currentPhase == LoanPhase.Repaid || currentPhase == LoanPhase.Failed,
-            "Incorrect loan status"
+            'Incorrect loan status'
         );
         _;
     }
 
     modifier onlyFinished() {
-        require(currentPhase == LoanPhase.Finished, "Incorrect loan status");
+        require(currentPhase == LoanPhase.Finished, 'Incorrect loan status');
         _;
     }
 
     modifier onlyFinishedOrFailed() {
         require(
             currentPhase == LoanPhase.Finished || currentPhase == LoanPhase.Failed,
-            "Incorrect loan status"
+            'Incorrect loan status'
         );
         _;
     }
 
     modifier onlyProxy() {
-        require(msg.sender == address(proxy), "Caller is not the proxy");
+        require(msg.sender == address(proxy), 'Caller is not the proxy');
         _;
     }
     
     modifier onlyOriginator() {
-        require(msg.sender == originator, "Caller is not the originator");
+        require(msg.sender == originator, 'Caller is not the originator');
         _;
     }
 
@@ -150,7 +158,7 @@ contract LoanContract is LoanContractInterface{
     }
 
     function withdrawRepaymentInternal(address to) internal onlyRepaidOrFailed {
-        require(lenderAmount[msg.sender] != 0, "Not a lender or already withdrawn");
+        require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
         uint256 amount = calculateValueWithInterest(lenderAmount[msg.sender]);
         DAIToken.transfer(to, amount);
         lenderAmount[msg.sender] = 0;
@@ -160,21 +168,21 @@ contract LoanContract is LoanContractInterface{
 
 
     function withdrawLoan(address to) public onlyFinished onlyOriginator returns (uint256) {
-        require(!alreadyWithdrawn, "Already withdrawn");
+        require(!alreadyWithdrawn, 'Already withdrawn');
         DAIToken.transfer(to, totalAmount);
         alreadyWithdrawn = true;
         emit LoanWithdrawn(to, totalAmount);
     }
 
     function onRepaymentReceived(address from, uint256 amount) public onlyFinished onlyProxy returns (uint256) {
-        require(originator == from, "Not from originator");
+        require(originator == from, 'Not from originator');
         require(
             amount == calculateValueWithInterest(totalAmount),
-            "Incorrect sum repaid"
+            'Incorrect sum repaid'
         );
         require(
             getRepaymentStatus() != 6,
-            "Loan is already defaulted"
+            'Loan is already defaulted'
         );
         setPhase(LoanPhase.Repaid);
         emit LoanRepaid(address(this), now);

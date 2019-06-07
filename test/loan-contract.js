@@ -63,7 +63,6 @@ contract('LoanContract', (accounts) => {
                     expect(Number(fundedByLender)).to.equal(50);
                     expect(Number(alreadyFundedAmount)).to.equal(50);
                 } catch (error) {
-                    console.log('the error is:: ', error)
                     expect(error).to.equal(undefined);
                 }
             });
@@ -97,7 +96,6 @@ contract('LoanContract', (accounts) => {
                     expect(Number(fundedByLender)).to.equal(100);
                     expect(Number(alreadyFundedAmount)).to.equal(100);
                 } catch (error) {
-                    console.log('the error is:: ', error)
                     expect(error).to.equal(undefined);
                 }
             });
