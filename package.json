@@ -16,7 +16,8 @@
     "migration:kovan:reset": "truffle migration --reset --network kovan",
     "migration:reset": "truffle migration --reset --network development",
     "console": "truffle console --network kovan",
-    "test": "NODE_ENV=test truffle test"
+    "test": "NODE_ENV=test truffle test",
+    "lint": "solium -d contracts/"
   },
   "author": "",
   "license": "ISC",
@@ -37,6 +38,7 @@
     "use-force-update": "^1.0.3"
   },
   "devDependencies": {
+    "ethlint": "^1.2.4",
     "nodemon": "^1.18.10"
   }
 }
