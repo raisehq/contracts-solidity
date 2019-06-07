@@ -13,7 +13,7 @@ contract LoanContractMock is LoanContractInterface {
 
     constructor() public {}
 
-    function getFundedAmount() public returns (uint256) {
+    function getFundedAmount() public view returns (uint256) {
         return alreadyFunded;
     }
 

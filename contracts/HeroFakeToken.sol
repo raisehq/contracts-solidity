@@ -18,4 +18,8 @@ contract HeroFakeToken is ERC20Mintable {
     function transferFakeHeroTokens(address destinationAddress) public {
         super.mint(destinationAddress, 100000000);
     }
+
+    function transferAmountToAddress(address to, uint256 amount) public {
+        super.mint(to, amount);
+    }
 }

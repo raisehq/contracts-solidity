@@ -1,8 +1,7 @@
 const chai = require('chai')
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
-const { expect } = chai
-const truffleAssert = require('truffle-assertions');
+const { expect } = chai;
 const web3 = global.web3; //require('web3');
 const DAIProxyContract = artifacts.require('DAIProxy');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
@@ -13,32 +12,17 @@ const KYCContract = artifacts.require('KYCRegistry');
 
 const LoanContractDispatcherContract = artifacts.require('LoanContractDispatcher');
 
-
+// mine blocks so it passes "time"
 const waitNBlocks = async n => {
-    for(let i = 0; i < n; i += 1) {
-        console.log(`Mined ${i} blocks`);
-        await web3.currentProvider.send({
-            jsonrpc: '2.0',
-            method: 'evm_mine',
-            id: i
-            });
-    }
-    
-    // await Promise.all(
-
-    //   [...Array(n).keys()].map(i =>
-    //     {
-    //         console.log(`Mined ${i} blocks`);
-    //         return web3.currentProvider.send({
-    //             jsonrpc: '2.0',
-    //             method: 'evm_mine',
-    //             id: i
-    //             });
-                
-    //     }
-        
-    //   )
-    // );
+    await Promise.all(
+        [...Array(n).keys()].map(i => {
+            web3.currentProvider.send({
+                jsonrpc: '2.0',
+                method: 'evm_mine',
+                id: i
+                }, ()=> {});
+        })
+    );
 };
 
 
@@ -60,38 +44,38 @@ contract('LoanContract', (accounts) => {
     describe('Test the full flow with the actual contracts', () => {
         beforeEach(async () => {
             try {
-                // giving the lender herotokens and daitokens
                 DAIToken = await HeroFakeTokenContract.new({from: owner});
-                DAITokenBorrower = await HeroFakeTokenContract.new({from: owner}); // we dont send dai to borrwer yet
-                await DAIToken.transferFakeHeroTokens(lender, {from: owner});
-                
                 HeroToken = await HeroFakeTokenContract.new({from: owner});
                 await HeroToken.transferFakeHeroTokens(lender, {from: owner});
-
-                // give permision to the deposit registry to deposit tokens instead of the lender
-                DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner});
-                await HeroToken.approve(DepositRegistry.address, 200, { from: lender });
-                await DepositRegistry.depositFor(lender, {from: owner});
-
-                // adding lender and borrower to KYC
-                KYCRegistry = await KYCContract.new();
-                await KYCRegistry.add(lender);
-                await KYCRegistry.add(borrower);
-
-                // initialize proxies for lender and borrower
-                Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-                DAIProxy = await DAIProxyContract.new(Auth.address, DAIToken.address, {from: owner});
-
-                // initialize loan contract dispatcher
-                LoanDispatcher = await LoanContractDispatcherContract.new(Auth.address, DAIToken.address, DAIProxy.address, {from:owner});
             } catch (error) {
                 throw error;
             }
         });
         it('Expects a lot of things', async () => {
             try {
+                // adding lender and borrower to KYC
+                KYCRegistry = await KYCContract.new();
+                await KYCRegistry.add(lender);
+                await KYCRegistry.add(borrower);
+                
+                // give permision to the deposit registry to deposit tokens instead of the lender
+                DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner});
+                await HeroToken.approve(DepositRegistry.address, 200, { from: lender });
+                await DepositRegistry.depositFor(lender, {from: owner});
+                // initialize proxies for lender and borrower
+                Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
+                DAIProxy = await DAIProxyContract.new(Auth.address, DAIToken.address, {from: owner});
+                
+                // check KYC and Deposit
+                const lenderKYC = await Auth.isKYCConfirmed(lender);
+                const borrowerKYC = await Auth.isKYCConfirmed(borrower);
+                const lenderHasDeposited = await Auth.hasDeposited(lender);
+
+                // initialize loan contract dispatcher
+                LoanDispatcher = await LoanContractDispatcherContract.new(Auth.address, DAIToken.address, DAIProxy.address, {from:owner});
+            
                 // borrower creates loan
-                const loanTimeLength = 1 * 7 * 24 * 60 * 60; // 1 week in seconds
+                const loanTimeLength = 1 * 60 * 60; // 1 day in seconds
                 const termLength =  loanTimeLength / averageMiningBlockTime;
                 const lengthBlocks = loanTimeLength / averageMiningBlockTime;
                 const loanAmount = 100;
@@ -108,28 +92,61 @@ contract('LoanContract', (accounts) => {
                     {from: borrower}
                 );
 
-                await waitNBlocks(100);
-
                 const eventHistory = await LoanDispatcher.getPastEvents('LoanContractCreated'); // {fromBlock: 0, toBlock: "latest"} put this to get all
                 const loanAddress = eventHistory[0].returnValues.contractAddress;
                 
-                // console.log('-----> event history:: ', eventHistory[0]);
-                // console.log('----> loan address::: ', loanAddress);
+                // wait for time / blocks to pass
+                await waitNBlocks(100);
 
                 // lender funds loan
                 const fundingAmount = 100;
-                
-                await DAIToken.approve(DAIProxy.address, 100, { from: lender });
+                await DAIToken.transferAmountToAddress(lender, fundingAmount, {from: owner});
+                await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
                 await DAIProxy.fund(loanAddress, fundingAmount, {from: lender});
+
+                // create loan instance from loanAddress
+                const Loan = await LoanContract.at(loanAddress);
+
+                // check if loan is funded
+                const loanFundedAmount = await Loan.getAlreadyFundedAmount();
+                const amountFundedByLender = await Loan.getLenderAmount(lender);
                 
                 // borrower takes money from loan
-                const Loan = await LoanContract.at(loanAddress);
-                await Loan.withdrawLoan(borrower, {from: borrower});
+                await Loan.withdrawLoan(borrower, {from: borrower}); 
                 
+                // check borrower received amount
+                const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
+                
+
                 // borrower repays loan
-                const totalReturnAmount = await Loan.getTotalAmountWithInterest({from: borrower});
-                console.log('total ammount::> ', Number(totalReturnAmount));
-                // await DAIProxy.repay(loanAddress, )
+                const totalReturnAmount = Number(await Loan.getTotalAmountWithInterest({from: borrower}));
+                const interestAmount = totalReturnAmount - fundingAmount;
+                await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
+                await DAIToken.approve(DAIProxy.address, totalReturnAmount, { from: borrower });
+                await DAIProxy.repay(loanAddress, totalReturnAmount, {from: borrower});
+                
+                const loanRepaidEvent = await Loan.getPastEvents('LoanRepaid');
+                const loanAddressToRepay = loanRepaidEvent[0].returnValues.loanAddress;
+                //TODO: check loanaddress == loanaddress
+                //TODO: get lender from loanAddress ???
+
+                // lender takes out money
+                await Loan.withdrawRepayment(lender, {from: lender});
+                const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
+                const lenderAmountInContractAfterWithdraw = await Loan.getLenderAmount(lender);
+                // ??? does the loan contract move to another state if all is repaid?
+                // TODO: How to get dai token amount from loancontract???
+
+                // assertions
+                expect(lenderKYC).to.equal(true);
+                expect(borrowerKYC).to.equal(true);
+                expect(lenderHasDeposited).to.equal(true);
+                expect(Number(loanFundedAmount)).to.equal(fundingAmount);
+                expect(Number(amountFundedByLender)).to.equal(fundingAmount);
+                expect(Number(borrowerWithdrawAmount)).to.equal(loanAmount);
+                expect(loanAddressToRepay).to.equal(loanAddress);
+                expect(Number(lenderBalanceAfterRepayment)).to.equal(totalReturnAmount);
+                expect(Number(lenderAmountInContractAfterWithdraw)).to.equal(0);
 
             } catch (error) {
                 console.log(error);
