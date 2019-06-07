@@ -141,7 +141,6 @@ contract LoanContract is LoanContractInterface{
         }
     }
 
-
     function checkIfExpired() internal returns (bool) {
         if (block.number > blockEnd && currentPhase != LoanPhase.Repaid) {
             setPhase(LoanPhase.Failed);
