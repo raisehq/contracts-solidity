@@ -41,7 +41,7 @@ contract LoanContract is LoanContractInterface{
     event LoanFullyFunded(uint256 timeAtFullyFunded);
     event LoanFailed();
     event LoanWithdrawn(address lender, uint256 amount);
-    event LoanRepaid(uint256 timeAtRepaid);
+    event LoanRepaid(address loanAddress, uint256 timeAtRepaid);
 
     modifier onlyActive() {
         require(currentPhase == LoanPhase.Active, "Incorrect loan status");
@@ -155,27 +155,19 @@ contract LoanContract is LoanContractInterface{
         emit LoanWithdrawn(to, totalAmount);
     }
 
-    function onRepaymentReceived(
-        address from,
-        uint256 amount
-        )
-        public
-        onlyFinished
-        onlyProxy
-        returns (uint256)
-        {
-            require(originator == from, "Not from originator");
-            require(
-                amount == calculateValueWithInterest(totalAmount),
-                "Incorrect sum repaid"
-            );
-            require(
-                getRepaymentStatus() != 6,
-                "Loan is already defaulted"
-            );
-            setPhase(LoanPhase.Repaid);
-            emit LoanRepaid(now);
-        } // only one public
+    function onRepaymentReceived(address from, uint256 amount) public onlyFinished onlyProxy returns (uint256) {
+        require(originator == from, "Not from originator");
+        require(
+            amount == calculateValueWithInterest(totalAmount),
+            "Incorrect sum repaid"
+        );
+        require(
+            getRepaymentStatus() != 6,
+            "Loan is already defaulted"
+        );
+        setPhase(LoanPhase.Repaid);
+        emit LoanRepaid(address(this), now);
+    }
 
     function setPhase(LoanPhase phase) internal {
         currentPhase = phase;
@@ -219,6 +211,10 @@ contract LoanContract is LoanContractInterface{
         } else {
             return 6;
         }
+    }
+
+    function getTotalAmountWithInterest() public view returns(uint256) {
+        return calculateValueWithInterest(totalAmount);
     }
 
     function calculateValueWithInterest(uint256 value) public view returns(uint256) {

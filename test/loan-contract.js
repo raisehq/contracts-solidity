@@ -5,17 +5,10 @@ const { expect } = chai
 const DAIProxyContract = artifacts.require('DAIProxyMock');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 const LoanContract = artifacts.require('LoanContract');
-// const AuthContract = artifacts.require('Authorization.sol');
-// const DepositRegistryContract = artifacts.require('DepositRegistry.sol');
-// const KYCContract = artifacts.require('KYCRegistry.sol');
 
 contract('LoanContract', (accounts) => {
     let DAIProxy;
     let DAIToken;
-    // let HeroToken;
-    // let DepositRegistry;
-    // let Auth;
-    // let KYCRegistry;
     let Loan;
 
     const averageMiningBlockTime = 15;
@@ -34,22 +27,7 @@ contract('LoanContract', (accounts) => {
             try {
                 DAIToken = await HeroFakeTokenContract.new({from: owner});
                 await DAIToken.transferFakeHeroTokens(lender, {from: owner});
-
-                // HeroToken = await HeroFakeTokenContract.new({from: owner});
-                // await HeroToken.transferFakeHeroTokens(lender, {from: owner});
-
-                // DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner});
-                // await HeroToken.approve(DepositRegistry.address, 200, { from: lender });
-                // await DepositRegistry.depositFor(lender, {from: owner});
-
-                // KYCRegistry = await KYCContract.new();
-                // await KYCRegistry.add(lender);
-
-                // Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-
-                // DAIProxy = await DAIProxyContract.new(Auth.address, DAIToken.address, {from: owner});
                 DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
-                
             } catch (error) {
                 throw error;
             }
