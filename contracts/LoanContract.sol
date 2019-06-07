@@ -42,6 +42,7 @@ contract LoanContract is LoanContractInterface{
     event LoanFailed();
     event LoanWithdrawn(address lender, uint256 amount);
     event LoanRepaid(address loanAddress, uint256 timeAtRepaid);
+    event RepaymentWithdrawn(address to, uint256 amount);
 
     modifier onlyActive() {
         require(currentPhase == LoanPhase.Active, "Incorrect loan status");
@@ -113,7 +114,6 @@ contract LoanContract is LoanContractInterface{
     }
 
     function onFundingReceived(address lender, uint256 amount) public onlyActive onlyProxy {
-
         if (block.number > blockEnd) {
             setPhase(LoanPhase.Failed);
             emit LoanFailed();
@@ -141,12 +141,23 @@ contract LoanContract is LoanContractInterface{
         }
     }
 
-    function withdrawRepayment(address to) public onlyRepaidOrFailed {
+    function withdrawRepayment(address to) public {
+        if (block.number > blockEnd && currentPhase == LoanPhase.Active) {
+            setPhase(LoanPhase.Failed);
+        }
+
+        withdrawRepaymentInternal(to);
+    }
+
+    function withdrawRepaymentInternal(address to) internal onlyRepaidOrFailed {
         require(lenderAmount[msg.sender] != 0, "Not a lender or already withdrawn");
         uint256 amount = calculateValueWithInterest(lenderAmount[msg.sender]);
         DAIToken.transfer(to, amount);
         lenderAmount[msg.sender] = 0;
+
+        emit RepaymentWithdrawn(to, amount);
     }
+
 
     function withdrawLoan(address to) public onlyFinished onlyOriginator returns (uint256) {
         require(!alreadyWithdrawn, "Already withdrawn");
@@ -182,6 +193,7 @@ contract LoanContract is LoanContractInterface{
             return 0;
         }
     }
+
     // 1 - repaid
     // 2 - non-funded
     // 3 - failed
@@ -205,8 +217,7 @@ contract LoanContract is LoanContractInterface{
         } else if (
             now >= timestampFunded + termLength &&
             now <= timestampFunded + termLength + gracePeriodLength
-        )
-        {
+        ) {
             return 5;
         } else {
             return 6;
