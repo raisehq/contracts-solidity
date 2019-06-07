@@ -141,14 +141,6 @@ contract LoanContract is LoanContractInterface{
         }
     }
 
-    function checkIfExpired() internal returns (bool) {
-        if (block.number > blockEnd && currentPhase != LoanPhase.Repaid) {
-            setPhase(LoanPhase.Failed);
-            return true;
-        }
-        return false;
-    }
-
     function withdrawRepayment(address to) public {
         if (block.number > blockEnd && currentPhase == LoanPhase.Active) {
             setPhase(LoanPhase.Failed);
