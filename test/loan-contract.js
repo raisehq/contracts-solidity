@@ -26,7 +26,7 @@ contract('LoanContract', (accounts) => {
         beforeEach(async () => {
             try {
                 DAIToken = await HeroFakeTokenContract.new({from: owner});
-                await DAIToken.transferFakeHeroTokens(lender, {from: owner});
+                await DAIToken.transferAmountToAddress(lender,150, {from: owner});
                 DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
             } catch (error) {
                 throw error;
@@ -127,9 +127,11 @@ contract('LoanContract', (accounts) => {
                     //subscrive to events
                     const alreadyFundedAmount = await Loan.getAlreadyFundedAmount({from: owner});
                     const fundedByLender = await Loan.getLenderAmount(lender, {from: owner});
+                    const lenderAfterBalance = await DAIToken.balanceOf(lender);
                     
                     expect(Number(fundedByLender)).to.equal(100);
                     expect(Number(alreadyFundedAmount)).to.equal(100);
+                    expect(Number(lenderAfterBalance)).to.equal(50);
                 } catch (error) {
                     console.log('the error is:: ', error)
                     expect(error).to.equal(undefined);

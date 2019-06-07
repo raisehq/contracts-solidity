@@ -127,15 +127,11 @@ contract('LoanContract', (accounts) => {
                 
                 const loanRepaidEvent = await Loan.getPastEvents('LoanRepaid');
                 const loanAddressToRepay = loanRepaidEvent[0].returnValues.loanAddress;
-                //TODO: check loanaddress == loanaddress
-                //TODO: get lender from loanAddress ???
 
                 // lender takes out money
                 await Loan.withdrawRepayment(lender, {from: lender});
                 const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
                 const lenderAmountInContractAfterWithdraw = await Loan.getLenderAmount(lender);
-                // ??? does the loan contract move to another state if all is repaid?
-                // TODO: How to get dai token amount from loancontract???
 
                 // assertions
                 expect(lenderKYC).to.equal(true);
