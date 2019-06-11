@@ -23,7 +23,7 @@ contract DAIProxy is DAIProxyInterface {
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
         loanContract.onFundingReceived(msg.sender, fundingAmount);
 
-        emit LoanFunded(msg.sender, loanAddress, fundingAmount);
+        // emit LoanFunded(msg.sender, loanAddress, fundingAmount);
     }
 
     function repay(address loanAddress, uint256 repaymentAmount) public onlyKYCanFund {
@@ -32,7 +32,7 @@ contract DAIProxy is DAIProxyInterface {
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
         loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
 
-        emit RepaymentReceived(msg.sender, loanAddress, repaymentAmount);
+        // emit RepaymentReceived(msg.sender, loanAddress, repaymentAmount);
     }
 
     function transfer(address loanAddress, uint256 amount) internal {
