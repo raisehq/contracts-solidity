@@ -4,119 +4,128 @@ import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './DAIProxyInterface.sol';
 import './LoanContractInterface.sol';
 
-contract LoanContract is LoanContractInterface{
+contract LoanContract is LoanContractInterface {
     ERC20 DAIToken;
     DAIProxyInterface proxy;
     address originator;
 
     uint256 blockStart;
-    uint256 blockEnd;
+    uint256 fundingTimeLimitBlock;
     uint256 blockFunded;
     uint256 timestampFunded;
-    uint256 termLength;
+    uint256 loanRepaymentLength;
     uint256 gracePeriodLength;
 
     uint256 alreadyFunded;
     uint256 totalAmount;
+    uint256 totalAmountWithInterest;
     uint256 bpMaxInterestRate;
 
     bool alreadyWithdrawn;
 
     mapping(address => uint256) lenderAmount;
-    enum LoanPhase {Active, Finished, Repaid, Failed}
 
-    LoanPhase currentPhase;
+    enum LoanState {
+        CREATED, // accepts bids until timelimit initial state
+        FAILED_TO_FUND, // not fully funded in timelimit
+        ACTIVE, // fully funded, inside timelimit
+        DEFAULTED, // not repaid in time loanRepaymentLength
+        REPAID, // the borrower repaid in full, lenders have yet to reclaim funds
+        CLOSED // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
+    }
+
+    LoanState currentState;
 
     event LoanCreated(
         address contractAddr,
         address originator,
         uint256 totalAmount,
-        uint256 termLength,
+        uint256 loanRepaymentLength,
         uint256 gracePeriodLength,
         uint256 fundingBlockStart,
         uint256 fundingBlockLength
     );
 
-    event LoanFunded(address lender, uint256 amount);
-    event LoanFullyFunded(uint256 timeAtFullyFunded);
-    event LoanFailed();
-    event LoanWithdrawn(address lender, uint256 amount);
-    event LoanRepaid(address loanAddress, uint256 timeAtRepaid);
-    event RepaymentWithdrawn(address to, uint256 amount);
+    event FullyFunded(address loanAddress, uint256 totalAmountWithInterest, uint256 amount);
+    event Funded(address loanAddress, address lender, uint256 amount);
+    event LoanRepaid(address loanAddress, uint256 timestampRepaid);
+    event RepaymentWithdrawn(address loanAddress, address to, uint256 amount);
+    event FullyRepaid(address loanAddress);
+    event RefundWithdrawn(address loanAddress, address lender, uint256 amount);
+    event FullyRefunded(address loanAddress);
+    event FailedToFund(address loanAddress, address lender, uint256 amount);
+    event LoanFundsWithdrawn(address loanAddress, address borrower, uint256 amount);
+    event LoanDefaulted(address loanAddress);
+    event RefundTotalAmount(address loanAddress, uint256 refundTotalAmount);
+    event Test(address loanAddress);
+
+    modifier onlyCreated() {
+        require(currentState == LoanState.CREATED, 'Incorrect loan status');
+        _;
+    }
+
+    modifier onlyRepaidOrFailedToFund() {
+        require(
+            currentState == LoanState.REPAID || currentState == LoanState.FAILED_TO_FUND,
+            'Incorrect loan status'
+        );
+        _;
+    }
 
     modifier onlyActive() {
-        require(currentPhase == LoanPhase.Active, "Incorrect loan status");
+        require(currentState == LoanState.ACTIVE, 'Incorrect loan status');
         _;
     }
 
-    modifier onlyRepaidOrFailed() {
-        require(
-            currentPhase == LoanPhase.Repaid || currentPhase == LoanPhase.Failed,
-            "Incorrect loan status"
-        );
+    modifier onlyRepaid() {
+        require(currentState == LoanState.REPAID, 'Incorrect loan state');
         _;
     }
 
-    modifier onlyFinished() {
-        require(currentPhase == LoanPhase.Finished, "Incorrect loan status");
-        _;
-    }
 
-    modifier onlyFinishedOrFailed() {
-        require(
-            currentPhase == LoanPhase.Finished || currentPhase == LoanPhase.Failed,
-            "Incorrect loan status"
-        );
+    modifier onlyFailedToFund() {
+        require(currentState == LoanState.FAILED_TO_FUND, 'Incorrect loan state');
         _;
     }
 
     modifier onlyProxy() {
-        require(msg.sender == address(proxy), "Caller is not the proxy");
+        require(msg.sender == address(proxy), 'Caller is not the proxy');
         _;
     }
     
     modifier onlyOriginator() {
-        require(msg.sender == originator, "Caller is not the originator");
+        require(msg.sender == originator, 'Caller is not the originator');
         _;
     }
 
     constructor(
-        uint256 lengthBlocks,
+        uint256 fundingTimeBlocks,// lengthBlocks,
         uint256 amount,
         uint256 _bpMaxInterestRate,
-        uint256 _termLength,
-        uint256 _gracePeriodLength,
+        uint256 _loanRepaymentLength,
         address _originator,
         address DAITokenAddress,
         address proxyAddress
-    )
-    public
-    {
+    ) public {
         originator = _originator;
         totalAmount = amount;
         blockStart = block.number;
-        blockEnd = blockStart + lengthBlocks;
+        fundingTimeLimitBlock = blockStart + fundingTimeBlocks;
         bpMaxInterestRate = _bpMaxInterestRate;
         alreadyWithdrawn = false;
-        termLength = _termLength;
-        gracePeriodLength = _gracePeriodLength;
+        loanRepaymentLength = _loanRepaymentLength;
 
         DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
+
+        setState(LoanState.CREATED);
     }
 
-    function getAlreadyFundedAmount() public view returns (uint256) {
-        return alreadyFunded;
-    }
-
-    function getLenderAmount(address lender) public view returns (uint256) {
-        return lenderAmount[lender];
-    }
-
-    function onFundingReceived(address lender, uint256 amount) public onlyActive onlyProxy {
-        if (block.number > blockEnd) {
-            setPhase(LoanPhase.Failed);
-            emit LoanFailed();
+    function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
+        if (isExpired()) {
+            setState(LoanState.FAILED_TO_FUND);
+            emit FailedToFund(address(this), lender, amount);
+            emit RefundTotalAmount(address(this), alreadyFunded);
             return;
         }
 
@@ -128,112 +137,142 @@ contract LoanContract is LoanContractInterface{
             DAIToken.transfer(lender, overflow);
             alreadyFunded -= overflow;
             lenderAmount[lender] -= overflow;
-            emit LoanFunded(lender, amount - overflow);
+            emit Funded(address(this), lender, amount - overflow);
         } else {
-            emit LoanFunded(lender, amount);
+            emit Funded(address(this), lender, amount);
         }
 
         if (alreadyFunded == totalAmount) {
-            setPhase(LoanPhase.Finished);
+            setState(LoanState.ACTIVE);
             blockFunded = block.number;
             timestampFunded = now;
-            emit LoanFullyFunded(timestampFunded);
+            totalAmountWithInterest = calculateValueWithInterest(alreadyFunded);
+            emit FullyFunded(address(this), totalAmountWithInterest, timestampFunded);
         }
     }
 
-    function withdrawRepayment(address to) public {
-        if (block.number > blockEnd && currentPhase == LoanPhase.Active) {
-            setPhase(LoanPhase.Failed);
-        }
+    //put these in proxy???
 
-        withdrawRepaymentInternal(to);
-    }
-
-    function withdrawRepaymentInternal(address to) internal onlyRepaidOrFailed {
-        require(lenderAmount[msg.sender] != 0, "Not a lender or already withdrawn");
-        uint256 amount = calculateValueWithInterest(lenderAmount[msg.sender]);
-        DAIToken.transfer(to, amount);
+    // to == msg.sender ???
+    function withdrawRefund(address to) public onlyFailedToFund {
+        require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
+        uint256 amount = lenderAmount[msg.sender];
         lenderAmount[msg.sender] = 0;
+        alreadyFunded -= amount;
+        emit RefundWithdrawn(address(this), to, amount);
 
-        emit RepaymentWithdrawn(to, amount);
+        if (alreadyFunded == 0) {
+            setState(LoanState.CLOSED);
+            emit FullyRefunded(address(this));
+        }
+
+        DAIToken.transfer(to, amount);
     }
 
+    function withdrawRepayment(address to) public onlyRepaid {
+        require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
+        uint256 amount = calculateValueWithInterest(lenderAmount[msg.sender]);
+        lenderAmount[msg.sender] = 0; // this line is first because of reentry attack
+        totalAmountWithInterest -= amount;
+        emit RepaymentWithdrawn(address(this), to, amount);
 
-    function withdrawLoan(address to) public onlyFinished onlyOriginator returns (uint256) {
-        require(!alreadyWithdrawn, "Already withdrawn");
-        DAIToken.transfer(to, totalAmount);
+        if (totalAmountWithInterest == 0) {
+            setState(LoanState.CLOSED);
+            emit FullyRepaid(address(this));
+        }
+
+        DAIToken.transfer(to, amount);
+    }
+
+    // TO OR ORIGINATOR????
+    function withdrawLoan(address to) public onlyActive onlyOriginator {
+        require(!alreadyWithdrawn, 'Already withdrawn');
+
+        if (isDefaulted()) {
+            setState(LoanState.DEFAULTED);
+            emit LoanDefaulted(address(this));
+            return;
+        }
+
         alreadyWithdrawn = true;
-        emit LoanWithdrawn(to, totalAmount);
+        DAIToken.transfer(to, totalAmount);
+        emit LoanFundsWithdrawn(address(this), to, totalAmount);
     }
 
-    function onRepaymentReceived(address from, uint256 amount) public onlyFinished onlyProxy returns (uint256) {
-        require(originator == from, "Not from originator");
+    // this happens after transfer in daiproxy => if Defaulted we need to return funds ???
+    function onRepaymentReceived(address from, uint256 amount) public onlyActive onlyProxy {
+        require(from == originator, 'from address is not the originator');
         require(
             amount == calculateValueWithInterest(totalAmount),
-            "Incorrect sum repaid"
+            'Incorrect sum repaid'
         );
-        require(
-            getRepaymentStatus() != 6,
-            "Loan is already defaulted"
-        );
-        setPhase(LoanPhase.Repaid);
+
+        // hacer modifier en dai proxy con is defaulted
+        if (isDefaulted()) {
+            setState(LoanState.DEFAULTED);
+            DAIToken.transfer(from, amount); // this transfer could be prevented if we control it from daiproxy
+            emit LoanDefaulted(address(this));
+            return;
+        }
+
+        setState(LoanState.REPAID);
         emit LoanRepaid(address(this), now);
     }
 
-    function setPhase(LoanPhase phase) internal {
-        currentPhase = phase;
+    function getAlreadyFundedAmount() public view returns (uint256) {
+        return alreadyFunded;
     }
 
-    function getInterestRate() public view returns (uint256) {
-        if (currentPhase == LoanPhase.Active) {
-            return bpMaxInterestRate * (block.number - blockStart) / (blockEnd - blockStart);
-        } else if (currentPhase == LoanPhase.Finished || currentPhase == LoanPhase.Repaid) {
-            return bpMaxInterestRate * (blockFunded - blockStart) / (blockEnd - blockStart);
-        } else {
-            return 0;
-        }
+    function getLenderAmount(address lender) public view returns (uint256) {
+        return lenderAmount[lender];
     }
 
-    // 1 - repaid
-    // 2 - non-funded
-    // 3 - failed
-    // 4 - not-repaid
-    // 5 - grace
-    // 6 - default
-    function getRepaymentStatus() public view returns (uint256) {
+    function isExpired() internal view returns (bool) {
+        return block.number > fundingTimeLimitBlock;
+    }
 
-        if (currentPhase == LoanPhase.Repaid) {
-            return 1;
-        }
-        if (currentPhase == LoanPhase.Active) {
-            return 2;
-        }
-        if (currentPhase == LoanPhase.Failed) {
-            return 3;
-        }
-
-        if (now >= timestampFunded  && now <= timestampFunded + termLength) {
-            return 4;
-        } else if (
-            now >= timestampFunded + termLength &&
-            now <= timestampFunded + termLength + gracePeriodLength
+    function isDefaulted() public view returns (bool) {
+        if (
+            now >= timestampFunded &&
+            now <= timestampFunded + loanRepaymentLength
         ) {
-            return 5;
-        } else {
-            return 6;
+            return false;
         }
+
+        return true;
     }
 
-    function getTotalAmountWithInterest() public view returns(uint256) {
-        return calculateValueWithInterest(totalAmount);
+    function setState(LoanState state) internal {
+        currentState = state;
+    }
+
+    function getUpdatedState() public returns (LoanState) {
+        if (isExpired() && currentState == LoanState.CREATED) {
+            setState(LoanState.FAILED_TO_FUND);
+        }
+
+        if (isDefaulted() && currentState == LoanState.ACTIVE) {
+            setState(LoanState.DEFAULTED);
+        }
+
+        return currentState;
     }
 
     function calculateValueWithInterest(uint256 value) public view returns(uint256) {
         return value + (value * getInterestRate() / 10000);
     }
 
-    function getLenderWithdrawnAmount(address lender) public view returns (uint256) {
-        return (currentPhase == LoanPhase.Repaid)
-            ? calculateValueWithInterest(lenderAmount[lender]) : 0;
+    function getInterestRate() public view returns (uint256) {
+        if (currentState == LoanState.CREATED) {
+            return bpMaxInterestRate * (block.number - blockStart) / (fundingTimeLimitBlock - blockStart);
+        } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
+            return bpMaxInterestRate * (blockFunded - blockStart) / (fundingTimeLimitBlock - blockStart);
+        } else {
+            return 0;
+        }
+    }
+
+    function getTotalAmountWithInterest() public view returns(uint256) {
+        return calculateValueWithInterest(totalAmount);
     }
 }
