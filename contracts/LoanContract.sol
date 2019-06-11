@@ -57,33 +57,26 @@ contract LoanContract is LoanContractInterface {
     event LoanFundsWithdrawn(address loanAddress, address borrower, uint256 amount);
     event LoanDefaulted(address loanAddress);
     event RefundTotalAmount(address loanAddress, uint256 refundTotalAmount);
-    event Test(address loanAddress);
 
     modifier onlyCreated() {
         require(currentState == LoanState.CREATED, 'Incorrect loan status');
         _;
     }
 
-    modifier onlyRepaidOrFailedToFund() {
-        require(
-            currentState == LoanState.REPAID || currentState == LoanState.FAILED_TO_FUND,
-            'Incorrect loan status'
-        );
-        _;
-    }
-
     modifier onlyActive() {
+        getUpdatedState();
         require(currentState == LoanState.ACTIVE, 'Incorrect loan status');
         _;
     }
 
     modifier onlyRepaid() {
+        getUpdatedState();
         require(currentState == LoanState.REPAID, 'Incorrect loan state');
         _;
     }
 
-
     modifier onlyFailedToFund() {
+        getUpdatedState();
         require(currentState == LoanState.FAILED_TO_FUND, 'Incorrect loan state');
         _;
     }
@@ -92,7 +85,7 @@ contract LoanContract is LoanContractInterface {
         require(msg.sender == address(proxy), 'Caller is not the proxy');
         _;
     }
-    
+
     modifier onlyOriginator() {
         require(msg.sender == originator, 'Caller is not the originator');
         _;
@@ -121,9 +114,11 @@ contract LoanContract is LoanContractInterface {
         setState(LoanState.CREATED);
     }
 
+    // throw error? when not able to fund?
     function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
         if (isExpired()) {
             setState(LoanState.FAILED_TO_FUND);
+            DAIToken.transfer(lender, amount);
             emit FailedToFund(address(this), lender, amount);
             emit RefundTotalAmount(address(this), alreadyFunded);
             return;
@@ -134,9 +129,9 @@ contract LoanContract is LoanContractInterface {
 
         if (alreadyFunded > totalAmount) {
             uint256 overflow = alreadyFunded - totalAmount;
-            DAIToken.transfer(lender, overflow);
             alreadyFunded -= overflow;
             lenderAmount[lender] -= overflow;
+            DAIToken.transfer(lender, overflow);
             emit Funded(address(this), lender, amount - overflow);
         } else {
             emit Funded(address(this), lender, amount);
