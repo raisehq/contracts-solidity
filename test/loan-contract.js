@@ -21,7 +21,6 @@ contract('LoanContract', (accounts) => {
         let loanAmount;
         let bpMacInterestRate;
         let lengthBlocks;
-        let gracePeriodLength;
         let termLength;
         beforeEach(async () => {
             try {
@@ -36,11 +35,10 @@ contract('LoanContract', (accounts) => {
             it('Expects the funding to be done correctly when it is not the full amount', async () => {
                 try {
                     const loanTimeLength = 1 * 7 * 24 * 60 * 60; // 1 week in seconds
-                    termLength =  loanTimeLength / averageMiningBlockTime;
                     lengthBlocks = loanTimeLength / averageMiningBlockTime;
                     loanAmount = 100;
                     const gracePeriodTime = 1* 4 * 7 * 24 * 60 * 60; // one month in seconds
-                    gracePeriodLength = gracePeriodTime / averageMiningBlockTime;
+                    termLength = gracePeriodTime / averageMiningBlockTime;
                     bpMacInterestRate = 5;
 
                     Loan = await LoanContract.new(
@@ -48,7 +46,6 @@ contract('LoanContract', (accounts) => {
                         loanAmount,
                         bpMacInterestRate,
                         termLength,
-                        gracePeriodLength,
                         borrower, 
                         DAIToken.address, 
                         DAIProxy.address,
@@ -69,11 +66,10 @@ contract('LoanContract', (accounts) => {
             it('Expects the funding to be done correctly when it is full amount', async () => {
                 try {
                     const loanTimeLength = 1 * 7 * 24 * 60 * 60; // 1 week in seconds
-                    termLength =  loanTimeLength / averageMiningBlockTime;
                     lengthBlocks = loanTimeLength / averageMiningBlockTime;
                     loanAmount = 100;
                     const gracePeriodTime = 1* 4 * 7 * 24 * 60 * 60; // one month in seconds
-                    gracePeriodLength = gracePeriodTime / averageMiningBlockTime;
+                    termLength = gracePeriodTime / averageMiningBlockTime;
                     bpMacInterestRate = 5;
 
                     Loan = await LoanContract.new(
@@ -81,7 +77,6 @@ contract('LoanContract', (accounts) => {
                         loanAmount,
                         bpMacInterestRate,
                         termLength,
-                        gracePeriodLength,
                         borrower, 
                         DAIToken.address, 
                         DAIProxy.address,
@@ -102,11 +97,10 @@ contract('LoanContract', (accounts) => {
             it('Expects the funding to be done correctly when it is more than the full amount', async () => {
                 try {
                     const loanTimeLength = 1 * 7 * 24 * 60 * 60; // 1 week in seconds
-                    termLength =  loanTimeLength / averageMiningBlockTime;
                     lengthBlocks = loanTimeLength / averageMiningBlockTime;
                     loanAmount = 100;
                     const gracePeriodTime = 1* 4 * 7 * 24 * 60 * 60; // one month in seconds
-                    gracePeriodLength = gracePeriodTime / averageMiningBlockTime;
+                    termLength = gracePeriodTime / averageMiningBlockTime;
                     bpMacInterestRate = 5;
 
                     Loan = await LoanContract.new(
@@ -114,7 +108,6 @@ contract('LoanContract', (accounts) => {
                         loanAmount,
                         bpMacInterestRate,
                         termLength,
-                        gracePeriodLength,
                         borrower, 
                         DAIToken.address, 
                         DAIProxy.address,

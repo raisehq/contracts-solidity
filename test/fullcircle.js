@@ -26,7 +26,7 @@ const waitNBlocks = async n => {
 };
 
 
-contract('LoanContract', (accounts) => {
+contract('Integration', (accounts) => {
     let DAIProxy;
     let DAIToken;
     let HeroToken;
@@ -76,11 +76,10 @@ contract('LoanContract', (accounts) => {
             
                 // borrower creates loan
                 const loanTimeLength = 1 * 60 * 60; // 1 day in seconds
-                const termLength =  loanTimeLength / averageMiningBlockTime;
+                const loanRepaymentTime = 1* 4 * 7 * 24 * 60 * 60; // one month in seconds
+                const termLength =  loanRepaymentTime / averageMiningBlockTime;
                 const lengthBlocks = loanTimeLength / averageMiningBlockTime;
                 const loanAmount = 100;
-                const gracePeriodTime = 1* 4 * 7 * 24 * 60 * 60; // one month in seconds
-                const graceLength = gracePeriodTime / averageMiningBlockTime;
                 const bpMaxInterestRate = 5000;
 
                 await LoanDispatcher.deploy(
@@ -88,7 +87,6 @@ contract('LoanContract', (accounts) => {
                     loanAmount,
                     bpMaxInterestRate,
                     termLength,
-                    graceLength,
                     {from: borrower}
                 );
 
@@ -117,7 +115,6 @@ contract('LoanContract', (accounts) => {
                 // check borrower received amount
                 const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
                 
-
                 // borrower repays loan
                 const totalReturnAmount = Number(await Loan.getTotalAmountWithInterest({from: borrower}));
                 const interestAmount = totalReturnAmount - fundingAmount;

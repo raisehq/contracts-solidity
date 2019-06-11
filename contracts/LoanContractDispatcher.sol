@@ -21,8 +21,7 @@ contract LoanContractDispatcher {
         uint256 lengthBlocks,
         uint256 amount,
         uint256 bpMaxInterestRate,
-        uint256 termLength,
-        uint256 graceLength
+        uint256 termLength
     );
 
     constructor(
@@ -39,8 +38,7 @@ contract LoanContractDispatcher {
         uint256 lengthBlocks,
         uint256 amount,
         uint256 bpMaxInterestRate,
-        uint256 termLength,
-        uint256 graceLength
+        uint256 termLength
     )
     public
     onlyKYC
@@ -51,7 +49,6 @@ contract LoanContractDispatcher {
             amount,
             bpMaxInterestRate,
             termLength,
-            graceLength,
             msg.sender,
             DAITokenAddress,
             DAIProxyAddress
@@ -64,8 +61,7 @@ contract LoanContractDispatcher {
             lengthBlocks,
             amount,
             bpMaxInterestRate,
-            termLength,
-            graceLength
+            termLength
         );
 
         return address(loanContract);

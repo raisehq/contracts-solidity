@@ -13,7 +13,7 @@ contract LoanContract is LoanContractInterface {
     uint256 fundingTimeLimitBlock;
     uint256 blockFunded;
     uint256 timestampFunded;
-    uint256 termLength;
+    uint256 loanRepaymentLength;
     uint256 gracePeriodLength;
 
     uint256 alreadyFunded;
@@ -29,7 +29,7 @@ contract LoanContract is LoanContractInterface {
         CREATED, // accepts bids until timelimit initial state
         FAILED_TO_FUND, // not fully funded in timelimit
         ACTIVE, // fully funded, inside timelimit
-        DEFAULTED, // not repaid in time termlength
+        DEFAULTED, // not repaid in time loanRepaymentLength
         REPAID, // the borrower repaid in full, lenders have yet to reclaim funds
         CLOSED // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
     }
@@ -40,7 +40,7 @@ contract LoanContract is LoanContractInterface {
         address contractAddr,
         address originator,
         uint256 totalAmount,
-        uint256 termLength,
+        uint256 loanRepaymentLength,
         uint256 gracePeriodLength,
         uint256 fundingBlockStart,
         uint256 fundingBlockLength
@@ -57,6 +57,7 @@ contract LoanContract is LoanContractInterface {
     event LoanFundsWithdrawn(address loanAddress, address borrower, uint256 amount);
     event LoanDefaulted(address loanAddress);
     event RefundTotalAmount(address loanAddress, uint256 refundTotalAmount);
+    event Test(address loanAddress);
 
     modifier onlyCreated() {
         require(currentState == LoanState.CREATED, 'Incorrect loan status');
@@ -101,8 +102,7 @@ contract LoanContract is LoanContractInterface {
         uint256 fundingTimeBlocks,// lengthBlocks,
         uint256 amount,
         uint256 _bpMaxInterestRate,
-        uint256 _termLength,
-        uint256 _gracePeriodLength,
+        uint256 _loanRepaymentLength,
         address _originator,
         address DAITokenAddress,
         address proxyAddress
@@ -113,8 +113,7 @@ contract LoanContract is LoanContractInterface {
         fundingTimeLimitBlock = blockStart + fundingTimeBlocks;
         bpMaxInterestRate = _bpMaxInterestRate;
         alreadyWithdrawn = false;
-        termLength = _termLength;
-        gracePeriodLength = _gracePeriodLength;
+        loanRepaymentLength = _loanRepaymentLength;
 
         DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
@@ -201,7 +200,8 @@ contract LoanContract is LoanContractInterface {
     }
 
     // this happens after transfer in daiproxy => if Defaulted we need to return funds ???
-    function onRepaymentReceived(address from, uint256 amount) public onlyOriginator onlyActive onlyProxy {
+    function onRepaymentReceived(address from, uint256 amount) public onlyActive onlyProxy {
+        require(from == originator, 'from address is not the originator');
         require(
             amount == calculateValueWithInterest(totalAmount),
             'Incorrect sum repaid'
@@ -231,10 +231,10 @@ contract LoanContract is LoanContractInterface {
         return block.number > fundingTimeLimitBlock;
     }
 
-    function isDefaulted() public returns (bool) {
+    function isDefaulted() public view returns (bool) {
         if (
-            now >= timestampFunded + termLength &&
-            now <= timestampFunded + termLength + gracePeriodLength
+            now >= timestampFunded &&
+            now <= timestampFunded + loanRepaymentLength
         ) {
             return false;
         }
