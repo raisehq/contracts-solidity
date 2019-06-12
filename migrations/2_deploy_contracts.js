@@ -23,7 +23,7 @@ module.exports = async (deployer, network, accounts) => {
   let heroTokenAddress;
 
   if (process.env.HERO_TOKEN_ADDRESS) {
-    daiAddress = process.env.DAI_ADDRESS;
+    daiAddress = process.env.HERO_TOKEN_ADDRESS;
   } else {
     await deployer.deploy(HeroToken, { from: deployerAddress });
     heroTokenAddress = HeroToken.address;
