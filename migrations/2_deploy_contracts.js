@@ -17,7 +17,7 @@ const FileHelper = {
     )
 };
 
-const migrationInt = (deployer,deployerAddress)  => {
+const migrationInt = async (deployer, deployerAddress) => {
   await deployer.deploy(HeroToken, { from: deployerAddress });
 
   await deployer.deploy(DAI, { from: deployerAddress });
@@ -75,9 +75,9 @@ const migrationInt = (deployer,deployerAddress)  => {
     await heroDeployed.transfer(addr, 1000).send({ from: deployerAddress });
   });
   await FileHelper.write('./contracts.json', data);
-}
+};
 
-const migrationLive = (deployer,deployerAddress)  => {
+const migrationLive = async (deployer, deployerAddress) => {
   const heroTokenAddress = process.env.HERO_TOKEN_ADDRESS;
   const daiAddress = process.env.DAI_ADDRESS;
 
@@ -128,14 +128,13 @@ const migrationLive = (deployer,deployerAddress)  => {
     }
   };
   await FileHelper.write('./prod.contracts.json', data);
-}
-
+};
 
 module.exports = async (deployer, network, accounts) => {
   const deployerAddress = accounts[0];
   if (network == 'live') {
-    migrationLive(deployer,deployerAddress);
+    await migrationLive(deployer, deployerAddress);
   } else {
-    migrationInt(deployer,deployerAddress)
+    await migrationInt(deployer, deployerAddress);
   }
 };
