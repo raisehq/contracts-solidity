@@ -56,6 +56,11 @@ module.exports = {
       },
       network_id: '*' // Match any network id
     },
+    ganache: {
+      host: 'localhost',
+      port: 8545,
+      network_id: '*' // Match any network id
+    },
     kovan: {
       gas: 5000000,
       gasPrice: 10000000000,
@@ -102,6 +107,7 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
+      version: '0.5.0',
       optimizer: {
         enabled: true,
         runs: 200

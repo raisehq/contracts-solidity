@@ -114,6 +114,7 @@ contract LoanContract is LoanContractInterface {
         setState(LoanState.CREATED);
     }
 
+    // Notes: This function can not track if real ERC20 balance has changed. Needs to blindly "trust" DaiProxy.
     // throw error? when not able to fund?
     function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
         if (isExpired()) {
@@ -222,7 +223,7 @@ contract LoanContract is LoanContractInterface {
         return lenderAmount[lender];
     }
 
-    function isExpired() internal view returns (bool) {
+    function isExpired() public view returns (bool) {
         return block.number > fundingTimeLimitBlock;
     }
 
@@ -241,16 +242,22 @@ contract LoanContract is LoanContractInterface {
         currentState = state;
     }
 
-    function getUpdatedState() public returns (LoanState) {
+    function getUpdatedState() public {
         if (isExpired() && currentState == LoanState.CREATED) {
             setState(LoanState.FAILED_TO_FUND);
         }
-
         if (isDefaulted() && currentState == LoanState.ACTIVE) {
             setState(LoanState.DEFAULTED);
         }
-
         return currentState;
+    }
+
+    function getCurrentState() public view returns (LoanState) {
+        return currentState;
+    }
+
+    function getFundingTimeLimitBlock() public view returns (uint256) {
+        return fundingTimeLimitBlock;        
     }
 
     function calculateValueWithInterest(uint256 value) public view returns(uint256) {
@@ -269,5 +276,9 @@ contract LoanContract is LoanContractInterface {
 
     function getTotalAmountWithInterest() public view returns(uint256) {
         return calculateValueWithInterest(totalAmount);
+    }
+
+    function getStartBlock() public view returns (uint256) {
+        return blockStart;
     }
 }
