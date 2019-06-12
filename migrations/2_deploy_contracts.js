@@ -71,6 +71,7 @@ const migrationInt = async (deployer, deployerAddress) => {
     }
   };
 
+  //HEROTOKENS
   const heroDeployed = await HeroToken.deployed();
 
   for (let i = 0; i < IntAccounts.length; i++) {
@@ -79,6 +80,17 @@ const migrationInt = async (deployer, deployerAddress) => {
       gas: 8000000
     });
   }
+
+  //DAI TOKENS
+  const daiDeployed = await DAI.deployed();
+
+  for (let i = 0; i < IntAccounts.length; i++) {
+    await daiDeployed.transferAmountToAddress(IntAccounts[i], 1000, {
+      from: deployerAddress,
+      gas: 8000000
+    });
+  }
+
   await FileHelper.write('./contracts.json', data);
 };
 
