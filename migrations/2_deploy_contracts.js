@@ -70,10 +70,15 @@ const migrationInt = async (deployer, deployerAddress) => {
       abi: LoanDispatcher.abi
     }
   };
+
   const heroDeployed = await HeroToken.deployed();
-  IntAccounts.forEach(async addr => {
-    await heroDeployed.transfer(addr, 1000, { from: deployerAddress });
-  });
+
+  for (let i = 0; i < IntAccounts.length; i++) {
+    await heroDeployed.transfer(IntAccounts[i], 1000, {
+      from: deployerAddress,
+      gas: 8000000
+    });
+  }
   await FileHelper.write('./contracts.json', data);
 };
 
