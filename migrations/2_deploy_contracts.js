@@ -72,7 +72,7 @@ const migrationInt = async (deployer, deployerAddress) => {
   };
   const heroDeployed = await HeroToken.deployed();
   IntAccounts.forEach(async addr => {
-    await heroDeployed.transfer(addr, 1000).send({ from: deployerAddress });
+    await heroDeployed.transfer(addr, 1000, { from: deployerAddress });
   });
   await FileHelper.write('./contracts.json', data);
 };
