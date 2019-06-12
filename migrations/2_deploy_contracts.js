@@ -5,7 +5,7 @@ const HeroToken = artifacts.require('HeroOrigenToken');
 const DAI = artifacts.require('DAIFake');
 const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
-
+const IntAccounts = require('../int.accounts.json');
 const { writeFile } = require('fs');
 
 const FileHelper = {
@@ -17,38 +17,32 @@ const FileHelper = {
     )
 };
 
-module.exports = async (deployer, network, accounts) => {
-  const deployerAddress = accounts[0];
-  let daiAddress;
-  let heroTokenAddress;
+const migrationInt = (deployer,deployerAddress)  => {
+  await deployer.deploy(HeroToken, { from: deployerAddress });
 
-  if (process.env.HERO_TOKEN_ADDRESS) {
-    daiAddress = process.env.HERO_TOKEN_ADDRESS;
-  } else {
-    await deployer.deploy(HeroToken, { from: deployerAddress });
-    heroTokenAddress = HeroToken.address;
-  }
+  await deployer.deploy(DAI, { from: deployerAddress });
 
-  if (process.env.DAI_ADDRESS) {
-    daiAddress = process.env.DAI_ADDRESS;
-  } else {
-    await deployer.deploy(DAI, {from: deployerAddress});
-    daiAddress = DAI.address;
-  }
-
-  await deployer.deploy(Deposit, heroTokenAddress, {
+  await deployer.deploy(Deposit, HeroToken.address, {
     from: deployerAddress
   });
   await deployer.deploy(KYC, { from: deployerAddress });
   await deployer.deploy(Auth, KYC.address, Deposit.address, {
     from: deployerAddress
   });
-  await deployer.deploy(DAIProxy, Auth.address, daiAddress, {from: deployerAddress});
-  await deployer.deploy(LoanDispatcher, Auth.address, daiAddress, DAIProxy.address, {from: deployerAddress});
+  await deployer.deploy(DAIProxy, Auth.address, DAI.address, {
+    from: deployerAddress
+  });
+  await deployer.deploy(
+    LoanDispatcher,
+    Auth.address,
+    DAI.address,
+    DAIProxy.address,
+    { from: deployerAddress }
+  );
 
   const data = {
     HeroToken: {
-      address: heroTokenAddress,
+      address: HeroToken.address,
       abi: HeroToken.abi
     },
     Deposit: {
@@ -64,7 +58,7 @@ module.exports = async (deployer, network, accounts) => {
       abi: Auth.abi
     },
     DAI: {
-      address: daiAddress,
+      address: DAI.address,
       abi: HeroToken.abi
     },
     DAIProxy: {
@@ -76,6 +70,72 @@ module.exports = async (deployer, network, accounts) => {
       abi: LoanDispatcher.abi
     }
   };
-
+  const heroDeployed = await HeroToken.deployed();
+  IntAccounts.forEach(async addr => {
+    await heroDeployed.transfer(addr, 1000).send({ from: deployerAddress });
+  });
   await FileHelper.write('./contracts.json', data);
+}
+
+const migrationLive = (deployer,deployerAddress)  => {
+  const heroTokenAddress = process.env.HERO_TOKEN_ADDRESS;
+  const daiAddress = process.env.DAI_ADDRESS;
+
+  await deployer.deploy(Deposit, heroTokenAddress, {
+    from: deployerAddress
+  });
+  await deployer.deploy(KYC, { from: deployerAddress });
+  await deployer.deploy(Auth, KYC.address, Deposit.address, {
+    from: deployerAddress
+  });
+  await deployer.deploy(DAIProxy, Auth.address, daiAddress, {
+    from: deployerAddress
+  });
+  await deployer.deploy(
+    LoanDispatcher,
+    Auth.address,
+    daiAddress,
+    DAIProxy.address,
+    { from: deployerAddress }
+  );
+
+  const data = {
+    HeroToken: {
+      address: heroTokenAddress
+    },
+    Deposit: {
+      address: Deposit.address,
+      abi: Deposit.abi
+    },
+    KYC: {
+      address: KYC.address,
+      abi: KYC.abi
+    },
+    Auth: {
+      address: Auth.address,
+      abi: Auth.abi
+    },
+    DAI: {
+      address: daiAddress
+    },
+    DAIProxy: {
+      address: DAIProxy.address,
+      abi: DAIProxy.abi
+    },
+    LoanDispatcher: {
+      address: LoanDispatcher.address,
+      abi: LoanDispatcher.abi
+    }
+  };
+  await FileHelper.write('./prod.contracts.json', data);
+}
+
+
+module.exports = async (deployer, network, accounts) => {
+  const deployerAddress = accounts[0];
+  if (network == 'live') {
+    migrationLive(deployer,deployerAddress);
+  } else {
+    migrationInt(deployer,deployerAddress)
+  }
 };

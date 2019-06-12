@@ -26,15 +26,13 @@ contract LoanContractMock is LoanContractInterface {
         to;
     }
 
-    function withdrawLoan(address to) public returns (uint256) {
+    function withdrawLoan(address to) public {
         to;
-        return 3;
     }
 
-    function onRepaymentReceived(address from, uint256 amount) public returns (uint256) {
+    function onRepaymentReceived(address from, uint256 amount) public {
         from;
         amount;
-        return 3;
     }
 
     function getInterestRate() public view returns (uint256) {

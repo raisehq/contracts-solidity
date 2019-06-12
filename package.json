@@ -4,11 +4,6 @@
   "description": "Prototype Blockchain",
   "private": true,
   "scripts": {
-    "start": "nodemon ./server/index.js",
-    "dev:front": "react-scripts start",
-    "dev:back": "nodemon ./server/index.js",
-    "dev": "concurrently --kill-others \"npm run dev:back\" \"npm run dev:front\"",
-    "build": "react-scripts build",
     "ganache": "ganache-cli",
     "compile": "truffle compile",
     "migration": "truffle migration --network development",
