@@ -19,24 +19,36 @@ const FileHelper = {
 
 module.exports = async (deployer, network, accounts) => {
   const deployerAddress = accounts[0];
+  let daiAddress;
+  let heroTokenAddress;
 
-  await deployer.deploy(HeroToken, {
-    from: deployerAddress
-  });
-  await deployer.deploy(DAI, {from: deployerAddress});
-  await deployer.deploy(Deposit, HeroToken.address, {
+  if (process.env.HERO_TOKEN_ADDRESS) {
+    daiAddress = process.env.HERO_TOKEN_ADDRESS;
+  } else {
+    await deployer.deploy(HeroToken, { from: deployerAddress });
+    heroTokenAddress = HeroToken.address;
+  }
+
+  if (process.env.DAI_ADDRESS) {
+    daiAddress = process.env.DAI_ADDRESS;
+  } else {
+    await deployer.deploy(DAI, {from: deployerAddress});
+    daiAddress = DAI.address;
+  }
+
+  await deployer.deploy(Deposit, heroTokenAddress, {
     from: deployerAddress
   });
   await deployer.deploy(KYC, { from: deployerAddress });
   await deployer.deploy(Auth, KYC.address, Deposit.address, {
     from: deployerAddress
   });
-  await deployer.deploy(DAIProxy, Auth.address, DAI.address, {from: deployerAddress});
-  await deployer.deploy(LoanDispatcher, Auth.address, DAI.address, DAIProxy.address, {from: deployerAddress});
+  await deployer.deploy(DAIProxy, Auth.address, daiAddress, {from: deployerAddress});
+  await deployer.deploy(LoanDispatcher, Auth.address, daiAddress, DAIProxy.address, {from: deployerAddress});
 
   const data = {
     HeroToken: {
-      address: HeroToken.address,
+      address: heroTokenAddress,
       abi: HeroToken.abi
     },
     Deposit: {
@@ -52,7 +64,7 @@ module.exports = async (deployer, network, accounts) => {
       abi: Auth.abi
     },
     DAI: {
-      address: HeroToken.address,
+      address: daiAddress,
       abi: HeroToken.abi
     },
     DAIProxy: {
