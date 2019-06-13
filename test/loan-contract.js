@@ -10,7 +10,7 @@ const {promisify} = require('util');
 
 const helpers = require('./helpers.js');
 
-contract.only('LoanContract', (accounts) => {
+contract('LoanContract', (accounts) => {
     let DAIProxy;
     let DAIToken;
     let Loan;
@@ -31,13 +31,14 @@ contract.only('LoanContract', (accounts) => {
             try {
                 DAIToken = await HeroFakeTokenContract.new({from: owner});
                 await DAIToken.transferAmountToAddress(lender, 150, {from: owner});
+                await DAIToken.transferAmountToAddress(borrower, 200, {from: owner});
                 DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
             
                 const loanTimeLength = 1 * 60 * 60; // 1 hour in seconds
                 lengthBlocks = loanTimeLength / averageMiningBlockTime;
                 loanAmount = 100;
-                const gracePeriodTime = 1* 4 * 7 * 24 * 60 * 60; // one month in seconds
-                termLength = gracePeriodTime / averageMiningBlockTime;
+                termLength = 2 * 60 * 60; // 2 hours in seconds
+                const test = await web3.eth.getBlockNumber();
                 bpMacInterestRate = 5;
 
                 Loan = await LoanContract.new(
@@ -59,7 +60,7 @@ contract.only('LoanContract', (accounts) => {
             beforeEach(async () => {
                 
             });
-
+            it.skip('Expect onFundingReceived to revert if caller is NOT DaiProxy', async () => {});
             it('Expects Lender to be able to partially fund a Loan in CREATED state.', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
@@ -190,7 +191,7 @@ contract.only('LoanContract', (accounts) => {
             it('Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND', async () => {
                 try {
                     const fundEndBlock = await Loan.getFundingTimeLimitBlock();
-                    const fundStartBlock = await Loan.getStartBlock();
+                    const fundStartBlock = await Loan.blockStart();
                     const blocksToEnd =  Number(fundEndBlock) - Number(fundStartBlock);
 
                     // Contract init state should be CREATED
@@ -236,7 +237,7 @@ contract.only('LoanContract', (accounts) => {
             it('Expects getUpdatedState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ', async () => {
                 try {
                     const fundEndBlock = await Loan.getFundingTimeLimitBlock();
-                    const fundStartBlock = await Loan.getStartBlock();
+                    const fundStartBlock = await Loan.blockStart();
                     const blocksToEnd =  Number(fundEndBlock) - Number(fundStartBlock);
 
                     // Contract init state should be CREATED
@@ -286,7 +287,7 @@ contract.only('LoanContract', (accounts) => {
                 try {
                     // Contract init state should be CREATED
                     const fundEndBlock = await Loan.getFundingTimeLimitBlock();
-                    const fundStartBlock = await Loan.getStartBlock();
+                    const fundStartBlock = await Loan.blockStart();
                     const blocksToEnd =  Number(fundEndBlock) - Number(fundStartBlock);
 
                     // Mine to end of funding
@@ -304,27 +305,22 @@ contract.only('LoanContract', (accounts) => {
 
                     const endState = await Loan.getCurrentState({from: owner});
                     expect(Number(endState)).to.equal(1);
-
-                    // Expect contract state to be FAILED_TO_FUND 
-                    const stateAfterMethod = await Loan.getCurrentState({from: owner});
-                    expect(Number(stateAfterMethod)).to.equal(1);
                 } catch (error) {
                     console.log('the error is:: ', error)
                     throw error;
                 }
             });
 
-            it.skip('Expects getUpdatedState method to NOT mutate from ACTIVE state if not defaulted', async () => {
+            it('Expects getUpdatedState method to NOT mutate from ACTIVE state if not defaulted', async () => {
                 try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
                     await DAIProxy.fund(Loan.address, 100, {from: lender});
                     
-                    // Retrieve current state ACTIVE
+                    // Retrieve current state == ACTIVE
                     const stateAfterFund = await Loan.getCurrentState({from: owner});
-                    const endState = await Loan.getCurrentState({from: owner});
-                    expect(Number(endState)).to.equal(2);
+                    expect(Number(stateAfterFund)).to.equal(2);
 
-                    // Try to mutate again the state
+                    // Try to mutate state when NOT defaulted
                     await Loan.getUpdatedState({from: owner});
 
                     // State should still be ACTIVE
@@ -335,9 +331,111 @@ contract.only('LoanContract', (accounts) => {
                     throw error;
                 }
             });
+            
+            it('Expects getUpdatedState method to mutate from ACTIVE to DEFAULTED if repay expires', async () => {
+                try {
+                    await DAIToken.approve(DAIProxy.address, 100, { from: lender });
+                    await DAIProxy.fund(Loan.address, 100, {from: lender});
+                    
+                    // Retrieve current state == ACTIVE
+                    const stateAfterFund = await Loan.getCurrentState({from: owner});
+                    expect(Number(stateAfterFund)).to.equal(2);
+
+                    const repayEndTimestamp = await Loan.getFinalRepaymentEnd();
+                    const currentBlock = await web3.eth.getBlock('latest');
+                    const secondsToEnd = Number(repayEndTimestamp) - Number(currentBlock.timestamp) + 1;
+
+                    // If repayEndTimestamp is zero, Loan should not be in ACTIVE state
+                    expect(Number(repayEndTimestamp)).greaterThan(0);
+                    expect(Number(secondsToEnd)).greaterThan(0);
+
+                    await helpers.increaseTime(secondsToEnd);
+                    
+                    // Try to mutate again the state after IS defaulted
+                    await Loan.getUpdatedState({from: owner});
+
+                    // State should mutate from ACTIVE to DEFAULTED
+                    const endState = await Loan.getCurrentState({from: owner});
+                    expect(Number(endState)).to.equal(3);
+                } catch (error) {
+                    console.log('the error is:: ', error)
+                    throw error;
+                }
+            });
         });
-        describe.skip('Method withdrawLoan', () => {})
-        describe.skip('Method withdrawRepayment', () => {})
+
+        describe('Method withdrawLoan', () => {
+            it('Expect withdrawLoan to allow Borrower take loan if state == ACTIVE', async () => {
+                try {
+                    const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+
+                    await DAIToken.approve(DAIProxy.address, 100, { from: lender });
+                    await DAIProxy.fund(Loan.address, 100, {from: lender});
+                    
+                    // Retrieve current state == ACTIVE
+                    const stateAfterFund = await Loan.getCurrentState({from: owner});
+                    expect(Number(stateAfterFund)).to.equal(2);
+
+                    await Loan.withdrawLoan(borrower, {from: borrower});
+                    const borrowerBalance = await DAIToken.balanceOf(borrower);
+
+                    expect(Number(borrowerBalance)).to.equal(Number(borrowerBalancePrior) + 100);
+                    // State should still be ACTIVE 
+                    const endState = await Loan.getCurrentState({from: owner});
+                    expect(Number(endState)).to.equal(2);
+                } catch (error) {
+                    console.log('the error is:: ', error)
+                    throw error;
+                }
+            });
+            it.skip('Expect withdrawLoan to NOT allow Borrower take loan if state == REPAID', () => {});
+            it.skip('Expect withdrawLoan to NOT allow Borrower take loan if state == CREATED', () => {});
+            it.skip('Expect withdrawLoan to NOT allow Borrower take loan if state == FAILED_TO_FUND', () => {});
+            it.skip('Expect withdrawLoan to NOT allow Borrower take loan if state == CLOSED', () => {});
+            it.skip('Expect withdrawLoan to NOT allow Borrower take loan if state == DEFAULTED', () => {});
+            it.skip('Expect withdrawLoan to NOT allow Borrower take loan twice.', () => {});
+        })
+
+        describe('Method withdrawRepayment', () => {
+            it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == ACTIVE', async () => {
+                 try {
+                    await DAIToken.approve(DAIProxy.address, 100, { from: lender });
+                    await DAIProxy.fund(Loan.address, 100, {from: lender});
+                    
+                    // Retrieve current state == ACTIVE
+                    const stateAfterFund = await Loan.getCurrentState({from: owner});
+                    expect(Number(stateAfterFund)).to.equal(2);
+
+                    await Loan.withdrawLoan(borrower, {from: borrower});
+
+                    const amountToRepay = await Loan.totalAmountWithInterest();
+
+                    const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+
+                    await DAIToken.approve(DAIProxy.address, amountToRepay, { from: borrower });
+                    await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+                    const borrowerBalanceAfter = await DAIToken.balanceOf(borrower);
+                    // Fast way to check. TODO: Use BN.js to exact calc-
+                    expect(Number(borrowerBalanceAfter)).equal(Number(borrowerBalancePrior) - Number(amountToRepay));
+
+                    // State should change to REPAID
+                    const endState = await Loan.getCurrentState({from: owner});
+                    expect(Number(endState)).to.equal(4);
+                } catch (error) {
+                    console.log('the error is:: ', error)
+                    throw error;
+                }               
+            });
+            it.skip('Expect withdrawRepayment to NOT allow Lender take repayament if state == CLOSED', () => {});
+            it.skip('Expect withdrawRepayment to NOT allow Lender take repayament if state == CREATED', () => {});
+            it.skip('Expect withdrawRepayment to NOT allow Lender take repayament if state == FAILED_TO_FUND', () => {});
+            it.skip('Expect withdrawRepayment to NOT allow Lender take repayament if state == DEFAULTED', () => {});
+            it.skip('Expect withdrawRepayment to NOT allow Lender take repayament if state == REPAID', () => {});
+            it.skip('Expect withdrawRepayment to NOT allow Lender take repayament if no funds && state == ACTIVE', () => {});
+            it.skip('Expect withdrawRepayment to NOT allow Borrower take repayament', () => {});
+            it.skip('Expect withdrawRepayment to NOT allow other address take repayament', () => {});
+        })
         describe.skip('Method withdrawRefund', () => {})
         describe.skip('Method onRepayment', () => {})
         describe.skip('Method isExpired', () => {})
@@ -346,6 +444,5 @@ contract.only('LoanContract', (accounts) => {
         describe.skip('Method getFundingTimeLimit', () => {})
         describe.skip('Method getInterestRate', () => {})
         describe.skip('Method getTotalAmountWithInterest', () => {})
-        describe.skip('Method getStartBlock', () => {})
     });
 });

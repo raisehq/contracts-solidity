@@ -9,17 +9,16 @@ contract LoanContract is LoanContractInterface {
     DAIProxyInterface proxy;
     address originator;
 
-    uint256 blockStart;
-    uint256 fundingTimeLimitBlock;
-    uint256 blockFunded;
-    uint256 timestampFunded;
-    uint256 loanRepaymentLength;
-    uint256 gracePeriodLength;
+    uint256 public blockStart;
+    uint256 public fundingTimeLimitBlock;
+    uint256 public blockFunded;
+    uint256 public timestampFunded;
+    uint256 public loanRepaymentLength;
 
-    uint256 alreadyFunded;
-    uint256 totalAmount;
-    uint256 totalAmountWithInterest;
-    uint256 bpMaxInterestRate;
+    uint256 public alreadyFunded;
+    uint256 public totalAmount; // Amount borrower want in Loan
+    uint256 public totalAmountWithInterest; // Amount borrower need to repay + interests
+    uint256 public bpMaxInterestRate;
 
     bool alreadyWithdrawn;
 
@@ -34,14 +33,13 @@ contract LoanContract is LoanContractInterface {
         CLOSED // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
     }
 
-    LoanState currentState;
+    LoanState public currentState;
 
     event LoanCreated(
         address contractAddr,
         address originator,
         uint256 totalAmount,
         uint256 loanRepaymentLength,
-        uint256 gracePeriodLength,
         uint256 fundingBlockStart,
         uint256 fundingBlockLength
     );
@@ -242,7 +240,7 @@ contract LoanContract is LoanContractInterface {
         currentState = state;
     }
 
-    function getUpdatedState() public {
+    function getUpdatedState() public returns (LoanState) {
         if (isExpired() && currentState == LoanState.CREATED) {
             setState(LoanState.FAILED_TO_FUND);
         }
@@ -278,7 +276,15 @@ contract LoanContract is LoanContractInterface {
         return calculateValueWithInterest(totalAmount);
     }
 
-    function getStartBlock() public view returns (uint256) {
-        return blockStart;
+
+    function getFinalRepaymentEnd() public view returns (uint256) {
+        if (timestampFunded == 0) {
+            return 0;
+        }
+        return timestampFunded + loanRepaymentLength;
     }
+
+    function getMaxRepaymentEnd() public view returns (uint256) {
+        return fundingTimeLimitBlock + loanRepaymentLength;
+    } 
 }
