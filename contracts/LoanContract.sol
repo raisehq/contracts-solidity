@@ -4,6 +4,10 @@ import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './DAIProxyInterface.sol';
 import './LoanContractInterface.sol';
 
+// TODO:
+// Add ETH emergency withdraw or reject ETH in payable function, if users sends ETH directly to this contract will be locked forever.
+// - Millions of USD value have been stuck and is easy to add without any security issue, this smart contract does not handle ETH per se.
+
 contract LoanContract is LoanContractInterface {
     ERC20 DAIToken;
     DAIProxyInterface proxy;
@@ -112,8 +116,10 @@ contract LoanContract is LoanContractInterface {
         setState(LoanState.CREATED);
     }
 
-    // Notes: This function can not track if real ERC20 balance has changed. Needs to blindly "trust" DaiProxy.
-    // throw error? when not able to fund?
+    // Notes:
+    // - This function does not track if real ERC20 balance has changed. Needs to blindly "trust" DaiProxy.
+    // - If user sent tokens to LoanContract and is expired, it should be able to recover his
+    // funds via the withdrawal pattern. Or let DAIProxy to manage the issue if this function returns "false".
     function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
         if (isExpired()) {
             setState(LoanState.FAILED_TO_FUND);
@@ -148,6 +154,8 @@ contract LoanContract is LoanContractInterface {
     //put these in proxy???
 
     // to == msg.sender ???
+    // - IF refund is handled via DAIProxy should have "to" argument
+    // - IF not, could be deleted. Currently it bypasses DAIProxy.
     function withdrawRefund(address to) public onlyFailedToFund {
         require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
         uint256 amount = lenderAmount[msg.sender];
