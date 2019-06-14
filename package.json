@@ -12,6 +12,7 @@
     "migration:reset": "truffle migration --reset --network development",
     "console": "truffle console --network kovan",
     "test": "NODE_ENV=test truffle test",
+    "coverage": "./node_modules/.bin/solidity-coverage",
     "lint": "solium -d contracts/"
   },
   "author": "",
@@ -25,8 +26,8 @@
     "ganache-cli": "^6.3.0",
     "openzeppelin-solidity": "^2.3.0",
     "polished": "^2.3.3",
-    "truffle": "5.0.4",
-    "truffle-assertions": "0.9.1",
+    "truffle": "^5.0.22",
+    "truffle-assertions": "^0.9.1",
     "truffle-contract": "^4.0.9",
     "truffle-hdwallet-provider": "^1.0.10",
     "truffle-privatekey-provider": "1.1.0",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "ethlint": "^1.2.4",
-    "nodemon": "^1.18.10"
+    "nodemon": "^1.18.10",
+    "solidity-coverage": "^0.5.11"
   }
 }

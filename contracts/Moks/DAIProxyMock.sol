@@ -20,6 +20,5 @@ contract DAIProxyMock is DAIProxyInterface {
         DAIToken.transferFrom(msg.sender, loanAddress, repaymentAmount);
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
         loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
-
     }
 }

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Code coverage report for contracts/LoanToken.sol</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+<body>
+<div class='wrapper'>
+  <div class='pad1'>
+    <h1>
+      <a href="../index.html">all files</a> / <a href="index.html">contracts/</a> LoanToken.sol
+    </h1>
+    <div class='clearfix'>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">0% </span>
+        <span class="quiet">Statements</span>
+        <span class='fraction'>0/12</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">0% </span>
+        <span class="quiet">Branches</span>
+        <span class='fraction'>0/2</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">0% </span>
+        <span class="quiet">Functions</span>
+        <span class='fraction'>0/6</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">0% </span>
+        <span class="quiet">Lines</span>
+        <span class='fraction'>0/14</span>
+      </div>
+    </div>
+  </div>
+  <div class='status-line low'></div>
+<pre><table class="coverage">
+<tr><td class="line-count quiet">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">pragma solidity ^0.5.0;
+&nbsp;
+import 'openzeppelin-solidity/contracts/token/ERC721/ERC721Full.sol';
+import 'openzeppelin-solidity/contracts/token/ERC721/ERC721Mintable.sol';
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+&nbsp;
+// Refer to open zepplin to better understand the methods that are inherited here
+contract LoanToken is ERC721Full, ERC721Mintable, Ownable {
+    using SafeMath for uint256;
+&nbsp;
+    /**
+     * @dev The Loan Struct.
+     *      We do not directly store the loan on an ERC721 token.
+     *      Instead, as tokenIds are immutable, as we create tokens,
+     *      we create corresponding loan structs and push them to
+     *      an immuatable list. This way, the same loan info will always be linked
+     *      to the same token.
+     *      NB: We do not store the lender address, as the owner of the token will
+     *      always be the person to who the money is owed (original lender, loan transfer etc) 
+     */
+    struct Loan {
+        uint256 loanAmount;
+        uint256 amountPayed;
+        address originator;
+    }
+&nbsp;
+    Loan[] private _loans;
+&nbsp;
+<span class="fstat-no" title="function not covered" >    constructor() ERC721Full("HeroToken", "HLT") publi</span>c {
+    }
+&nbsp;
+    /**
+     * @dev Creates a new Non-fungible token for a loan.
+     *      This includes the ERC721 token, and the loan information
+     *      which is immutably linked through tokenId to the loan list
+     * @param originator loan originator, who will be required to make payment
+     * @param lender The person who is lending funds, and will own the ERC721 token
+     * @param loanAmount Amount loaned, in wei
+     * @param loanIdentifier The server-side loan identifier, created at point of loan match
+     */
+<span class="fstat-no" title="function not covered" >    function createLoanToken(</span>
+        address originator,
+        address lender,
+        uint256 loanAmount,
+        string memory loanIdentifier
+    ) public onlyOwner returns (uint256) {
+<span class="cstat-no" title="statement not covered" >        Loan memory loan = Loan({</span>
+            originator: originator,
+            loanAmount: loanAmount,
+            amountPayed: 0
+        });
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        uint256 loanId = _loans.push(loan) - 1</span>;
+<span class="cstat-no" title="statement not covered" >        _mintLoanTokenTo(lender, loanId, loanIdentifier)</span>;
+<span class="cstat-no" title="statement not covered" >        return loanId;</span>
+    }
+&nbsp;
+    /**
+     * @dev Returns the repayment remaining of a loan, in wei
+     * @param loanId The unique ID of the loan
+     */
+<span class="fstat-no" title="function not covered" >    function repaymentRemaining(uint256 loanId) public view returns (uint256</span>) {
+<span class="cstat-no" title="statement not covered" >        Loan memory loan = _loans[loanId]</span>;
+<span class="cstat-no" title="statement not covered" >        return loan.loanAmount.sub(loan.amountPayed);</span>
+    }
+&nbsp;
+    /**
+     * @dev Returns the immutable originator of a loan
+     * @param loanId The unique ID of the loan
+     */
+<span class="fstat-no" title="function not covered" >    function getLoanOriginator(uint256 loanId) public view returns (address</span>) {
+<span class="cstat-no" title="statement not covered" >        Loan memory loan = _loans[loanId]</span>;
+<span class="cstat-no" title="statement not covered" >        return loan.originator;</span>
+    }
+&nbsp;
+    /**
+     * @dev Tracks repayments made against a loan.
+     *      NB: This does not handle payments, that is done in th
+     *      master contract
+     * @param amount Amount repayed, in wei
+     * @param loanId The unique ID of the loan
+     */
+<span class="fstat-no" title="function not covered" >    function repaymentMade(uint256 amount, uint256 loanId) public onlyOwne</span>r {
+<span class="cstat-no" title="statement not covered" >        Loan storage loan = _loans[loanId]</span>;
+<span class="cstat-no" title="statement not covered" >        uint256 repayment = loan.amountPayed.add(amount)</span>;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        require(repayment &lt;= loan.loanAmount, "Cannot overpay loan")</span>;
+&nbsp;
+<span class="cstat-no" title="statement not covered" >        loan.amountPayed = repayment</span>;
+    }
+&nbsp;
+    /**
+     * @dev Mints a new loan, to the lender
+     * @param to The address of the lender to receive the token
+     * @param tokenId The unique ID of the token
+     * @param tokenURI A direct reference to the loanIdentifier
+     */
+<span class="fstat-no" title="function not covered" >    function _mintLoanTokenTo(address to, uint256 tokenId, string memory tokenURI) interna</span>l {
+        super._mint(to, tokenId);
+        super._setTokenURI(tokenId, tokenURI);
+    }
+}
+&nbsp;</pre></td></tr>
+</table></pre>
+<div class='push'></div><!-- for sticky footer -->
+</div><!-- /wrapper -->
+<div class='footer quiet pad2 space-top1 center small'>
+  Code coverage
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Thu Jun 13 2019 21:57:11 GMT+0200 (CEST)
+</div>
+</div>
+<script src="../prettify.js"></script>
+<script>
+window.onload = function () {
+        if (typeof prettyPrint === 'function') {
+            prettyPrint();
+        }
+};
+</script>
+<script src="../sorter.js"></script>
+</body>
+</html>

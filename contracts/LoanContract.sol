@@ -4,22 +4,25 @@ import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './DAIProxyInterface.sol';
 import './LoanContractInterface.sol';
 
+// TODO:
+// Add ETH emergency withdraw or reject ETH in payable function, if users sends ETH directly to this contract will be locked forever.
+// - Millions of USD value have been stuck and is easy to add without any security issue, this smart contract does not handle ETH per se.
+
 contract LoanContract is LoanContractInterface {
     ERC20 DAIToken;
     DAIProxyInterface proxy;
     address originator;
 
-    uint256 blockStart;
-    uint256 fundingTimeLimitBlock;
-    uint256 blockFunded;
-    uint256 timestampFunded;
-    uint256 loanRepaymentLength;
-    uint256 gracePeriodLength;
+    uint256 public blockStart;
+    uint256 public fundingTimeLimitBlock;
+    uint256 public blockFunded;
+    uint256 public timestampFunded;
+    uint256 public loanRepaymentLength;
 
-    uint256 alreadyFunded;
-    uint256 totalAmount;
-    uint256 totalAmountWithInterest;
-    uint256 bpMaxInterestRate;
+    uint256 public alreadyFunded;
+    uint256 public totalAmount; // Amount borrower want in Loan
+    uint256 public totalAmountWithInterest; // Amount borrower need to repay + interests
+    uint256 public bpMaxInterestRate;
 
     bool alreadyWithdrawn;
 
@@ -34,14 +37,13 @@ contract LoanContract is LoanContractInterface {
         CLOSED // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
     }
 
-    LoanState currentState;
+    LoanState public currentState;
 
     event LoanCreated(
         address contractAddr,
         address originator,
         uint256 totalAmount,
         uint256 loanRepaymentLength,
-        uint256 gracePeriodLength,
         uint256 fundingBlockStart,
         uint256 fundingBlockLength
     );
@@ -114,7 +116,10 @@ contract LoanContract is LoanContractInterface {
         setState(LoanState.CREATED);
     }
 
-    // throw error? when not able to fund?
+    // Notes:
+    // - This function does not track if real ERC20 balance has changed. Needs to blindly "trust" DaiProxy.
+    // - If user sent tokens to LoanContract and is expired, it should be able to recover his
+    // funds via the withdrawal pattern. Or let DAIProxy to manage the issue if this function returns "false".
     function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
         if (isExpired()) {
             setState(LoanState.FAILED_TO_FUND);
@@ -149,6 +154,8 @@ contract LoanContract is LoanContractInterface {
     //put these in proxy???
 
     // to == msg.sender ???
+    // - IF refund is handled via DAIProxy should have "to" argument
+    // - IF not, could be deleted. Currently it bypasses DAIProxy.
     function withdrawRefund(address to) public onlyFailedToFund {
         require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
         uint256 amount = lenderAmount[msg.sender];
@@ -222,7 +229,7 @@ contract LoanContract is LoanContractInterface {
         return lenderAmount[lender];
     }
 
-    function isExpired() internal view returns (bool) {
+    function isExpired() public view returns (bool) {
         return block.number > fundingTimeLimitBlock;
     }
 
@@ -245,12 +252,18 @@ contract LoanContract is LoanContractInterface {
         if (isExpired() && currentState == LoanState.CREATED) {
             setState(LoanState.FAILED_TO_FUND);
         }
-
         if (isDefaulted() && currentState == LoanState.ACTIVE) {
             setState(LoanState.DEFAULTED);
         }
-
         return currentState;
+    }
+
+    function getCurrentState() public view returns (LoanState) {
+        return currentState;
+    }
+
+    function getFundingTimeLimitBlock() public view returns (uint256) {
+        return fundingTimeLimitBlock;        
     }
 
     function calculateValueWithInterest(uint256 value) public view returns(uint256) {
@@ -270,4 +283,16 @@ contract LoanContract is LoanContractInterface {
     function getTotalAmountWithInterest() public view returns(uint256) {
         return calculateValueWithInterest(totalAmount);
     }
+
+
+    function getFinalRepaymentEnd() public view returns (uint256) {
+        if (timestampFunded == 0) {
+            return 0;
+        }
+        return timestampFunded + loanRepaymentLength;
+    }
+
+    function getMaxRepaymentEnd() public view returns (uint256) {
+        return fundingTimeLimitBlock + loanRepaymentLength;
+    } 
 }
