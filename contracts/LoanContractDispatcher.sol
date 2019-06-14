@@ -8,7 +8,7 @@ contract LoanContractDispatcher {
     address DAITokenAddress;
     address DAIProxyAddress;
 
-    mapping(address => bool) isLoanContract;
+    mapping(address => bool) public isLoanContract;
 
     modifier onlyKYC { // check if user is kyced
         require(auth.isKYCConfirmed(msg.sender), 'user does not have KYC');
@@ -18,10 +18,11 @@ contract LoanContractDispatcher {
     event LoanContractCreated(
         address contractAddress,
         address originator,
-        uint256 lengthBlocks,
-        uint256 amount,
+        uint256 auctionEndBlock,
+        uint256 minAmount,
+        uint256 maxAmount,
         uint256 bpMaxInterestRate,
-        uint256 termLength
+        uint256 termEndTimestamp
     );
 
     constructor(
@@ -35,20 +36,22 @@ contract LoanContractDispatcher {
     }
 
     function deploy(
-        uint256 lengthBlocks,
-        uint256 amount,
+        uint256 auctionEndBlock,
+        uint256 minAmount,
+        uint256 maxAmount,
         uint256 bpMaxInterestRate,
-        uint256 termLength
+        uint256 termEndTimestamp
     )
     public
     onlyKYC
     returns (address)
     {
         LoanContract loanContract = new LoanContract(
-            lengthBlocks,
-            amount,
+            auctionEndBlock,
+            minAmount,
+            maxAmount,
             bpMaxInterestRate,
-            termLength,
+            termEndTimestamp,
             msg.sender,
             DAITokenAddress,
             DAIProxyAddress
@@ -58,10 +61,11 @@ contract LoanContractDispatcher {
         emit LoanContractCreated(
             address(loanContract),
             msg.sender,
-            lengthBlocks,
-            amount,
+            auctionEndBlock,
+            minAmount,
+            maxAmount,
             bpMaxInterestRate,
-            termLength
+            termEndTimestamp
         );
 
         return address(loanContract);

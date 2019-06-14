@@ -73,11 +73,11 @@ contract('LoanContract', (accounts) => {
                     // Loan state after funding
                     const loanState = await Loan.getCurrentState();
                     // Subscribe to events
-                    const alreadyFundedAmount = await Loan.getAlreadyFundedAmount({from: owner});
-                    const fundedByLender = await Loan.getLenderAmount(lender, {from: owner});
+                    const auctionBalanceAmount = await Loan.auctionBalanceAmount({from: owner});
+                    const fundedByLender = await Loan.getlenderBidAmount(lender, {from: owner});
 
                     expect(Number(fundedByLender)).to.equal(50);
-                    expect(Number(alreadyFundedAmount)).to.equal(50);
+                    expect(Number(auctionBalanceAmount)).to.equal(50);
 
                     // LoanContract state should still be CREATED == 0, due is partially funded
                     expect(Number(loanState)).to.equal(0);
@@ -99,11 +99,11 @@ contract('LoanContract', (accounts) => {
                     const loanState = await Loan.getCurrentState();
                     
                     // Subscribe to events
-                    const alreadyFundedAmount = await Loan.getAlreadyFundedAmount({from: owner});
-                    const fundedByLender = await Loan.getLenderAmount(lender, {from: owner});
+                    const auctionBalanceAmount = await Loan.auctionBalanceAmount({from: owner});
+                    const fundedByLender = await Loan.getlenderBidAmount(lender, {from: owner});
                     
                     expect(Number(fundedByLender)).to.equal(100);
-                    expect(Number(alreadyFundedAmount)).to.equal(100);
+                    expect(Number(auctionBalanceAmount)).to.equal(100);
 
                     // LoanContract state should mutate to ACTIVE == 2
                     expect(Number(loanState)).to.equal(2);
@@ -127,11 +127,11 @@ contract('LoanContract', (accounts) => {
                     const loanState = await Loan.getCurrentState();
 
                     // Subscribe to events
-                    const alreadyFundedAmount = await Loan.getAlreadyFundedAmount({from: owner});
-                    const fundedByLender = await Loan.getLenderAmount(lender, {from: owner});
+                    const auctionBalanceAmount = await Loan.auctionBalanceAmount({from: owner});
+                    const fundedByLender = await Loan.getlenderBidAmount(lender, {from: owner});
                     
                     expect(Number(fundedByLender)).to.equal(100);
-                    expect(Number(alreadyFundedAmount)).to.equal(100);
+                    expect(Number(auctionBalanceAmount)).to.equal(100);
                     expect(Number(lenderAfterBalance)).to.equal(50);
 
                     // LoanContract state should mutate to ACTIVE == 2
@@ -175,12 +175,12 @@ contract('LoanContract', (accounts) => {
 
                     const lenderAfterBalance = await DAIToken.balanceOf(lender);
                     // Subscribe to events
-                    const alreadyFundedAmount = await Loan.getAlreadyFundedAmount({from: owner});
-                    const fundedByLender = await Loan.getLenderAmount(lender, {from: owner});
+                    const auctionBalanceAmount = await Loan.auctionBalanceAmount({from: owner});
+                    const fundedByLender = await Loan.getlenderBidAmount(lender, {from: owner});
                     
                     // Check balances
                     expect(Number(fundedByLender)).to.equal(100);
-                    expect(Number(alreadyFundedAmount)).to.equal(100);
+                    expect(Number(auctionBalanceAmount)).to.equal(100);
                     expect(Number(lenderAfterBalance)).to.equal(50);
                 } catch (error) {
                     console.log('the error is:: ', error)
@@ -213,9 +213,9 @@ contract('LoanContract', (accounts) => {
                     await DAIProxy.fund(Loan.address, 100, {from: lender});
 
                     // Check Loan funds inside contract, should be ZERO
-                    const alreadyFundedAmount = await Loan.getAlreadyFundedAmount({from: owner});
+                    const auctionBalanceAmount = await Loan.auctionBalanceAmount({from: owner});
                     const loanRawTokens = await DAIToken.balanceOf(Loan.address, {from: owner});
-                    expect(Number(alreadyFundedAmount)).to.equal(0);
+                    expect(Number(auctionBalanceAmount)).to.equal(0);
                     expect(Number(loanRawTokens)).to.equal(0);
 
                     // Contract state should be mutated to FAILED_TO_FUND
@@ -408,7 +408,7 @@ contract('LoanContract', (accounts) => {
 
                     await Loan.withdrawLoan(borrower, {from: borrower});
 
-                    const amountToRepay = await Loan.totalAmountWithInterest();
+                    const amountToRepay = await Loan.maxAmountWithInterest();
 
                     const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
@@ -459,12 +459,12 @@ contract('LoanContract', (accounts) => {
                 // Lender withdraws refund
                 const lenderBalance = await DAIToken.balanceOf(lender);
                 await Loan.withdrawRefund(lender, {from: lender});
-                const lenderAmountInContractAfterWithdraw = await Loan.getLenderAmount(lender);
+                const lenderBidAmountInContractAfterWithdraw = await Loan.getlenderBidAmount(lender);
                 const lenderBalanceAfter = await DAIToken.balanceOf(lender);
 
                 expect(lenderHasDeposited).to.equal(true);
                 expect(Number(lenderBalanceAfter)).to.equal(Number(lenderBalance) + 50);
-                expect(Number(lenderAmountInContractAfterWithdraw)).to.equal(0);
+                expect(Number(lenderBidAmountInContractAfterWithdraw)).to.equal(0);
             });
             it.skip('Expect withdrawRedund to NOT allow Lender refund if already refunded && state == FAILED_TO_FUND ', async () => {});
             it.skip('Expect withdrawRedund to NOT allow Lender refund if state == CREATED', async () => {});
@@ -487,6 +487,6 @@ contract('LoanContract', (accounts) => {
         describe.skip('Method isDefaulted', () => {})
         describe.skip('Method getFundingTimeLimit', () => {})
         describe.skip('Method getInterestRate', () => {})
-        describe.skip('Method getTotalAmountWithInterest', () => {})
+        describe.skip('Method getmaxAmountWithInterest', () => {})
     });
 });

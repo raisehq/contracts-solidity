@@ -658,14 +658,14 @@ contract LoanContract is LoanContractInterface {
     uint256 public timestampFunded;
     uint256 public loanRepaymentLength;
 &nbsp;
-    uint256 public alreadyFunded;
-    uint256 public totalAmount; // Amount borrower want in Loan
-    uint256 public totalAmountWithInterest; // Amount borrower need to repay + interests
+    uint256 public auctionBalance;
+    uint256 public maxAmount; // Amount borrower want in Loan
+    uint256 public maxAmountWithInterest; // Amount borrower need to repay + interests
     uint256 public bpMaxInterestRate;
 &nbsp;
-    bool alreadyWithdrawn;
+    bool loanWithdrawn;
 &nbsp;
-    mapping(address =&gt; uint256) lenderAmount;
+    mapping(address =&gt; uint256) lenderBidAmount;
 &nbsp;
     enum LoanState {
         CREATED, // accepts bids until timelimit initial state
@@ -681,13 +681,13 @@ contract LoanContract is LoanContractInterface {
     event LoanCreated(
         address contractAddr,
         address originator,
-        uint256 totalAmount,
+        uint256 maxAmount,
         uint256 loanRepaymentLength,
         uint256 fundingBlockStart,
         uint256 fundingBlockLength
     );
 &nbsp;
-    event FullyFunded(address loanAddress, uint256 totalAmountWithInterest, uint256 amount);
+    event FullyFunded(address loanAddress, uint256 maxAmountWithInterest, uint256 amount);
     event Funded(address loanAddress, address lender, uint256 amount);
     event LoanRepaid(address loanAddress, uint256 timestampRepaid);
     event RepaymentWithdrawn(address loanAddress, address to, uint256 amount);
@@ -697,7 +697,7 @@ contract LoanContract is LoanContractInterface {
     event FailedToFund(address loanAddress, address lender, uint256 amount);
     event LoanFundsWithdrawn(address loanAddress, address borrower, uint256 amount);
     event LoanDefaulted(address loanAddress);
-    event RefundTotalAmount(address loanAddress, uint256 refundTotalAmount);
+    event RefundmaxAmount(address loanAddress, uint256 refundmaxAmount);
 &nbsp;
     modifier onlyCreated() {
         require(currentState == LoanState.CREATED, 'Incorrect loan status');
@@ -742,11 +742,11 @@ contract LoanContract is LoanContractInterface {
         address proxyAddress
     ) public {
         originator = _originator;
-        totalAmount = amount;
+        maxAmount = amount;
         blockStart = block.number;
         fundingTimeLimitBlock = blockStart + fundingTimeBlocks;
         bpMaxInterestRate = _bpMaxInterestRate;
-        alreadyWithdrawn = false;
+        loanWithdrawn = false;
         loanRepaymentLength = _loanRepaymentLength;
 &nbsp;
         DAIToken = ERC20(DAITokenAddress);
@@ -764,29 +764,29 @@ contract LoanContract is LoanContractInterface {
             setState(LoanState.FAILED_TO_FUND);
             DAIToken.transfer(lender, amount);
             emit FailedToFund(address(this), lender, amount);
-            emit RefundTotalAmount(address(this), alreadyFunded);
+            emit RefundmaxAmount(address(this), auctionBalance);
             return;
         }
 &nbsp;
-        lenderAmount[lender] += amount;
-        alreadyFunded += amount;
+        lenderBidAmount[lender] += amount;
+        auctionBalance += amount;
 &nbsp;
-        if (alreadyFunded &gt; totalAmount) {
-            uint256 overflow = alreadyFunded - totalAmount;
-            alreadyFunded -= overflow;
-            lenderAmount[lender] -= overflow;
+        if (auctionBalance &gt; maxAmount) {
+            uint256 overflow = auctionBalance - maxAmount;
+            auctionBalance -= overflow;
+            lenderBidAmount[lender] -= overflow;
             DAIToken.transfer(lender, overflow);
             emit Funded(address(this), lender, amount - overflow);
         } else {
             emit Funded(address(this), lender, amount);
         }
 &nbsp;
-        if (alreadyFunded == totalAmount) {
+        if (auctionBalance == maxAmount) {
             setState(LoanState.ACTIVE);
             blockFunded = block.number;
             timestampFunded = now;
-            totalAmountWithInterest = calculateValueWithInterest(alreadyFunded);
-            emit FullyFunded(address(this), totalAmountWithInterest, timestampFunded);
+            maxAmountWithInterest = calculateValueWithInterest(auctionBalance);
+            emit FullyFunded(address(this), maxAmountWithInterest, timestampFunded);
         }
     }
 &nbsp;
@@ -796,13 +796,13 @@ contract LoanContract is LoanContractInterface {
     // - IF refund is handled via DAIProxy should have "to" argument
     // - IF not, could be deleted. Currently it bypasses DAIProxy.
     function withdrawRefund(address to) public onlyFailedToFund {
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
-        uint256 amount = lenderAmount[msg.sender];
-        lenderAmount[msg.sender] = 0;
-        alreadyFunded -= amount;
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(lenderBidAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
+        uint256 amount = lenderBidAmount[msg.sender];
+        lenderBidAmount[msg.sender] = 0;
+        auctionBalance -= amount;
         emit RefundWithdrawn(address(this), to, amount);
 &nbsp;
-        <span class="missing-if-branch" title="else path not taken" >E</span>if (alreadyFunded == 0) {
+        <span class="missing-if-branch" title="else path not taken" >E</span>if (auctionBalance == 0) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
@@ -811,13 +811,13 @@ contract LoanContract is LoanContractInterface {
     }
 &nbsp;
     function withdrawRepayment(address to) public onlyRepaid {
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
-        uint256 amount = calculateValueWithInterest(lenderAmount[msg.sender]);
-        lenderAmount[msg.sender] = 0; // this line is first because of reentry attack
-        totalAmountWithInterest -= amount;
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(lenderBidAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
+        uint256 amount = calculateValueWithInterest(lenderBidAmount[msg.sender]);
+        lenderBidAmount[msg.sender] = 0; // this line is first because of reentry attack
+        maxAmountWithInterest -= amount;
         emit RepaymentWithdrawn(address(this), to, amount);
 &nbsp;
-        if (totalAmountWithInterest == 0) {
+        if (maxAmountWithInterest == 0) {
             setState(LoanState.CLOSED);
             emit FullyRepaid(address(this));
         }
@@ -827,7 +827,7 @@ contract LoanContract is LoanContractInterface {
 &nbsp;
     // TO OR ORIGINATOR????
     function withdrawLoan(address to) public onlyActive onlyOriginator {
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(!alreadyWithdrawn, 'Already withdrawn');
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(!loanWithdrawn, 'Already withdrawn');
 &nbsp;
         <span class="missing-if-branch" title="if path not taken" >I</span>if (isDefaulted()) {
 <span class="cstat-no" title="statement not covered" >            setState(LoanState.DEFAULTED)</span>;
@@ -835,16 +835,16 @@ contract LoanContract is LoanContractInterface {
 <span class="cstat-no" title="statement not covered" >            return;</span>
         }
 &nbsp;
-        alreadyWithdrawn = true;
-        DAIToken.transfer(to, totalAmount);
-        emit LoanFundsWithdrawn(address(this), to, totalAmount);
+        loanWithdrawn = true;
+        DAIToken.transfer(to, maxAmount);
+        emit LoanFundsWithdrawn(address(this), to, maxAmount);
     }
 &nbsp;
     // this happens after transfer in daiproxy =&gt; if Defaulted we need to return funds ???
     function onRepaymentReceived(address from, uint256 amount) public onlyActive onlyProxy {
         <span class="missing-if-branch" title="else path not taken" >E</span>require(from == originator, 'from address is not the originator');
         <span class="missing-if-branch" title="else path not taken" >E</span>require(
-            amount == calculateValueWithInterest(totalAmount),
+            amount == calculateValueWithInterest(maxAmount),
             'Incorrect sum repaid'
         );
 &nbsp;
@@ -860,12 +860,12 @@ contract LoanContract is LoanContractInterface {
         emit LoanRepaid(address(this), now);
     }
 &nbsp;
-    function getAlreadyFundedAmount() public view returns (uint256) {
-        return alreadyFunded;
+    function auctionBalanceAmount() public view returns (uint256) {
+        return auctionBalance;
     }
 &nbsp;
-    function getLenderAmount(address lender) public view returns (uint256) {
-        return lenderAmount[lender];
+    function getlenderBidAmount(address lender) public view returns (uint256) {
+        return lenderBidAmount[lender];
     }
 &nbsp;
     function isExpired() public view returns (bool) {
@@ -919,8 +919,8 @@ contract LoanContract is LoanContractInterface {
         }
     }
 &nbsp;
-    function getTotalAmountWithInterest() public view returns(uint256) {
-        return calculateValueWithInterest(totalAmount);
+    function getmaxAmountWithInterest() public view returns(uint256) {
+        return calculateValueWithInterest(maxAmount);
     }
 &nbsp;
 &nbsp;

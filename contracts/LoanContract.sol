@@ -1,32 +1,40 @@
 pragma solidity ^0.5.0;
 
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 import './DAIProxyInterface.sol';
 import './LoanContractInterface.sol';
 
 // TODO:
-// Add ETH emergency withdraw or reject ETH in payable function, if users sends ETH directly to this contract will be locked forever.
+// 1. Add ETH emergency withdraw or reject ETH in payable function, if users sends ETH directly to this contract will be locked forever.
 // - Millions of USD value have been stuck and is easy to add without any security issue, this smart contract does not handle ETH per se.
-
+// 2. Add minimum possible loan amount in 18 decimal format. Like 1 DAI in Wei, so is possible to do divisions.
 contract LoanContract is LoanContractInterface {
+    using SafeMath for uint256;
     ERC20 DAIToken;
     DAIProxyInterface proxy;
     address originator;
 
-    uint256 public blockStart;
-    uint256 public fundingTimeLimitBlock;
-    uint256 public blockFunded;
-    uint256 public timestampFunded;
-    uint256 public loanRepaymentLength;
+    uint256 public auctionStartBlock;
+    uint256 public auctionEndBlock;
+    uint256 public auctionBlockLength;
 
-    uint256 public alreadyFunded;
-    uint256 public totalAmount; // Amount borrower want in Loan
-    uint256 public totalAmountWithInterest; // Amount borrower need to repay + interests
+    uint256 public termStartTimestamp;
+    uint256 public termEndTimestamp;
+
+
+    uint256 public auctionBalance;
+    uint256 public borrowerDebt; // Amount borrower need to repay == auctionBalance + interests
     uint256 public bpMaxInterestRate;
 
-    bool alreadyWithdrawn;
+    uint256 internal interestRate;
 
-    mapping(address => uint256) lenderAmount;
+    bool public loanWithdrawn;
+    bool public minimumReached;
+    bool public auctionEnded;
+
+    mapping(address => uint256) public lenderBidAmount;
+    mapping(address => bool) public lenderWithdrawn;
 
     enum LoanState {
         CREATED, // accepts bids until timelimit initial state
@@ -40,16 +48,18 @@ contract LoanContract is LoanContractInterface {
     LoanState public currentState;
 
     event LoanCreated(
-        address contractAddr,
-        address originator,
-        uint256 totalAmount,
-        uint256 loanRepaymentLength,
-        uint256 fundingBlockStart,
-        uint256 fundingBlockLength
+        address indexed contractAddr,
+        address indexed originator,
+        uint256 minAmount,
+        uint256 maxAmount,
+        uint256 bpMaxInterestRate,
+        uint256 auctionStartBlock,
+        uint256 auctionEndBlock
     );
 
-    event FullyFunded(address loanAddress, uint256 totalAmountWithInterest, uint256 amount);
-    event Funded(address loanAddress, address lender, uint256 amount);
+    event MinimumFundingReached(address loanAddress, uint256 currentBalance);
+    event FullyFunded(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance);
+    event Funded(address loanAddress, address indexed lender, uint256 amount);
     event LoanRepaid(address loanAddress, uint256 timestampRepaid);
     event RepaymentWithdrawn(address loanAddress, address to, uint256 amount);
     event FullyRepaid(address loanAddress);
@@ -58,7 +68,7 @@ contract LoanContract is LoanContractInterface {
     event FailedToFund(address loanAddress, address lender, uint256 amount);
     event LoanFundsWithdrawn(address loanAddress, address borrower, uint256 amount);
     event LoanDefaulted(address loanAddress);
-    event RefundTotalAmount(address loanAddress, uint256 refundTotalAmount);
+    event RefundmaxAmount(address loanAddress, uint256 refundmaxAmount);
 
     modifier onlyCreated() {
         require(currentState == LoanState.CREATED, 'Incorrect loan status');
@@ -94,24 +104,28 @@ contract LoanContract is LoanContractInterface {
     }
 
     constructor(
-        uint256 fundingTimeBlocks,// lengthBlocks,
-        uint256 amount,
+        uint256 _auctionBlockLength,
+        uint256 _termEndTimestamp,
+        uint256 _minAmount,
+        uint256 _maxAmount,
         uint256 _bpMaxInterestRate,
-        uint256 _loanRepaymentLength,
         address _originator,
         address DAITokenAddress,
         address proxyAddress
     ) public {
-        originator = _originator;
-        totalAmount = amount;
-        blockStart = block.number;
-        fundingTimeLimitBlock = blockStart + fundingTimeBlocks;
-        bpMaxInterestRate = _bpMaxInterestRate;
-        alreadyWithdrawn = false;
-        loanRepaymentLength = _loanRepaymentLength;
-
         DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
+        originator = _originator;
+        
+        bpMaxInterestRate = _bpMaxInterestRate;
+        minAmount = _minAmount;
+        maxAmount = _maxAmount;
+        
+        auctionBlockLength = _auctionBlockLength;
+        auctionStartBlock = block.number;
+        auctionEndBlock = block.number.sum(_auctionBlockLength);
+        
+        termEndTimestamp = _termEndTimestamp;
 
         setState(LoanState.CREATED);
     }
@@ -121,74 +135,84 @@ contract LoanContract is LoanContractInterface {
     // - If user sent tokens to LoanContract and is expired, it should be able to recover his
     // funds via the withdrawal pattern. Or let DAIProxy to manage the issue if this function returns "false".
     function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
-        if (isExpired()) {
+        if (auctionBalance < minAmount && isExpired()) {
             setState(LoanState.FAILED_TO_FUND);
             DAIToken.transfer(lender, amount);
             emit FailedToFund(address(this), lender, amount);
-            emit RefundTotalAmount(address(this), alreadyFunded);
+            emit RefundmaxAmount(address(this), auctionBalance);
             return;
         }
 
-        lenderAmount[lender] += amount;
-        alreadyFunded += amount;
+        lendedBidAmount[lender] = lendedBidAmount[lender].sum(amount);
+        auctionBalance = auctionBalance.sum(amount);
 
-        if (alreadyFunded > totalAmount) {
-            uint256 overflow = alreadyFunded - totalAmount;
-            alreadyFunded -= overflow;
-            lenderAmount[lender] -= overflow;
+        if (auctionBalance > maxAmount) {
+            uint256 overflow = auctionBalance.minus(maxAmount);
+            auctionBalance = auctionBalance.minus(overflow);
+            lenderBidAmount[lender] = lenderBidAmount.minis(overflow);
             DAIToken.transfer(lender, overflow);
-            emit Funded(address(this), lender, amount - overflow);
+            emit Funded(address(this), lender, amount.minus(overflow));
+        } else if (auctionBalance >= minAmount && !minimumReached) {
+            minimumReached = true;
+            emit Funded(address(this), lender, amount);
+            emit MinimumFundingReached(address(this), auctionBalance);
         } else {
             emit Funded(address(this), lender, amount);
         }
 
-        if (alreadyFunded == totalAmount) {
+        if ( (auctionBalance == maxAmount) ||
+             (minimumReached && isExpired() && currentState == LoanState.CREATED)
+        ) {
             setState(LoanState.ACTIVE);
-            blockFunded = block.number;
-            timestampFunded = now;
-            totalAmountWithInterest = calculateValueWithInterest(alreadyFunded);
-            emit FullyFunded(address(this), totalAmountWithInterest, timestampFunded);
-        }
+            auctionEndBlock = block.number;
+
+            termStartTimestamp = block.timestamp;
+            borrowerDebt = calculateValueWithInterest(auctionBalance);
+            emit FullyFunded(address(this), borrowerDebt, timestampFunded);
+        } 
     }
 
-    //put these in proxy???
+    //put these in proxy??? 
+    // Seems this function bypass KYC? A user that we detect that did fraudulent KYC procedure
+    // after the auction can be removed from KYC registry, but the fraud users could still refund from this method.
 
     // to == msg.sender ???
     // - IF refund is handled via DAIProxy should have "to" argument
     // - IF not, could be deleted. Currently it bypasses DAIProxy.
     function withdrawRefund(address to) public onlyFailedToFund {
-        require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
-        uint256 amount = lenderAmount[msg.sender];
-        lenderAmount[msg.sender] = 0;
-        alreadyFunded -= amount;
-        emit RefundWithdrawn(address(this), to, amount);
+        require(!lenderWithdrawn[msg.sender], 'Lender already withdrawn');
+        require(lenderBidAmount[msg.sender] > 0, 'Account did not deposited.');
+        
+        lenderWithdrawn[msg.sender] = true;
+        
+        DAIToken.transfer(to, lenderBidAmount[msg.sender]);
 
-        if (alreadyFunded == 0) {
+        emit RefundWithdrawn(address(this), to, lenderBidAmount[msg.sender]);
+
+        if (DAIToken.balanceOf(address(this) == 0) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
-
-        DAIToken.transfer(to, amount);
     }
 
     function withdrawRepayment(address to) public onlyRepaid {
-        require(lenderAmount[msg.sender] != 0, 'Not a lender or already withdrawn');
-        uint256 amount = calculateValueWithInterest(lenderAmount[msg.sender]);
-        lenderAmount[msg.sender] = 0; // this line is first because of reentry attack
-        totalAmountWithInterest -= amount;
+        require(!lenderWithdrawn[msg.sender], 'Lender already withdrawn');
+        require(lenderBidAmount[msg.sender] != 0, 'Account did not deposited');
+        uint256 amount = calculateValueWithInterest(lenderBidAmount[msg.sender]);
+        lenderWithdrawn[msg.sender] = false;
         emit RepaymentWithdrawn(address(this), to, amount);
 
-        if (totalAmountWithInterest == 0) {
-            setState(LoanState.CLOSED);
-            emit FullyRepaid(address(this));
-        }
-
         DAIToken.transfer(to, amount);
+
+        if (DAIToken.balanceOf(address(this) == 0) {
+            setState(LoanState.CLOSED);
+            emit FullyRefunded(address(this));
+        }
     }
 
     // TO OR ORIGINATOR????
     function withdrawLoan(address to) public onlyActive onlyOriginator {
-        require(!alreadyWithdrawn, 'Already withdrawn');
+        require(!loanWithdrawn, 'Already withdrawn');
 
         if (isDefaulted()) {
             setState(LoanState.DEFAULTED);
@@ -196,18 +220,20 @@ contract LoanContract is LoanContractInterface {
             return;
         }
 
-        alreadyWithdrawn = true;
-        DAIToken.transfer(to, totalAmount);
-        emit LoanFundsWithdrawn(address(this), to, totalAmount);
+        loanWithdrawn = true;
+        DAIToken.transfer(to, auctionBalance);
+        emit LoanFundsWithdrawn(address(this), to, auctionBalance);
     }
 
     // this happens after transfer in daiproxy => if Defaulted we need to return funds ???
     function onRepaymentReceived(address from, uint256 amount) public onlyActive onlyProxy {
         require(from == originator, 'from address is not the originator');
         require(
-            amount == calculateValueWithInterest(totalAmount),
+            amount == borrowerDebt,
             'Incorrect sum repaid'
         );
+        require(borrowerDebt != 0, 'Borrower does not have any debt.');
+        require(DAIToken.balanceOf(address(this)) == borrowerDebt, 'Repayment amount is not the same')
 
         // hacer modifier en dai proxy con is defaulted
         if (isDefaulted()) {
@@ -218,15 +244,7 @@ contract LoanContract is LoanContractInterface {
         }
 
         setState(LoanState.REPAID);
-        emit LoanRepaid(address(this), now);
-    }
-
-    function getAlreadyFundedAmount() public view returns (uint256) {
-        return alreadyFunded;
-    }
-
-    function getLenderAmount(address lender) public view returns (uint256) {
-        return lenderAmount[lender];
+        emit LoanRepaid(address(this), block.timestamp);
     }
 
     function isExpired() public view returns (bool) {
@@ -258,41 +276,17 @@ contract LoanContract is LoanContractInterface {
         return currentState;
     }
 
-    function getCurrentState() public view returns (LoanState) {
-        return currentState;
-    }
-
-    function getFundingTimeLimitBlock() public view returns (uint256) {
-        return fundingTimeLimitBlock;        
-    }
-
     function calculateValueWithInterest(uint256 value) public view returns(uint256) {
-        return value + (value * getInterestRate() / 10000);
+        return value.sum(value.mul(getInterestRate()).div(10000));
     }
 
     function getInterestRate() public view returns (uint256) {
         if (currentState == LoanState.CREATED) {
-            return bpMaxInterestRate * (block.number - blockStart) / (fundingTimeLimitBlock - blockStart);
+            return bpMaxInterestRate.mul(block.number.sub(auctionStart)).div(auctionBlockDuration.sub(auctionStart));
         } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
-            return bpMaxInterestRate * (blockFunded - blockStart) / (fundingTimeLimitBlock - blockStart);
+            return bpMaxInterestRate.mul(auctionEnd.sub(auctionStart)).div(auctionBlockDuration.sub(auctionStart));
         } else {
             return 0;
         }
     }
-
-    function getTotalAmountWithInterest() public view returns(uint256) {
-        return calculateValueWithInterest(totalAmount);
-    }
-
-
-    function getFinalRepaymentEnd() public view returns (uint256) {
-        if (timestampFunded == 0) {
-            return 0;
-        }
-        return timestampFunded + loanRepaymentLength;
-    }
-
-    function getMaxRepaymentEnd() public view returns (uint256) {
-        return fundingTimeLimitBlock + loanRepaymentLength;
-    } 
 }

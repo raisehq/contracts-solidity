@@ -336,8 +336,8 @@ FN:159,withdrawRefund
 FN:174,withdrawRepayment
 FN:190,withdrawLoan
 FN:205,onRepaymentReceived
-FN:224,getAlreadyFundedAmount
-FN:228,getLenderAmount
+FN:224,auctionBalanceAmount
+FN:228,getlenderBidAmount
 FN:232,isExpired
 FN:236,isDefaulted
 FN:247,setState
@@ -346,7 +346,7 @@ FN:261,getCurrentState
 FN:265,getFundingTimeLimitBlock
 FN:269,calculateValueWithInterest
 FN:273,getInterestRate
-FN:283,getTotalAmountWithInterest
+FN:283,getmaxAmountWithInterest
 FN:288,getFinalRepaymentEnd
 FN:295,getMaxRepaymentEnd
 FNF:25
@@ -363,8 +363,8 @@ FNDA:1,withdrawRefund
 FNDA:6,withdrawRepayment
 FNDA:6,withdrawLoan
 FNDA:4,onRepaymentReceived
-FNDA:14,getAlreadyFundedAmount
-FNDA:23,getLenderAmount
+FNDA:14,auctionBalanceAmount
+FNDA:23,getlenderBidAmount
 FNDA:51,isExpired
 FNDA:39,isDefaulted
 FNDA:47,setState
@@ -373,7 +373,7 @@ FNDA:27,getCurrentState
 FNDA:3,getFundingTimeLimitBlock
 FNDA:29,calculateValueWithInterest
 FNDA:29,getInterestRate
-FNDA:3,getTotalAmountWithInterest
+FNDA:3,getmaxAmountWithInterest
 FNDA:1,getFinalRepaymentEnd
 FNDA:0,getMaxRepaymentEnd
 DA:64,24
