@@ -50,7 +50,7 @@ module.exports = {
     //
 
     development: {
-      gas: 500000000000,
+      gas: 8000000,
       provider: function() {
         return new HDWalletProvider(privateKey, 'localhost:8545');
       },
@@ -59,7 +59,9 @@ module.exports = {
     ganache: {
       host: 'localhost',
       port: 8545,
-      network_id: '*' // Match any network id
+      network_id: '*', // Match any network id
+      gas: 8000000,
+      gasPrice: 10000000000,
     },
     coverage: {
       host: "localhost",
@@ -69,7 +71,7 @@ module.exports = {
       gasPrice: 0x01      // <-- Use this low gas price
     },
     kovan: {
-      gas: 5000000,
+      gas: 8000000,
       gasPrice: 10000000000,
       provider: function() {
         return new HDWalletProvider(privateKey, kovanApi);

@@ -705,19 +705,19 @@ contract LoanContract is LoanContractInterface {
     }
 &nbsp;
     modifier onlyActive() {
-        getUpdatedState();
+        updateMachineState();
         require(currentState == LoanState.ACTIVE, 'Incorrect loan status');
         _;
     }
 &nbsp;
     modifier onlyRepaid() {
-        getUpdatedState();
+        updateMachineState();
         <span class="missing-if-branch" title="else path not taken" >E</span>require(currentState == LoanState.REPAID, 'Incorrect loan state');
         _;
     }
 &nbsp;
     modifier onlyFailedToFund() {
-        getUpdatedState();
+        updateMachineState();
         require(currentState == LoanState.FAILED_TO_FUND, 'Incorrect loan state');
         _;
     }
@@ -760,7 +760,7 @@ contract LoanContract is LoanContractInterface {
     // - If user sent tokens to LoanContract and is expired, it should be able to recover his
     // funds via the withdrawal pattern. Or let DAIProxy to manage the issue if this function returns "false".
     function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
-        if (isExpired()) {
+        if (isAuctionExpired()) {
             setState(LoanState.FAILED_TO_FUND);
             DAIToken.transfer(lender, amount);
             emit FailedToFund(address(this), lender, amount);
@@ -868,7 +868,7 @@ contract LoanContract is LoanContractInterface {
         return lenderBidAmount[lender];
     }
 &nbsp;
-    function isExpired() public view returns (bool) {
+    function isAuctionExpired() public view returns (bool) {
         return block.number &gt; fundingTimeLimitBlock;
     }
 &nbsp;
@@ -887,8 +887,8 @@ contract LoanContract is LoanContractInterface {
         currentState = state;
     }
 &nbsp;
-    function getUpdatedState() public returns (LoanState) {
-        if (isExpired() &amp;&amp; currentState == LoanState.CREATED) {
+    function updateMachineState() public returns (LoanState) {
+        if (isAuctionExpired() &amp;&amp; currentState == LoanState.CREATED) {
             setState(LoanState.FAILED_TO_FUND);
         }
         if (isDefaulted() &amp;&amp; currentState == LoanState.ACTIVE) {

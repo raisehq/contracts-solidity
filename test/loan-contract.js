@@ -203,7 +203,7 @@ contract('LoanContract', (accounts) => {
 
                     /**
                      * Contract state should still be CREATED, due Lender did not try 
-                     * to fund or 3º party did not exec getUpdatedState method 
+                     * to fund or 3º party did not exec updateMachineState method 
                     */
                     const stateAfterDeadline = await Loan.getCurrentState();
                     expect(Number(stateAfterDeadline)).to.equal(0);
@@ -234,7 +234,7 @@ contract('LoanContract', (accounts) => {
 
         });
         describe('Method getUpdateState', () => {
-            it('Expects getUpdatedState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ', async () => {
+            it('Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ', async () => {
                 try {
                     const fundEndBlock = await Loan.getFundingTimeLimitBlock();
                     const fundStartBlock = await Loan.blockStart();
@@ -247,12 +247,12 @@ contract('LoanContract', (accounts) => {
                     // Mine to end of funding
                     await helpers.waitNBlocks(blocksToEnd);
 
-                    // Contract state should still be CREATED, 3º party did not exec getUpdatedState method 
+                    // Contract state should still be CREATED, 3º party did not exec updateMachineState method 
                     const stateAfterDeadline = await Loan.getCurrentState();
                     expect(Number(stateAfterDeadline)).to.equal(0);
 
-                    // Correct the state via getUpdatedState
-                    await Loan.getUpdatedState();
+                    // Correct the state via updateMachineState
+                    await Loan.updateMachineState();
 
                     // Contract state should mutate to FAILED_TO_FUND
                     // after executing state check (need to send)
@@ -264,14 +264,14 @@ contract('LoanContract', (accounts) => {
                 }
             });
 
-            it('Expects getUpdatedState method to NOT mutate Loan state if state is CREATED and is not expired', async () => {
+            it('Expects updateMachineState method to NOT mutate Loan state if state is CREATED and is not expired', async () => {
                 try {
                     // Contract init state should be CREATED
                     const initState = await Loan.getCurrentState();
                     expect(Number(initState)).to.equal(0);
 
-                    // Check the state via getUpdatedState
-                    await Loan.getUpdatedState();
+                    // Check the state via updateMachineState
+                    await Loan.updateMachineState();
 
                     // Contract state should still be CREATED 
                     // after executing state check (need to send)
@@ -283,7 +283,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
 
-            it('Expects getUpdatedState method to NOT mutate from FAILED_TO_FUND state', async () => {
+            it('Expects updateMachineState method to NOT mutate from FAILED_TO_FUND state', async () => {
                 try {
                     // Contract init state should be CREATED
                     const fundEndBlock = await Loan.getFundingTimeLimitBlock();
@@ -293,15 +293,15 @@ contract('LoanContract', (accounts) => {
                     // Mine to end of funding
                     await helpers.waitNBlocks(blocksToEnd);
 
-                    // Mutate the state to FAILED_TO_FUND via getUpdatedState
-                    const state = await Loan.getUpdatedState.sendTransaction({from: owner});
+                    // Mutate the state to FAILED_TO_FUND via updateMachineState
+                    const state = await Loan.updateMachineState.sendTransaction({from: owner});
 
                     // Expect contract state to be FAILED_TO_FUND 
                     const stateAfterMethod = await Loan.getCurrentState({from: owner});
                     expect(Number(stateAfterMethod)).to.equal(1);
 
-                    // Try to mutate again the state to FAILED_TO_FUND via getUpdatedState
-                    await Loan.getUpdatedState({from: owner});
+                    // Try to mutate again the state to FAILED_TO_FUND via updateMachineState
+                    await Loan.updateMachineState({from: owner});
 
                     const endState = await Loan.getCurrentState({from: owner});
                     expect(Number(endState)).to.equal(1);
@@ -311,7 +311,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
 
-            it('Expects getUpdatedState method to NOT mutate from ACTIVE state if not defaulted', async () => {
+            it('Expects updateMachineState method to NOT mutate from ACTIVE state if not defaulted', async () => {
                 try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
                     await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -321,7 +321,7 @@ contract('LoanContract', (accounts) => {
                     expect(Number(stateAfterFund)).to.equal(2);
 
                     // Try to mutate state when NOT defaulted
-                    await Loan.getUpdatedState({from: owner});
+                    await Loan.updateMachineState({from: owner});
 
                     // State should still be ACTIVE
                     const endState = await Loan.getCurrentState({from: owner});
@@ -332,7 +332,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
             
-            it('Expects getUpdatedState method to mutate from ACTIVE to DEFAULTED if repay expires', async () => {
+            it('Expects updateMachineState method to mutate from ACTIVE to DEFAULTED if repay expires', async () => {
                 try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
                     await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -352,7 +352,7 @@ contract('LoanContract', (accounts) => {
                     await helpers.increaseTime(secondsToEnd);
                     
                     // Try to mutate again the state after IS defaulted
-                    await Loan.getUpdatedState({from: owner});
+                    await Loan.updateMachineState({from: owner});
 
                     // State should mutate from ACTIVE to DEFAULTED
                     const endState = await Loan.getCurrentState({from: owner});
@@ -451,7 +451,7 @@ contract('LoanContract', (accounts) => {
 
                 /**
                  * Contract state should still be CREATED, due Lender did not try 
-                 * to fund or 3º party did not exec getUpdatedState method 
+                 * to fund or 3º party did not exec updateMachineState method 
                 */
                 const stateAfterDeadline = await Loan.getCurrentState();
                 expect(Number(stateAfterDeadline)).to.equal(0);
@@ -482,7 +482,7 @@ contract('LoanContract', (accounts) => {
             it.skip('Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID', async () => {}) ;
             it.skip('Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID', async () => {}) ;
         })
-        describe.skip('Method isExpired', () => {})
+        describe.skip('Method isAuctionExpired', () => {})
         describe.skip('Method isDefaulted', () => {})
         describe.skip('Method isDefaulted', () => {})
         describe.skip('Method getFundingTimeLimit', () => {})

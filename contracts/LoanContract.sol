@@ -15,6 +15,9 @@ contract LoanContract is LoanContractInterface {
     DAIProxyInterface proxy;
     address originator;
 
+    uint256 public minAmount;
+    uint256 public maxAmount;
+
     uint256 public auctionStartBlock;
     uint256 public auctionEndBlock;
     uint256 public auctionBlockLength;
@@ -76,19 +79,19 @@ contract LoanContract is LoanContractInterface {
     }
 
     modifier onlyActive() {
-        getUpdatedState();
+        updateMachineState();
         require(currentState == LoanState.ACTIVE, 'Incorrect loan status');
         _;
     }
 
     modifier onlyRepaid() {
-        getUpdatedState();
+        updateMachineState();
         require(currentState == LoanState.REPAID, 'Incorrect loan state');
         _;
     }
 
     modifier onlyFailedToFund() {
-        getUpdatedState();
+        updateMachineState();
         require(currentState == LoanState.FAILED_TO_FUND, 'Incorrect loan state');
         _;
     }
@@ -123,7 +126,7 @@ contract LoanContract is LoanContractInterface {
         
         auctionBlockLength = _auctionBlockLength;
         auctionStartBlock = block.number;
-        auctionEndBlock = block.number.sum(_auctionBlockLength);
+        auctionEndBlock = auctionStartBlock.add(_auctionBlockLength);
         
         termEndTimestamp = _termEndTimestamp;
 
@@ -135,7 +138,7 @@ contract LoanContract is LoanContractInterface {
     // - If user sent tokens to LoanContract and is expired, it should be able to recover his
     // funds via the withdrawal pattern. Or let DAIProxy to manage the issue if this function returns "false".
     function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
-        if (auctionBalance < minAmount && isExpired()) {
+        if (auctionBalance < minAmount && isAuctionExpired()) {
             setState(LoanState.FAILED_TO_FUND);
             DAIToken.transfer(lender, amount);
             emit FailedToFund(address(this), lender, amount);
@@ -143,15 +146,15 @@ contract LoanContract is LoanContractInterface {
             return;
         }
 
-        lendedBidAmount[lender] = lendedBidAmount[lender].sum(amount);
-        auctionBalance = auctionBalance.sum(amount);
+        lenderBidAmount[lender] = lenderBidAmount[lender].add(amount);
+        auctionBalance = auctionBalance.add(amount);
 
         if (auctionBalance > maxAmount) {
-            uint256 overflow = auctionBalance.minus(maxAmount);
-            auctionBalance = auctionBalance.minus(overflow);
-            lenderBidAmount[lender] = lenderBidAmount.minis(overflow);
+            uint256 overflow = auctionBalance.sub(maxAmount);
+            auctionBalance = auctionBalance.sub(overflow);
+            lenderBidAmount[lender] = lenderBidAmount[lender].sub(overflow);
             DAIToken.transfer(lender, overflow);
-            emit Funded(address(this), lender, amount.minus(overflow));
+            emit Funded(address(this), lender, amount.sub(overflow));
         } else if (auctionBalance >= minAmount && !minimumReached) {
             minimumReached = true;
             emit Funded(address(this), lender, amount);
@@ -161,14 +164,14 @@ contract LoanContract is LoanContractInterface {
         }
 
         if ( (auctionBalance == maxAmount) ||
-             (minimumReached && isExpired() && currentState == LoanState.CREATED)
+             (minimumReached && isAuctionExpired() && currentState == LoanState.CREATED)
         ) {
             setState(LoanState.ACTIVE);
             auctionEndBlock = block.number;
 
             termStartTimestamp = block.timestamp;
             borrowerDebt = calculateValueWithInterest(auctionBalance);
-            emit FullyFunded(address(this), borrowerDebt, timestampFunded);
+            emit FullyFunded(address(this), borrowerDebt, block.timestamp);
         } 
     }
 
@@ -189,7 +192,7 @@ contract LoanContract is LoanContractInterface {
 
         emit RefundWithdrawn(address(this), to, lenderBidAmount[msg.sender]);
 
-        if (DAIToken.balanceOf(address(this) == 0) {
+        if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
@@ -204,7 +207,7 @@ contract LoanContract is LoanContractInterface {
 
         DAIToken.transfer(to, amount);
 
-        if (DAIToken.balanceOf(address(this) == 0) {
+        if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
@@ -233,7 +236,7 @@ contract LoanContract is LoanContractInterface {
             'Incorrect sum repaid'
         );
         require(borrowerDebt != 0, 'Borrower does not have any debt.');
-        require(DAIToken.balanceOf(address(this)) == borrowerDebt, 'Repayment amount is not the same')
+        require(DAIToken.balanceOf(address(this)) == borrowerDebt, 'Repayment amount is not the same');
 
         // hacer modifier en dai proxy con is defaulted
         if (isDefaulted()) {
@@ -247,14 +250,14 @@ contract LoanContract is LoanContractInterface {
         emit LoanRepaid(address(this), block.timestamp);
     }
 
-    function isExpired() public view returns (bool) {
-        return block.number > fundingTimeLimitBlock;
+    function isAuctionExpired() public view returns (bool) {
+        return block.number > auctionEndBlock;
     }
 
     function isDefaulted() public view returns (bool) {
         if (
-            now >= timestampFunded &&
-            now <= timestampFunded + loanRepaymentLength
+            block.timestamp >= termStartTimestamp &&
+            block.timestamp <= termEndTimestamp
         ) {
             return false;
         }
@@ -266,8 +269,8 @@ contract LoanContract is LoanContractInterface {
         currentState = state;
     }
 
-    function getUpdatedState() public returns (LoanState) {
-        if (isExpired() && currentState == LoanState.CREATED) {
+    function updateMachineState() public returns (LoanState) {
+        if (isAuctionExpired() && currentState == LoanState.CREATED) {
             setState(LoanState.FAILED_TO_FUND);
         }
         if (isDefaulted() && currentState == LoanState.ACTIVE) {
@@ -277,14 +280,14 @@ contract LoanContract is LoanContractInterface {
     }
 
     function calculateValueWithInterest(uint256 value) public view returns(uint256) {
-        return value.sum(value.mul(getInterestRate()).div(10000));
+        return value.add(value.mul(getInterestRate()).div(10000));
     }
 
     function getInterestRate() public view returns (uint256) {
         if (currentState == LoanState.CREATED) {
-            return bpMaxInterestRate.mul(block.number.sub(auctionStart)).div(auctionBlockDuration.sub(auctionStart));
+            return bpMaxInterestRate.mul(block.number.sub(auctionStartBlock)).div(auctionBlockLength.sub(auctionStartBlock));
         } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
-            return bpMaxInterestRate.mul(auctionEnd.sub(auctionStart)).div(auctionBlockDuration.sub(auctionStart));
+            return bpMaxInterestRate.mul(auctionEndBlock.sub(auctionStartBlock)).div(auctionBlockLength.sub(auctionStartBlock));
         } else {
             return 0;
         }

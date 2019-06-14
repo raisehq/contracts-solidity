@@ -338,10 +338,10 @@ FN:190,withdrawLoan
 FN:205,onRepaymentReceived
 FN:224,auctionBalanceAmount
 FN:228,getlenderBidAmount
-FN:232,isExpired
+FN:232,isAuctionExpired
 FN:236,isDefaulted
 FN:247,setState
-FN:251,getUpdatedState
+FN:251,updateMachineState
 FN:261,getCurrentState
 FN:265,getFundingTimeLimitBlock
 FN:269,calculateValueWithInterest
@@ -365,10 +365,10 @@ FNDA:6,withdrawLoan
 FNDA:4,onRepaymentReceived
 FNDA:14,auctionBalanceAmount
 FNDA:23,getlenderBidAmount
-FNDA:51,isExpired
+FNDA:51,isAuctionExpired
 FNDA:39,isDefaulted
 FNDA:47,setState
-FNDA:29,getUpdatedState
+FNDA:29,updateMachineState
 FNDA:27,getCurrentState
 FNDA:3,getFundingTimeLimitBlock
 FNDA:29,calculateValueWithInterest

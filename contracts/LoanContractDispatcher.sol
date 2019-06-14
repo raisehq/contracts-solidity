@@ -48,10 +48,10 @@ contract LoanContractDispatcher {
     {
         LoanContract loanContract = new LoanContract(
             auctionEndBlock,
+            termEndTimestamp,
             minAmount,
             maxAmount,
             bpMaxInterestRate,
-            termEndTimestamp,
             msg.sender,
             DAITokenAddress,
             DAIProxyAddress
