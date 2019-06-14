@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 
-import './DAIProxyInterface.sol';
-import './LoanContractInterface.sol';
+import '../DAIProxyInterface.sol';
+import '../LoanContractInterface.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
 
