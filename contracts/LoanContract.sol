@@ -80,19 +80,19 @@ contract LoanContract is LoanContractInterface {
     }
 
     modifier onlyActive() {
-        updateMachineState();
+        updateStateMachine();
         require(currentState == LoanState.ACTIVE, 'Incorrect loan status');
         _;
     }
 
     modifier onlyRepaid() {
-        updateMachineState();
+        updateStateMachine();
         require(currentState == LoanState.REPAID, 'Incorrect loan state');
         _;
     }
 
     modifier onlyFailedToFund() {
-        updateMachineState();
+        updateStateMachine();
         require(currentState == LoanState.FAILED_TO_FUND, 'Incorrect loan state');
         _;
     }
@@ -269,7 +269,7 @@ contract LoanContract is LoanContractInterface {
         currentState = state;
     }
 
-    function updateMachineState() public returns (LoanState) {
+    function updateStateMachine() public returns (LoanState) {
         if (isAuctionExpired() && currentState == LoanState.CREATED) {
             setState(LoanState.FAILED_TO_FUND);
         }

@@ -18,7 +18,6 @@ const FileHelper = {
 };
 
 const migrationInt = async (deployer, deployerAddress) => {
-  console.log('there')
   await deployer.deploy(HeroToken, { from: deployerAddress });
 
   await deployer.deploy(DAI, { from: deployerAddress });
@@ -42,7 +41,6 @@ const migrationInt = async (deployer, deployerAddress) => {
   const dispatcherFrom = { from: deployerAddress }
   const LoanFactory = new web3.eth.Contract(LoanDispatcher.abi, null, { data: LoanDispatcher.bytecode });
   const LoanFactoryEstimatedGas = await LoanFactory.deploy({arguments: dispatcherArgs}).estimateGas(dispatcherFrom)
-  console.log(LoanFactoryEstimatedGas)
   
   await deployer.deploy(
     LoanDispatcher,
