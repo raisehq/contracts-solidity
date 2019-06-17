@@ -246,8 +246,9 @@ contract('LoanContract', (accounts) => {
                     const initState = await Loan.currentState();
                     expect(Number(initState)).to.equal(0);
 
+                    console.log(fundEndBlock)
                     // Mine to end of funding
-                    await helpers.waitNBlocks(blocksToEnd);
+                    await helpers.waitNBlocks(blocksToEnd + 1);
 
                     // Contract state should still be CREATED, 3º party did not exec updateMachineState method 
                     const stateAfterDeadline = await Loan.currentState();
