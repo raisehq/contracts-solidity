@@ -1,6 +1,7 @@
 const chai = require('chai')
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
+const truffleAssert = require('truffle-assertions')
 const { expect } = chai;
 const web3 = global.web3;
 const DAIProxyContract = artifacts.require('DAIProxy');
@@ -81,84 +82,99 @@ contract('Integration', (accounts) => {
                 lender2HasDeposited = await Auth.hasDeposited(lender2);
                 lender3HasDeposited = await Auth.hasDeposited(lender3);
 
-                
+
                 // initialize loan contract dispatcher
                 LoanDispatcher = await LoanContractDispatcherContract.new(Auth.address, DAIToken.address, DAIProxy.address, {from:owner});
+
             } catch (error) {
                 throw error;
             }
         });
-        it('Expects the flow to work correctly for one lender to fully fund a loan and for the borrower to repay', async () => {
-            try {
-                // borrower creates loan
-                const loanTimeLength = 1 * 60 * 60; // 1 day in seconds
-                const loanRepaymentTime = 1* 4 * 7 * 24 * 60 * 60; // one month in seconds
-                const termLength =  loanRepaymentTime / averageMiningBlockTime;
-                const lengthBlocks = loanTimeLength / averageMiningBlockTime;
-                const loanAmount = 100;
-                const bpMaxInterestRate = 5000;
+        it.only('Expects the flow to work correctly for one lender to fully fund a loan and for the borrower to repay', async () => {
+            try  {
+            // Setup DAI amounts
+            const fundingAmount = 1000;
+            await DAIToken.transferAmountToAddress(lender, fundingAmount, {from: owner});
 
-                await LoanDispatcher.deploy(
-                    lengthBlocks,
-                    loanAmount,
-                    bpMaxInterestRate,
-                    termLength,
-                    {from: borrower}
-                );
+            // borrower creates loan
+            const currentBlock = await web3.eth.getBlock('latest');
+            const auctionLengthBlock = (60 * 60) / averageMiningBlockTime; // 1 hour in blocktime
+            const loanRepaymentTime = currentBlock.timestamp + (2 * 60 * 60); // 2 hours in seconds
+            const loanMinAmount = 900;
+            const loanMaxAmount = 1000;
+            const bpMaxInterestRate = 5000;
 
-                const eventHistory = await LoanDispatcher.getPastEvents('LoanContractCreated'); // {fromBlock: 0, toBlock: "latest"} put this to get all
-                const loanAddress = eventHistory[0].returnValues.contractAddress;
-                
-                // wait for time / blocks to pass
-                await waitNBlocks(100);
+            await LoanDispatcher.deploy(
+                auctionLengthBlock,
+                loanMinAmount,
+                loanMaxAmount,
+                bpMaxInterestRate,
+                loanRepaymentTime,
+                {from: borrower}
+            );
 
-                // lender funds loan
-                const fundingAmount = 100;
-                await DAIToken.transferAmountToAddress(lender, fundingAmount, {from: owner});
-                await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
-                await DAIProxy.fund(loanAddress, fundingAmount, {from: lender});
+            const eventHistory = await LoanDispatcher.getPastEvents('LoanContractCreated'); // {fromBlock: 0, toBlock: "latest"} put this to get all
+            const loanAddress = eventHistory[0].returnValues.contractAddress;
+            
+            // create loan instance from loanAddress
+            const Loan = await LoanContract.at(loanAddress);
 
-                // create loan instance from loanAddress
-                const Loan = await LoanContract.at(loanAddress);
+            // lender funds loan
+            await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
+            const fundTx = await DAIProxy.fund(loanAddress, fundingAmount, {from: lender});
 
-                // check if loan is funded
-                const loanFundedAmount = await Loan.auctionBalanceAmount();
-                const amountFundedByLender = await Loan.getlenderBidAmount(lender);
-                
-                // borrower takes money from loan
-                await Loan.withdrawLoan(borrower, {from: borrower}); 
-                
-                // check borrower received amount
-                const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
-                
-                // borrower repays loan
-                const totalReturnAmount = Number(await Loan.getmaxAmountWithInterest({from: borrower}));
-                const interestAmount = totalReturnAmount - fundingAmount;
-                await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
-                await DAIToken.approve(DAIProxy.address, totalReturnAmount, { from: borrower });
-                await DAIProxy.repay(loanAddress, totalReturnAmount, {from: borrower});
-                
-                const loanRepaidEvent = await Loan.getPastEvents('LoanRepaid');
-                const loanAddressToRepay = loanRepaidEvent[0].returnValues.loanAddress;
+            const totalDebt = Number(await Loan.borrowerDebt());
+            
+            // Due we need to watch the LoanContract.sol events, need to change tx scope to point LoanContract.sol
+            const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
+            truffleAssert.eventEmitted(loanTxScope, 'Funded', (ev) => ev.loanAddress == loanAddress && ev.lender == lender && ev.amount == fundingAmount);
+            truffleAssert.eventEmitted(loanTxScope, 'MinimumFundingReached', (ev) => ev.loanAddress == loanAddress && ev.currentBalance == fundingAmount);
+            truffleAssert.eventEmitted(loanTxScope, 'FullyFunded', (ev) => ev.loanAddress == loanAddress && ev.balanceToRepay == totalDebt && ev.auctionBalance == fundingAmount);
 
-                // lender takes out money
-                await Loan.withdrawRepayment(lender, {from: lender});
-                const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
-                const lenderBidAmountInContractAfterWithdraw = await Loan.getlenderBidAmount(lender);
+            // check if loan is funded
+            const loanFundedAmount = await Loan.auctionBalance();
+            const amountFundedByLender = await Loan.lenderBidAmount(lender);
+            const fundedLoanState = Number(await Loan.currentState());
 
-                // assertions
-                expect(lenderKYC).to.equal(true);
-                expect(borrowerKYC).to.equal(true);
-                expect(lenderHasDeposited).to.equal(true);
-                expect(Number(loanFundedAmount)).to.equal(fundingAmount);
-                expect(Number(amountFundedByLender)).to.equal(fundingAmount);
-                expect(Number(borrowerWithdrawAmount)).to.equal(loanAmount);
-                expect(loanAddressToRepay).to.equal(loanAddress);
-                expect(Number(lenderBalanceAfterRepayment)).to.equal(totalReturnAmount);
-                expect(Number(lenderBidAmountInContractAfterWithdraw)).to.equal(0);
-            } catch (error) {
-                expect(error).to.equal(undefined);
-            }
+            // borrower takes money from loan
+            await Loan.withdrawLoan(borrower, {from: borrower}); 
+            
+            // check borrower received amount
+            const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
+            
+            // borrower repays loan
+            const interestAmount = totalDebt - fundingAmount;
+            await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
+            await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
+            await DAIProxy.repay(loanAddress, totalDebt, {from: borrower});
+            
+            const loanRepaidEvent = await Loan.getPastEvents('LoanRepaid');
+            const loanAddressToRepay = loanRepaidEvent[0].returnValues.loanAddress;
+            const stateAfterRepay = Number(await Loan.currentState())
+
+            // lender takes out money
+            await Loan.withdrawRepayment(lender, {from: lender});
+            const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
+            const lenderWithdrawed = await Loan.lenderWithdrawn(lender);
+            console.log('bool', lenderWithdrawed);
+            const endState = Number(await Loan.currentState())
+
+            // assertions
+            expect(lenderKYC).to.equal(true);
+            expect(borrowerKYC).to.equal(true);
+            expect(lenderHasDeposited).to.equal(true);
+            expect(fundedLoanState).to.equal(2);
+            expect(Number(loanFundedAmount)).to.equal(fundingAmount);
+            expect(Number(amountFundedByLender)).to.equal(fundingAmount);
+            expect(Number(borrowerWithdrawAmount)).to.equal(fundingAmount);
+            expect(stateAfterRepay).to.equal(4);
+            expect(Number(lenderBalanceAfterRepayment)).to.equal(totalDebt);
+            expect(lenderWithdrawed).to.equal(true);
+            expect(endState).to.equal(5);
+        } catch(error) {
+            console.error(error);
+            throw error;
+        }
         });
         it('Expects to work for 3 diff lenders with overflow and borrower repays in time', async () => {
             try {

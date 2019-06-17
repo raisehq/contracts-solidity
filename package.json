@@ -12,6 +12,7 @@
     "migration:reset": "truffle migration --reset --network development",
     "console": "truffle console --network kovan",
     "test": "NODE_ENV=test truffle test",
+    "test:ganache": "NODE_ENV=test truffle test --network ganache",
     "coverage": "./node_modules/.bin/solidity-coverage",
     "lint": "solium -d contracts/"
   },

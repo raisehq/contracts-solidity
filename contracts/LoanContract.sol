@@ -20,6 +20,7 @@ contract LoanContract is LoanContractInterface {
 
     uint256 public auctionStartBlock;
     uint256 public auctionEndBlock;
+    uint256 public auctionFundedBlock;
     uint256 public auctionBlockLength;
 
     uint256 public termStartTimestamp;
@@ -61,7 +62,7 @@ contract LoanContract is LoanContractInterface {
     );
 
     event MinimumFundingReached(address loanAddress, uint256 currentBalance);
-    event FullyFunded(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance);
+    event FullyFunded(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance, uint256 indexed fundedTimestamp);
     event Funded(address loanAddress, address indexed lender, uint256 amount);
     event LoanRepaid(address loanAddress, uint256 timestampRepaid);
     event RepaymentWithdrawn(address loanAddress, address to, uint256 amount);
@@ -126,7 +127,7 @@ contract LoanContract is LoanContractInterface {
         
         auctionBlockLength = _auctionBlockLength;
         auctionStartBlock = block.number;
-        auctionEndBlock = auctionStartBlock.add(_auctionBlockLength);
+        auctionEndBlock = auctionStartBlock.add(auctionBlockLength);
         
         termEndTimestamp = _termEndTimestamp;
 
@@ -167,11 +168,10 @@ contract LoanContract is LoanContractInterface {
              (minimumReached && isAuctionExpired() && currentState == LoanState.CREATED)
         ) {
             setState(LoanState.ACTIVE);
-            auctionEndBlock = block.number;
-
+            auctionFundedBlock = block.number;
             termStartTimestamp = block.timestamp;
             borrowerDebt = calculateValueWithInterest(auctionBalance);
-            emit FullyFunded(address(this), borrowerDebt, block.timestamp);
+            emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
         } 
     }
 
@@ -202,7 +202,7 @@ contract LoanContract is LoanContractInterface {
         require(!lenderWithdrawn[msg.sender], 'Lender already withdrawn');
         require(lenderBidAmount[msg.sender] != 0, 'Account did not deposited');
         uint256 amount = calculateValueWithInterest(lenderBidAmount[msg.sender]);
-        lenderWithdrawn[msg.sender] = false;
+        lenderWithdrawn[msg.sender] = true;
         emit RepaymentWithdrawn(address(this), to, amount);
 
         DAIToken.transfer(to, amount);
@@ -285,9 +285,9 @@ contract LoanContract is LoanContractInterface {
 
     function getInterestRate() public view returns (uint256) {
         if (currentState == LoanState.CREATED) {
-            return bpMaxInterestRate.mul(block.number.sub(auctionStartBlock)).div(auctionBlockLength.sub(auctionStartBlock));
+            return bpMaxInterestRate.mul(block.number.sub(auctionStartBlock)).div(auctionEndBlock.sub(auctionStartBlock));
         } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
-            return bpMaxInterestRate.mul(auctionEndBlock.sub(auctionStartBlock)).div(auctionBlockLength.sub(auctionStartBlock));
+            return bpMaxInterestRate.mul(auctionFundedBlock.sub(auctionStartBlock)).div(auctionEndBlock.sub(auctionStartBlock));
         } else {
             return 0;
         }

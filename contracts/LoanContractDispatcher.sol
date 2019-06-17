@@ -18,7 +18,7 @@ contract LoanContractDispatcher {
     event LoanContractCreated(
         address contractAddress,
         address originator,
-        uint256 auctionEndBlock,
+        uint256 auctionBlockLength,
         uint256 minAmount,
         uint256 maxAmount,
         uint256 bpMaxInterestRate,
@@ -36,7 +36,7 @@ contract LoanContractDispatcher {
     }
 
     function deploy(
-        uint256 auctionEndBlock,
+        uint256 auctionBlockLength,
         uint256 minAmount,
         uint256 maxAmount,
         uint256 bpMaxInterestRate,
@@ -47,7 +47,7 @@ contract LoanContractDispatcher {
     returns (address)
     {
         LoanContract loanContract = new LoanContract(
-            auctionEndBlock,
+            auctionBlockLength,
             termEndTimestamp,
             minAmount,
             maxAmount,
@@ -61,7 +61,7 @@ contract LoanContractDispatcher {
         emit LoanContractCreated(
             address(loanContract),
             msg.sender,
-            auctionEndBlock,
+            block.number + auctionBlockLength,
             minAmount,
             maxAmount,
             bpMaxInterestRate,
