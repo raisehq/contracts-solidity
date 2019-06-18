@@ -112,7 +112,11 @@
 67
 68
 69
-70</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+70
+71
+72
+73
+74</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -125,8 +129,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9×</span>
-<span class="cline-any cline-yes">9×</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-yes">3×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -143,9 +147,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11×</span>
-<span class="cline-any cline-yes">11×</span>
-<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6×</span>
+<span class="cline-any cline-yes">6×</span>
+<span class="cline-any cline-yes">6×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -158,7 +163,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -167,18 +173,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9×</span>
+<span class="cline-any cline-yes">3×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">pragma solidity ^0.5.0;
@@ -191,7 +199,7 @@ contract LoanContractDispatcher {
     address DAITokenAddress;
     address DAIProxyAddress;
 &nbsp;
-    mapping(address =&gt; bool) isLoanContract;
+    mapping(address =&gt; bool) public isLoanContract;
 &nbsp;
     modifier onlyKYC { // check if user is kyced
         <span class="missing-if-branch" title="else path not taken" >E</span>require(auth.isKYCConfirmed(msg.sender), 'user does not have KYC');
@@ -201,10 +209,11 @@ contract LoanContractDispatcher {
     event LoanContractCreated(
         address contractAddress,
         address originator,
-        uint256 lengthBlocks,
-        uint256 amount,
+        uint256 auctionBlockLength,
+        uint256 minAmount,
+        uint256 maxAmount,
         uint256 bpMaxInterestRate,
-        uint256 termLength
+        uint256 termEndTimestamp
     );
 &nbsp;
     constructor(
@@ -218,20 +227,22 @@ contract LoanContractDispatcher {
     }
 &nbsp;
     function deploy(
-        uint256 lengthBlocks,
-        uint256 amount,
+        uint256 auctionBlockLength,
+        uint256 minAmount,
+        uint256 maxAmount,
         uint256 bpMaxInterestRate,
-        uint256 termLength
+        uint256 termEndTimestamp
     )
     public
     onlyKYC
     returns (address)
     {
         LoanContract loanContract = new LoanContract(
-            lengthBlocks,
-            amount,
+            auctionBlockLength,
+            termEndTimestamp,
+            minAmount,
+            maxAmount,
             bpMaxInterestRate,
-            termLength,
             msg.sender,
             DAITokenAddress,
             DAIProxyAddress
@@ -241,10 +252,11 @@ contract LoanContractDispatcher {
         emit LoanContractCreated(
             address(loanContract),
             msg.sender,
-            lengthBlocks,
-            amount,
+            block.number + auctionBlockLength,
+            minAmount,
+            maxAmount,
             bpMaxInterestRate,
-            termLength
+            termEndTimestamp
         );
 &nbsp;
         return address(loanContract);
@@ -256,7 +268,7 @@ contract LoanContractDispatcher {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Thu Jun 13 2019 21:57:11 GMT+0200 (CEST)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Mon Jun 17 2019 17:07:58 GMT+0200 (CEST)
 </div>
 </div>
 <script src="../prettify.js"></script>

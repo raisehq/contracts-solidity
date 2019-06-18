@@ -159,22 +159,22 @@ import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './LoanContractInterface.sol';
 &nbsp;
 contract LoanContractMock is LoanContractInterface {
-    uint256 alreadyFunded;
-    uint256 totalAmount = 100;
+    uint256 auctionBalance;
+    uint256 maxAmount = 100;
     ERC20 DAIToken;
-    mapping(address =&gt; uint256) lenderAmount;
+    mapping(address =&gt; uint256) lenderBidAmount;
     enum LoanPhase {Active, Finished, Repaid, Failed}
     LoanPhase currentPhase;
 &nbsp;
     constructor() public {}
 &nbsp;
 <span class="fstat-no" title="function not covered" >    function getFundedAmount() public view returns (uint256</span>) {
-<span class="cstat-no" title="statement not covered" >        return alreadyFunded;</span>
+<span class="cstat-no" title="statement not covered" >        return auctionBalance;</span>
     }
 &nbsp;
     function onFundingReceived(address lender, uint256 amount) public {
-        lenderAmount[lender] += amount;
-        alreadyFunded += amount;
+        lenderBidAmount[lender] += amount;
+        auctionBalance += amount;
     }
 &nbsp;
 <span class="fstat-no" title="function not covered" >    function withdrawRepayment(address to) publi</span>c {
