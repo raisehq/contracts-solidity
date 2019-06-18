@@ -81,26 +81,38 @@ const migrationInt = async (deployer, deployerAddress) => {
     }
   };
 
-  //HEROTOKENS
+  // Give ERC20 to whitelist addresses and add KYC registry
   const heroDeployed = await HeroToken.deployed();
-
-  for (let i = 0; i < IntAccounts.length; i++) {
-    await heroDeployed.transfer(IntAccounts[i], 1000, {
-      from: deployerAddress,
-      gas: 8000000
-    });
-  }
-
-  //DAI TOKENS
   const daiDeployed = await DAI.deployed();
+  const kycDeployed = await KYC.deployed();
 
+  if (IntAccounts.length > 0) {
+    console.log(`> Sending tokens and adding to KYC registry ${IntAccounts.length + 1} accounts`, '\n')
+  }
   for (let i = 0; i < IntAccounts.length; i++) {
-    await daiDeployed.transferAmountToAddress(IntAccounts[i], 1000, {
+    const tokens = web3.utils.toWei('1000', 'ether');
+    // HEROTOKENS
+    await heroDeployed.mint(IntAccounts[i], tokens, {
       from: deployerAddress,
       gas: 8000000
     });
+    // DAI TOKENS
+    await daiDeployed.transferAmountToAddress(IntAccounts[i], tokens, {
+      from: deployerAddress,
+      gas: 8000000
+    });
+    // ADD ADDRESS TO KYC
+    await kycDeployed.add(IntAccounts[i], {
+      from: deployerAddress,
+      gas: 8000000
+    });
+    const inKyc = await kycDeployed.isConfirmed(IntAccounts[i]);
+    if (inKyc) {
+      console.log(`Added ${IntAccounts[i]} to KYC and sent 1000 HERO and 1000 FAKE DAI.`);
+    } else {
+      console.log(`Error adding ${IntAccounts[i]} to KYC but SENT 1000 HERO and 1000 FAKE DAI.`);
+    }
   }
-
   await FileHelper.write('./contracts.json', data);
 };
 
