@@ -11,12 +11,13 @@ contract DAIFake is ERC20Mintable {
     string public constant symbol = "DAIFake";
     uint8 public constant decimals = 18;
 
+    // 1000 tokens == 1000000000000000000000 in 18 decimal (Like wei)
     constructor() public {
-        super.mint(msg.sender, 10000000);
+        super.mint(msg.sender, 1000000000000000000000);
     }
 
     function transferFakeDAITokens(address destinationAddress) public {
-        super.mint(destinationAddress, 100000000);
+        super.mint(destinationAddress, 1000000000000000000000);
     }
 
     function transferAmountToAddress(address to, uint256 amount) public {
