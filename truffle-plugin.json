@@ -1,0 +1,5 @@
+{
+  "commands": {
+    "deploy-loans": "scripts/loan-generator/main.js"
+  }
+}
