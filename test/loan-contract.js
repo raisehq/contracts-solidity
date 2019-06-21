@@ -98,9 +98,9 @@ contract('LoanContract', (accounts) => {
                     
                     // Loan state after funding
                     const loanState = await Loan.currentState();
-                    console.log('----------------> ', Number(loanState))
                     // Subscribe to events
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
+
                     const fundedByLender = await Loan.lenderBidAmount(lender, {from: owner});
                     
                     expect(Number(fundedByLender)).to.equal(100);
@@ -114,7 +114,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
 
-            xit('Expects Lender to be able to send bigger funds to Loan, receive back the difference, and mutate from CREATED to ACTIVE state', async () => {
+            it('Expects Lender to be able to send bigger funds to Loan, only loan amunt needed, and mutate from CREATED to ACTIVE state', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
                     const firstState = await Loan.currentState();
@@ -144,7 +144,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
 
-            xit('Expects Lender to NOT be able to fund after state is ACTIVE', async () => {
+            it('Expects Lender to NOT be able to fund after state is ACTIVE', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
                     const firstState = await Loan.currentState();
@@ -190,7 +190,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
 
-            xit('Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND', async () => {
+            it('Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND', async () => {
                 try {
                     const fundEndBlock = await Loan.auctionEndBlock();
                     const fundStartBlock = await Loan.auctionStartBlock();
@@ -235,7 +235,7 @@ contract('LoanContract', (accounts) => {
             });
 
         });
-        xdescribe('Method getUpdateState', () => {
+        describe('Method getUpdateState', () => {
             it('Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ', async () => {
                 try {
                     const fundEndBlock = await Loan.auctionEndBlock();
@@ -367,7 +367,7 @@ contract('LoanContract', (accounts) => {
             });
         });
 
-        xdescribe('Method withdrawLoan', () => {
+        describe('Method withdrawLoan', () => {
             it('Expect withdrawLoan to allow Borrower take loan if state == ACTIVE', async () => {
                 try {
                     const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
@@ -399,9 +399,9 @@ contract('LoanContract', (accounts) => {
             it.skip('Expect withdrawLoan to NOT allow Borrower take loan twice.', () => {});
         })
 
-        xdescribe('Method withdrawRepayment', () => {
+        describe('Method withdrawRepayment', () => {
             it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == ACTIVE', async () => {
-                 try {
+                try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
                     await DAIProxy.fund(Loan.address, 100, {from: lender});
                     

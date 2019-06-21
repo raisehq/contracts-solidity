@@ -23,13 +23,17 @@ contract DAIProxyMock is DAIProxyInterface {
         }
 
         bool canTransfer = loanContract.onFundingReceived(msg.sender, newFundingAmount);
-        require(canTransfer == true, 'Transfer for funding not possible');
+        if (canTransfer == true) {
+            DAIToken.transferFrom(msg.sender, loanAddress, newFundingAmount);
+        }
 
-        DAIToken.transferFrom(msg.sender, loanAddress, fundingAmount);
     }
     function repay(address loanAddress, uint256 repaymentAmount) public {
-        DAIToken.transferFrom(msg.sender, loanAddress, repaymentAmount);
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
-        loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
+        bool canTransfer = loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
+
+        if (canTransfer == true) {
+            DAIToken.transferFrom(msg.sender, loanAddress, repaymentAmount);
+        }
     }
 }

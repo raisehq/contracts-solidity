@@ -29,17 +29,19 @@ contract DAIProxy is DAIProxyInterface {
         }
 
         bool canTransfer = loanContract.onFundingReceived(msg.sender, newFundingAmount);
-        require(canTransfer == true, 'Transfer for funding not possible');
+        if (canTransfer == true) {
+            transfer(loanAddress, newFundingAmount);
+        }
 
-        transfer(loanAddress, newFundingAmount);
     }
 
     function repay(address loanAddress, uint256 repaymentAmount) public onlyKYCanFund {
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
         bool canTransfer = loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
 
-        require(canTransfer == true, 'Transfer for repayment not possible');
-        transfer(loanAddress, repaymentAmount);
+        if (canTransfer == true) {
+            transfer(loanAddress, repaymentAmount);
+        }
     }
 
     function transfer(address loanAddress, uint256 amount) internal {

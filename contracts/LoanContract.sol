@@ -158,20 +158,18 @@ contract LoanContract is LoanContractInterface {
             minimumReached = true;
             emit Funded(address(this), lender, amount);
             emit MinimumFundingReached(address(this), auctionBalance);
-            return true;
         } else {
             emit Funded(address(this), lender, amount);
-            return true;
         }
 
-        if ((auctionBalance == maxAmount)) {
+        if (auctionBalance == maxAmount) {
             setState(LoanState.ACTIVE);
             auctionFundedBlock = block.number;
             termStartTimestamp = block.timestamp;
             borrowerDebt = calculateValueWithInterest(auctionBalance);
             emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
-            return true;
         }
+        return true;
     }
 
     //put these in proxy???
