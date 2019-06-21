@@ -12,9 +12,20 @@ contract DAIProxyMock is DAIProxyInterface {
         DAIToken = ERC20(daiAddress);
     }
     function fund(address loanAddress, uint256 fundingAmount) public {
-        DAIToken.transferFrom(msg.sender, loanAddress, fundingAmount);
+        uint256 newFundingAmount = fundingAmount;
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
-        loanContract.onFundingReceived(msg.sender, fundingAmount);
+
+        uint256 auctionBalance = loanContract.getAuctionBalance();
+        uint256 maxAmount = loanContract.getMaxAmount();
+
+        if (auctionBalance + fundingAmount > maxAmount) {
+            newFundingAmount = maxAmount - auctionBalance;
+        }
+
+        bool canTransfer = loanContract.onFundingReceived(msg.sender, newFundingAmount);
+        require(canTransfer == true, 'Transfer for funding not possible');
+
+        DAIToken.transferFrom(msg.sender, loanAddress, fundingAmount);
     }
     function repay(address loanAddress, uint256 repaymentAmount) public {
         DAIToken.transferFrom(msg.sender, loanAddress, repaymentAmount);

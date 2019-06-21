@@ -6,7 +6,6 @@ const truffleAssert = require('truffle-assertions');
 const DAIProxyContract = artifacts.require('DAIProxyMock');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 const LoanContract = artifacts.require('LoanContract');
-const {promisify} = require('util');
 
 const helpers = require('./helpers.js');
 
@@ -99,7 +98,7 @@ contract('LoanContract', (accounts) => {
                     
                     // Loan state after funding
                     const loanState = await Loan.currentState();
-                    
+                    console.log('----------------> ', Number(loanState))
                     // Subscribe to events
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
                     const fundedByLender = await Loan.lenderBidAmount(lender, {from: owner});
@@ -110,11 +109,12 @@ contract('LoanContract', (accounts) => {
                     // LoanContract state should mutate to ACTIVE == 2
                     expect(Number(loanState)).to.equal(2);
                 } catch (error) {
+                    console.log(error)
                     expect(error).to.equal(undefined);
                 }
             });
 
-            it('Expects Lender to be able to send bigger funds to Loan, receive back the difference, and mutate from CREATED to ACTIVE state', async () => {
+            xit('Expects Lender to be able to send bigger funds to Loan, receive back the difference, and mutate from CREATED to ACTIVE state', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
                     const firstState = await Loan.currentState();
@@ -144,7 +144,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
 
-            it('Expects Lender to NOT be able to fund after state is ACTIVE', async () => {
+            xit('Expects Lender to NOT be able to fund after state is ACTIVE', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
                     const firstState = await Loan.currentState();
@@ -190,7 +190,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
 
-            it('Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND', async () => {
+            xit('Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND', async () => {
                 try {
                     const fundEndBlock = await Loan.auctionEndBlock();
                     const fundStartBlock = await Loan.auctionStartBlock();
@@ -235,7 +235,7 @@ contract('LoanContract', (accounts) => {
             });
 
         });
-        describe('Method getUpdateState', () => {
+        xdescribe('Method getUpdateState', () => {
             it('Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ', async () => {
                 try {
                     const fundEndBlock = await Loan.auctionEndBlock();
@@ -367,7 +367,7 @@ contract('LoanContract', (accounts) => {
             });
         });
 
-        describe('Method withdrawLoan', () => {
+        xdescribe('Method withdrawLoan', () => {
             it('Expect withdrawLoan to allow Borrower take loan if state == ACTIVE', async () => {
                 try {
                     const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
@@ -399,7 +399,7 @@ contract('LoanContract', (accounts) => {
             it.skip('Expect withdrawLoan to NOT allow Borrower take loan twice.', () => {});
         })
 
-        describe('Method withdrawRepayment', () => {
+        xdescribe('Method withdrawRepayment', () => {
             it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == ACTIVE', async () => {
                  try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
