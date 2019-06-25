@@ -175,43 +175,38 @@ contract LoanContract is LoanContractInterface {
     //put these in proxy???
     // Seems this function bypass KYC? A user that we detect that did fraudulent KYC procedure
     // after the auction can be removed from KYC registry, but the fraud users could still refund from this method.
-
-    // to == msg.sender ???
-    // - IF refund is handled via DAIProxy should have "to" argument
-    // - IF not, could be deleted. Currently it bypasses DAIProxy.
-    function withdrawRefund(address to) public onlyFailedToFund {
+    function withdrawRefund() public onlyFailedToFund {
         require(!lenderWithdrawn[msg.sender], 'Lender already withdrawn');
         require(lenderBidAmount[msg.sender] > 0, 'Account did not deposited.');
 
         lenderWithdrawn[msg.sender] = true;
 
-        DAIToken.transfer(to, lenderBidAmount[msg.sender]);
-
-        emit RefundWithdrawn(address(this), to, lenderBidAmount[msg.sender]);
+        emit RefundWithdrawn(address(this), msg.sender, lenderBidAmount[msg.sender]);
 
         if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
+
+        DAIToken.transfer(msg.sender, lenderBidAmount[msg.sender]);
     }
 
-    function withdrawRepayment(address to) public onlyRepaid {
+    function withdrawRepayment() public onlyRepaid {
         require(!lenderWithdrawn[msg.sender], 'Lender already withdrawn');
         require(lenderBidAmount[msg.sender] != 0, 'Account did not deposited');
         uint256 amount = calculateValueWithInterest(lenderBidAmount[msg.sender]);
         lenderWithdrawn[msg.sender] = true;
-        emit RepaymentWithdrawn(address(this), to, amount);
-
-        DAIToken.transfer(to, amount);
+        emit RepaymentWithdrawn(address(this), msg.sender, amount);
 
         if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
+
+        DAIToken.transfer(msg.sender, amount);
     }
 
-    // TO OR ORIGINATOR????
-    function withdrawLoan(address to) public onlyActive onlyOriginator {
+    function withdrawLoan() public onlyActive onlyOriginator {
         require(!loanWithdrawn, 'Already withdrawn');
 
         if (isDefaulted()) {
@@ -221,8 +216,8 @@ contract LoanContract is LoanContractInterface {
         }
 
         loanWithdrawn = true;
-        DAIToken.transfer(to, auctionBalance);
-        emit LoanFundsWithdrawn(address(this), to, auctionBalance);
+        emit LoanFundsWithdrawn(address(this), msg.sender, auctionBalance);
+        DAIToken.transfer(msg.sender, auctionBalance);
     }
 
     function onRepaymentReceived(address from, uint256 amount) public onlyActive onlyProxy returns (bool) {
