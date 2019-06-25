@@ -64,13 +64,13 @@ contract LoanContract is LoanContractInterface {
     event MinimumFundingReached(address loanAddress, uint256 currentBalance);
     event FullyFunded(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance, uint256 indexed fundedTimestamp);
     event Funded(address loanAddress, address indexed lender, uint256 amount);
-    event LoanRepaid(address loanAddress, uint256 timestampRepaid);
-    event RepaymentWithdrawn(address loanAddress, address to, uint256 amount);
+    event LoanRepaid(address loanAddress, uint256 indexed timestampRepaid);
+    event RepaymentWithdrawn(address loanAddress, address indexed to, uint256 amount);
     event FullyRepaid(address loanAddress);
-    event RefundWithdrawn(address loanAddress, address lender, uint256 amount);
+    event RefundWithdrawn(address loanAddress, address indexed lender, uint256 amount);
     event FullyRefunded(address loanAddress);
-    event FailedToFund(address loanAddress, address lender, uint256 amount);
-    event LoanFundsWithdrawn(address loanAddress, address borrower, uint256 amount);
+    event FailedToFund(address loanAddress, address indexed lender, uint256 amount);
+    event LoanFundsWithdrawn(address loanAddress, address indexed borrower, uint256 amount);
     event LoanDefaulted(address loanAddress);
     event RefundmaxAmount(address loanAddress, uint256 refundmaxAmount);
 
