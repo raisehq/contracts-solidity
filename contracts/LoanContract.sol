@@ -183,12 +183,12 @@ contract LoanContract is LoanContractInterface {
 
         emit RefundWithdrawn(address(this), msg.sender, lenderBidAmount[msg.sender]);
 
+        DAIToken.transfer(msg.sender, lenderBidAmount[msg.sender]);
+        
         if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
-
-        DAIToken.transfer(msg.sender, lenderBidAmount[msg.sender]);
     }
 
     function withdrawRepayment() public onlyRepaid {
@@ -198,12 +198,12 @@ contract LoanContract is LoanContractInterface {
         lenderWithdrawn[msg.sender] = true;
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
 
+        DAIToken.transfer(msg.sender, amount);
+
         if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
-
-        DAIToken.transfer(msg.sender, amount);
     }
 
     function withdrawLoan() public onlyActive onlyOriginator {

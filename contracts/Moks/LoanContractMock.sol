@@ -23,13 +23,9 @@ contract LoanContractMock is LoanContractInterface {
         return true;
     }
 
-    function withdrawRepayment(address to) public {
-        to;
-    }
+    function withdrawRepayment() public {}
 
-    function withdrawLoan(address to) public {
-        to;
-    }
+    function withdrawLoan() public {}
 
     function onRepaymentReceived(address from, uint256 amount) public returns (bool) {
         from;
