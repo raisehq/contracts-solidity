@@ -1,5 +1,14 @@
 const { promisify } = require('util');
 
+const LoanState = (i) => [
+  'CREATED', // accepts bids until timelimit initial state
+  'FAILED_TO_FUND', // not fully funded in timelimit
+  'ACTIVE', // fully funded, inside timelimit
+  'DEFAULTED', // not repaid in time loanRepaymentLength
+  'REPAID', // the borrower repaid in full, lenders have yet to reclaim funds
+  'CLOSED' // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
+][i]
+
 async function waitNBlocks(web3, n) {
     await Promise.all(
         [...Array(n).keys()].map(i => {
@@ -10,6 +19,11 @@ async function waitNBlocks(web3, n) {
                 }, ()=> {});
         })
     );
+}
+
+async function latest(web3) {
+  const now = web3.utils.toBN((await web3.eth.getBlock('latest')).timestamp)
+  return now;
 }
 
 function advanceBlock(web3) {
@@ -38,21 +52,23 @@ async function  increaseTime(web3, duration) {
 }
 
 async function increaseToTime(web3, target) {
-  const BN = web3.utils.BN;
-  if (!BN.isBN(target)) {
-    target = new BN(target);
+  if (!web3.utils.isBN(target)) {
+    target = new web3.utils.BN(target);
   }
 
-  const now = (await latest());
-
+  const now = await latest(web3);
+  console.log('target', new Date(Number(target) * 1000))
+  console.log('now', new Date(Number(now) * 1000))
   if (target.lt(now)) throw Error(`Cannot increase current time (${now}) to a moment in the past (${target})`);
   const diff = target.sub(now);
-  return increase(diff);
+  return increaseTime(web3, diff);
 }
 
 module.exports = {
   waitNBlocks,
   advanceBlock,
   increaseTime,
-  increaseToTime
+  increaseToTime,
+  LoanState,
+  latest
 }
