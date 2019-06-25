@@ -232,7 +232,7 @@ contract LoanContract is LoanContractInterface {
             'Incorrect sum repaid'
         );
         require(borrowerDebt != 0, 'Borrower does not have any debt.');
-        require(DAIToken.balanceOf(address(this)) == borrowerDebt, 'Repayment amount is not the same');
+        require(borrowerDebt == amount, 'Repayment amount is not the same');
 
         if (isDefaulted()) {
             setState(LoanState.DEFAULTED);
@@ -294,5 +294,13 @@ contract LoanContract is LoanContractInterface {
 
     function getAuctionBalance() public view returns (uint256) {
         return auctionBalance;
+    }
+
+    function getLenderBidAmount(address lender) public view returns (uint256) {
+        return lenderBidAmount[lender];
+    }
+
+    function getLenderWithdrawn(address lender) public view returns (bool) {
+        return lenderWithdrawn[lender];
     }
 }

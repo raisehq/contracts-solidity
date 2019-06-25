@@ -400,7 +400,7 @@ contract('LoanContract', (accounts) => {
         })
 
         describe('Method withdrawRepayment', () => {
-            it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == ACTIVE', async () => {
+            it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID', async () => {
                 try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
                     await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -412,7 +412,6 @@ contract('LoanContract', (accounts) => {
                     await Loan.withdrawLoan(borrower, {from: borrower});
 
                     const amountToRepay = await Loan.borrowerDebt();
-
                     const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
                     await DAIToken.approve(DAIProxy.address, amountToRepay, { from: borrower });
@@ -425,6 +424,12 @@ contract('LoanContract', (accounts) => {
                     // State should change to REPAID
                     const endState = await Loan.currentState({from: owner});
                     expect(Number(endState)).to.equal(4);
+                    const lenderAmount = await Loan.getLenderBidAmount(lender);
+                    const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+                    const lenderBalanceBefore = await DAIToken.balanceOf(lender);
+                    await Loan.withdrawRepayment(lender, { from: lender });
+                    const lenderBalanceAfter = await DAIToken.balanceOf(lender);
+                    expect(Number(lenderBalanceAfter)).to.equal(Number(lenderBalanceBefore)+Number(lenderAmountWithInterest));
                 } catch (error) {
                     console.log('the error is:: ', error)
                     throw error;

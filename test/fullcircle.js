@@ -34,7 +34,7 @@ contract('Integration', (accounts) => {
 
     const averageMiningBlockTime = 15;
     
-    xdescribe('Test the full flow with the actual contracts', () => {
+    describe('Test the full flow with the actual contracts', () => {
         let lenderKYC;
         let lender2KYC;
         let lender3KYC;
