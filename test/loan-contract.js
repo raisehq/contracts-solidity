@@ -379,7 +379,7 @@ contract('LoanContract', (accounts) => {
                     const stateAfterFund = await Loan.currentState({from: owner});
                     expect(Number(stateAfterFund)).to.equal(2);
 
-                    await Loan.withdrawLoan(borrower, {from: borrower});
+                    await Loan.withdrawLoan({from: borrower});
                     const borrowerBalance = await DAIToken.balanceOf(borrower);
 
                     expect(Number(borrowerBalance)).to.equal(Number(borrowerBalancePrior) + 100);
@@ -409,7 +409,7 @@ contract('LoanContract', (accounts) => {
                     const stateAfterFund = await Loan.currentState({from: owner});
                     expect(Number(stateAfterFund)).to.equal(2);
 
-                    await Loan.withdrawLoan(borrower, {from: borrower});
+                    await Loan.withdrawLoan({from: borrower});
 
                     const amountToRepay = await Loan.borrowerDebt();
                     const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
@@ -427,7 +427,7 @@ contract('LoanContract', (accounts) => {
                     const lenderAmount = await Loan.getLenderBidAmount(lender);
                     const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
                     const lenderBalanceBefore = await DAIToken.balanceOf(lender);
-                    await Loan.withdrawRepayment(lender, { from: lender });
+                    await Loan.withdrawRepayment({ from: lender });
                     const lenderBalanceAfter = await DAIToken.balanceOf(lender);
                     expect(Number(lenderBalanceAfter)).to.equal(Number(lenderBalanceBefore)+Number(lenderAmountWithInterest));
                 } catch (error) {
