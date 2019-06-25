@@ -17,22 +17,20 @@ contract LoanContractMock is LoanContractInterface {
         return auctionBalance;
     }
 
-    function onFundingReceived(address lender, uint256 amount) public {
+    function onFundingReceived(address lender, uint256 amount) public returns (bool) {
         lenderBidAmount[lender] += amount;
         auctionBalance += amount;
+        return true;
     }
 
-    function withdrawRepayment(address to) public {
-        to;
-    }
+    function withdrawRepayment() public {}
 
-    function withdrawLoan(address to) public {
-        to;
-    }
+    function withdrawLoan() public {}
 
-    function onRepaymentReceived(address from, uint256 amount) public {
+    function onRepaymentReceived(address from, uint256 amount) public returns (bool) {
         from;
         amount;
+        return true;
     }
 
     function getInterestRate() public view returns (uint256) {
@@ -50,5 +48,11 @@ contract LoanContractMock is LoanContractInterface {
     function getLenderWithdrawnAmount(address lender) public pure returns (uint256){
         lender;
         return 2;
+    }
+    function getMaxAmount() external view returns (uint256) {
+        return 200;
+    }
+    function getAuctionBalance() external view returns (uint256) {
+        return 0;
     }
 }

@@ -135,7 +135,7 @@ contract('Integration', (accounts) => {
             const fundedLoanState = Number(await Loan.currentState());
 
             // borrower takes money from loan
-            await Loan.withdrawLoan(borrower, {from: borrower}); 
+            await Loan.withdrawLoan({from: borrower}); 
             
             // check borrower received amount
             const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
@@ -153,7 +153,7 @@ contract('Integration', (accounts) => {
             const stateAfterRepay = Number(await Loan.currentState())
 
             // lender takes out money
-            const txWithdraw = await Loan.withdrawRepayment(lender, {from: lender});
+            const txWithdraw = await Loan.withdrawRepayment({from: lender});
             const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
             const lenderWithdrawed = await Loan.lenderWithdrawn(lender);
             const endState = Number(await Loan.currentState())
@@ -206,7 +206,7 @@ contract('Integration', (accounts) => {
 
 
             // borrower takes money from loan
-            await Loan.withdrawLoan(borrower, {from: borrower}); 
+            await Loan.withdrawLoan({from: borrower}); 
             
             // borrower current debt with interests
             const totalDebt = Number(await Loan.borrowerDebt());
@@ -229,9 +229,9 @@ contract('Integration', (accounts) => {
             const lenderTwoBeforeRepay = await DAIToken.balanceOf(lender2);
             const lenderThreeBeforeRepay = await DAIToken.balanceOf(lender3)
             // lender takes out money
-            await Loan.withdrawRepayment(lender, {from: lender});
-            await Loan.withdrawRepayment(lender2, {from: lender2});
-            await Loan.withdrawRepayment(lender3, {from: lender3});
+            await Loan.withdrawRepayment({from: lender});
+            await Loan.withdrawRepayment({from: lender2});
+            await Loan.withdrawRepayment({from: lender3});
             const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
             const lender2BalanceAfterRepayment = await DAIToken.balanceOf(lender2);
             const lender3BalanceAfterRepayment = await DAIToken.balanceOf(lender3);
@@ -287,7 +287,7 @@ contract('Integration', (accounts) => {
             await waitNBlocks(100);
 
             // borrower takes money from loan
-            await Loan.withdrawLoan(borrower, {from: borrower}); 
+            await Loan.withdrawLoan({from: borrower}); 
             
             // check borrower received amount
             const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
@@ -308,8 +308,8 @@ contract('Integration', (accounts) => {
             const lenderTwoBeforeRepay = await DAIToken.balanceOf(lender2);
 
             // lender takes out money
-            await Loan.withdrawRepayment(lender, {from: lender});
-            await Loan.withdrawRepayment(lender2, {from: lender2});
+            await Loan.withdrawRepayment({from: lender});
+            await Loan.withdrawRepayment({from: lender2});
             const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
             const lender2BalanceAfterRepayment = await DAIToken.balanceOf(lender2);
             const lenderOneWitdrawn = await Loan.lenderWithdrawn(lender);
