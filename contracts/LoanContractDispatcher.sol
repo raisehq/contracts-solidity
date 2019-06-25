@@ -10,14 +10,14 @@ contract LoanContractDispatcher {
 
     mapping(address => bool) public isLoanContract;
 
-    modifier onlyKYC { // check if user is kyced
+    modifier onlyKYC {
         require(auth.isKYCConfirmed(msg.sender), 'user does not have KYC');
         _;
     }
 
     event LoanContractCreated(
         address contractAddress,
-        address originator,
+        address indexed originator,
         uint256 auctionBlockLength,
         uint256 minAmount,
         uint256 maxAmount,
