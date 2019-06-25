@@ -18,21 +18,30 @@ contract DAIProxy is DAIProxyInterface {
     }
 
     function fund(address loanAddress, uint256 fundingAmount) public onlyKYCanFund onlyHasDepositCanFund  {
-        transfer(loanAddress, fundingAmount);
-
+        uint256 newFundingAmount = fundingAmount;
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
-        loanContract.onFundingReceived(msg.sender, fundingAmount);
 
-        // emit LoanFunded(msg.sender, loanAddress, fundingAmount);
+        uint256 auctionBalance = loanContract.getAuctionBalance();
+        uint256 maxAmount = loanContract.getMaxAmount();
+
+        if (auctionBalance + fundingAmount > maxAmount) {
+            newFundingAmount = maxAmount - auctionBalance;
+        }
+
+        bool canTransfer = loanContract.onFundingReceived(msg.sender, newFundingAmount);
+        if (canTransfer == true) {
+            transfer(loanAddress, newFundingAmount);
+        }
+
     }
 
     function repay(address loanAddress, uint256 repaymentAmount) public onlyKYCanFund {
-        transfer(loanAddress, repaymentAmount);
-
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
-        loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
+        bool canTransfer = loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
 
-        // emit RepaymentReceived(msg.sender, loanAddress, repaymentAmount);
+        if (canTransfer == true) {
+            transfer(loanAddress, repaymentAmount);
+        }
     }
 
     function transfer(address loanAddress, uint256 amount) internal {

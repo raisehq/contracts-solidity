@@ -6,7 +6,6 @@ const truffleAssert = require('truffle-assertions');
 const DAIProxyContract = artifacts.require('DAIProxyMock');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 const LoanContract = artifacts.require('LoanContract');
-const {promisify} = require('util');
 
 const helpers = require('./helpers.js');
 
@@ -99,9 +98,9 @@ contract('LoanContract', (accounts) => {
                     
                     // Loan state after funding
                     const loanState = await Loan.currentState();
-                    
                     // Subscribe to events
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
+
                     const fundedByLender = await Loan.lenderBidAmount(lender, {from: owner});
                     
                     expect(Number(fundedByLender)).to.equal(100);
@@ -110,11 +109,12 @@ contract('LoanContract', (accounts) => {
                     // LoanContract state should mutate to ACTIVE == 2
                     expect(Number(loanState)).to.equal(2);
                 } catch (error) {
+                    console.log(error)
                     expect(error).to.equal(undefined);
                 }
             });
 
-            it('Expects Lender to be able to send bigger funds to Loan, receive back the difference, and mutate from CREATED to ACTIVE state', async () => {
+            it('Expects Lender to be able to send bigger funds to Loan, only loan amunt needed, and mutate from CREATED to ACTIVE state', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
                     const firstState = await Loan.currentState();
@@ -400,8 +400,8 @@ contract('LoanContract', (accounts) => {
         })
 
         describe('Method withdrawRepayment', () => {
-            it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == ACTIVE', async () => {
-                 try {
+            it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID', async () => {
+                try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
                     await DAIProxy.fund(Loan.address, 100, {from: lender});
                     
@@ -412,7 +412,6 @@ contract('LoanContract', (accounts) => {
                     await Loan.withdrawLoan(borrower, {from: borrower});
 
                     const amountToRepay = await Loan.borrowerDebt();
-
                     const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
                     await DAIToken.approve(DAIProxy.address, amountToRepay, { from: borrower });
@@ -425,6 +424,12 @@ contract('LoanContract', (accounts) => {
                     // State should change to REPAID
                     const endState = await Loan.currentState({from: owner});
                     expect(Number(endState)).to.equal(4);
+                    const lenderAmount = await Loan.getLenderBidAmount(lender);
+                    const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+                    const lenderBalanceBefore = await DAIToken.balanceOf(lender);
+                    await Loan.withdrawRepayment(lender, { from: lender });
+                    const lenderBalanceAfter = await DAIToken.balanceOf(lender);
+                    expect(Number(lenderBalanceAfter)).to.equal(Number(lenderBalanceBefore)+Number(lenderAmountWithInterest));
                 } catch (error) {
                     console.log('the error is:: ', error)
                     throw error;

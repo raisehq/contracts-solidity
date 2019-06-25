@@ -120,11 +120,11 @@ contract LoanContract is LoanContractInterface {
         DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
         originator = _originator;
-        
+
         bpMaxInterestRate = _bpMaxInterestRate;
         minAmount = _minAmount;
         maxAmount = _maxAmount;
-        
+
         auctionBlockLength = _auctionBlockLength;
         auctionStartBlock = block.number;
         auctionEndBlock = auctionStartBlock.add(auctionBlockLength);
@@ -136,27 +136,25 @@ contract LoanContract is LoanContractInterface {
 
     // Notes:
     // - This function does not track if real ERC20 balance has changed. Needs to blindly "trust" DaiProxy.
-    // - If user sent tokens to LoanContract and is expired, it should be able to recover his
-    // funds via the withdrawal pattern. Or let DAIProxy to manage the issue if this function returns "false".
-    function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy {
-        if (auctionBalance < minAmount && isAuctionExpired()) {
-            setState(LoanState.FAILED_TO_FUND);
-            DAIToken.transfer(lender, amount);
-            emit FailedToFund(address(this), lender, amount);
-            emit RefundmaxAmount(address(this), auctionBalance);
-            return;
+    function onFundingReceived(address lender, uint256 amount) public onlyCreated onlyProxy returns (bool) {
+        if (isAuctionExpired()) {
+            if (auctionBalance < minAmount) {
+                setState(LoanState.FAILED_TO_FUND);
+                emit FailedToFund(address(this), lender, amount);
+                return false;
+            } else {
+                setState(LoanState.ACTIVE);
+                borrowerDebt = calculateValueWithInterest(auctionBalance);
+                emit FailedToFund(address(this), lender, amount);
+                emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
+                return false;
+            }
         }
 
         lenderBidAmount[lender] = lenderBidAmount[lender].add(amount);
         auctionBalance = auctionBalance.add(amount);
 
-        if (auctionBalance > maxAmount) {
-            uint256 overflow = auctionBalance.sub(maxAmount);
-            auctionBalance = auctionBalance.sub(overflow);
-            lenderBidAmount[lender] = lenderBidAmount[lender].sub(overflow);
-            DAIToken.transfer(lender, overflow);
-            emit Funded(address(this), lender, amount.sub(overflow));
-        } else if (auctionBalance >= minAmount && !minimumReached) {
+        if (auctionBalance >= minAmount && !minimumReached) {
             minimumReached = true;
             emit Funded(address(this), lender, amount);
             emit MinimumFundingReached(address(this), auctionBalance);
@@ -164,18 +162,17 @@ contract LoanContract is LoanContractInterface {
             emit Funded(address(this), lender, amount);
         }
 
-        if ( (auctionBalance == maxAmount) ||
-             (minimumReached && isAuctionExpired() && currentState == LoanState.CREATED)
-        ) {
+        if (auctionBalance == maxAmount) {
             setState(LoanState.ACTIVE);
             auctionFundedBlock = block.number;
             termStartTimestamp = block.timestamp;
             borrowerDebt = calculateValueWithInterest(auctionBalance);
             emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
-        } 
+        }
+        return true;
     }
 
-    //put these in proxy??? 
+    //put these in proxy???
     // Seems this function bypass KYC? A user that we detect that did fraudulent KYC procedure
     // after the auction can be removed from KYC registry, but the fraud users could still refund from this method.
 
@@ -185,9 +182,9 @@ contract LoanContract is LoanContractInterface {
     function withdrawRefund(address to) public onlyFailedToFund {
         require(!lenderWithdrawn[msg.sender], 'Lender already withdrawn');
         require(lenderBidAmount[msg.sender] > 0, 'Account did not deposited.');
-        
+
         lenderWithdrawn[msg.sender] = true;
-        
+
         DAIToken.transfer(to, lenderBidAmount[msg.sender]);
 
         emit RefundWithdrawn(address(this), to, lenderBidAmount[msg.sender]);
@@ -228,26 +225,24 @@ contract LoanContract is LoanContractInterface {
         emit LoanFundsWithdrawn(address(this), to, auctionBalance);
     }
 
-    // this happens after transfer in daiproxy => if Defaulted we need to return funds ???
-    function onRepaymentReceived(address from, uint256 amount) public onlyActive onlyProxy {
+    function onRepaymentReceived(address from, uint256 amount) public onlyActive onlyProxy returns (bool) {
         require(from == originator, 'from address is not the originator');
         require(
             amount == borrowerDebt,
             'Incorrect sum repaid'
         );
         require(borrowerDebt != 0, 'Borrower does not have any debt.');
-        require(DAIToken.balanceOf(address(this)) == borrowerDebt, 'Repayment amount is not the same');
+        require(borrowerDebt == amount, 'Repayment amount is not the same');
 
-        // hacer modifier en dai proxy con is defaulted
         if (isDefaulted()) {
             setState(LoanState.DEFAULTED);
-            DAIToken.transfer(from, amount); // this transfer could be prevented if we control it from daiproxy
             emit LoanDefaulted(address(this));
-            return;
+            return false;
         }
 
         setState(LoanState.REPAID);
         emit LoanRepaid(address(this), block.timestamp);
+        return true;
     }
 
     function isAuctionExpired() public view returns (bool) {
@@ -291,5 +286,21 @@ contract LoanContract is LoanContractInterface {
         } else {
             return 0;
         }
+    }
+
+    function getMaxAmount() public view returns (uint256) {
+        return maxAmount;
+    }
+
+    function getAuctionBalance() public view returns (uint256) {
+        return auctionBalance;
+    }
+
+    function getLenderBidAmount(address lender) public view returns (uint256) {
+        return lenderBidAmount[lender];
+    }
+
+    function getLenderWithdrawn(address lender) public view returns (bool) {
+        return lenderWithdrawn[lender];
     }
 }
