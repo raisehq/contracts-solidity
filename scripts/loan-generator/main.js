@@ -1,6 +1,7 @@
 const { loanGenerator } = require('./LoanGenerator');
-const { randomLoansMutator } = require('./LoanMutator.js');
-const { depositIfNeeded } = require('./DepositIfNeeded.js');
+const { randomLoansMutator } = require('./LoanMutator');
+const { depositIfNeeded } = require('./DepositIfNeeded');
+const { approveCurrentAccounts } = require('./InfiniteApprove');
 
 module.exports = async function (callback) {
   try {
@@ -8,6 +9,7 @@ module.exports = async function (callback) {
     const network = await web3.eth.net.getId();
     if (network !== 1) {
       await depositIfNeeded(web3);
+      await approveCurrentAccounts(web3);
       console.log('~ Generating',numberLoans, 'loans')
       const { createdLoans, errors } = await loanGenerator(numberLoans, web3);
 

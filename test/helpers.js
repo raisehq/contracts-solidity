@@ -49,9 +49,18 @@ async function increaseToTime(target) {
   return increase(diff);
 }
 
+// Convenience constants for commonly-used or difficult to remember bignum values
+// Source: compound https://github.com/compound-finance/compound-money-market/blob/241541a62d0611118fb4e7eb324ac0f84bb58c48/test/Utils.js#L24
+const bigNums = {
+  // 2^256 - 1  http://www.wolframalpha.com/input/?i=2%5E256+-+1
+  maxUint: '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+};
+
+
 module.exports = {
   waitNBlocks,
   advanceBlock,
   increaseTime,
-  increaseToTime
+  increaseToTime,
+  bigNums
 }
