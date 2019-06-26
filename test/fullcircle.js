@@ -16,6 +16,7 @@ const LoanContractDispatcherContract = artifacts.require('LoanContractDispatcher
 // mine blocks so it passes "time"
 const { waitNBlocks } = require('./helpers');
 
+const HeroAmount = '200000000000000000000';
 
 contract('Integration', (accounts) => {
     let DAIProxy;
@@ -60,9 +61,9 @@ contract('Integration', (accounts) => {
             // give permision to the deposit registry to deposit tokens instead of the lender
             DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner});
 
-            await HeroToken.approve(DepositRegistry.address, 200, { from: lender });
-            await HeroToken.approve(DepositRegistry.address, 200, { from: lender2 });
-            await HeroToken.approve(DepositRegistry.address, 200, { from: lender3 });
+            await HeroToken.approve(DepositRegistry.address, HeroAmount, { from: lender });
+            await HeroToken.approve(DepositRegistry.address, HeroAmount, { from: lender2 });
+            await HeroToken.approve(DepositRegistry.address, HeroAmount, { from: lender3 });
             
             await DepositRegistry.depositFor(lender, {from: owner});
             await DepositRegistry.depositFor(lender2, {from: owner});

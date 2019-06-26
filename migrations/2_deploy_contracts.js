@@ -5,7 +5,7 @@ const HeroToken = artifacts.require('HeroOrigenToken');
 const DAI = artifacts.require('DAIFake');
 const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
-const IntAccounts = require('../int.accounts.json');
+const devAccounts = require('../int.accounts.json');
 const { writeFile } = require('fs');
 
 const FileHelper = {
@@ -17,7 +17,8 @@ const FileHelper = {
     )
 };
 
-const migrationInt = async (deployer, deployerAddress) => {
+const migrationInt = async (deployer, accounts) => {
+  const deployerAddress = accounts[0];
   await deployer.deploy(HeroToken, { from: deployerAddress });
 
   await deployer.deploy(DAI, { from: deployerAddress });
@@ -85,12 +86,12 @@ const migrationInt = async (deployer, deployerAddress) => {
   const heroDeployed = await HeroToken.deployed();
   const daiDeployed = await DAI.deployed();
   const kycDeployed = await KYC.deployed();
-
+  const IntAccounts = [...accounts, ...devAccounts];
   if (IntAccounts.length > 0) {
     console.log(`> Sending tokens and adding to KYC registry ${IntAccounts.length + 1} accounts`, '\n')
   }
   for (let i = 0; i < IntAccounts.length; i++) {
-    const tokens = web3.utils.toWei('1000', 'ether');
+    const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
     // HEROTOKENS
     await heroDeployed.mint(IntAccounts[i], tokens, {
       from: deployerAddress,
@@ -116,7 +117,8 @@ const migrationInt = async (deployer, deployerAddress) => {
   await FileHelper.write('./contracts.json', data);
 };
 
-const migrationLive = async (deployer, deployerAddress) => {
+const migrationLive = async (deployer, accounts) => {
+  const deployerAddress = accounts[0]
   const heroTokenAddress = process.env.HERO_TOKEN_ADDRESS;
   const daiAddress = process.env.DAI_ADDRESS;
 
@@ -171,9 +173,9 @@ const migrationLive = async (deployer, deployerAddress) => {
 
 module.exports = async (deployer, network, accounts) => {
   const deployerAddress = accounts[0];
-  if (network == 'live') {
+  if (network == 'main') {
     await migrationLive(deployer, deployerAddress);
   } else {
-    await migrationInt(deployer, deployerAddress);
+    await migrationInt(deployer, accounts);
   }
 };

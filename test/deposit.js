@@ -4,6 +4,9 @@ chai.use(chaiAsPromised);
 const { expect } = chai;
 const DepositRegistryContract = artifacts.require('DepositRegistry');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
+
+const HeroAmount = '200000000000000000000';
+
 contract('Deposit Contract', function (accounts) {
  
   let token
@@ -18,7 +21,7 @@ contract('Deposit Contract', function (accounts) {
       HeroToken = await HeroFakeTokenContract.new()
       DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner });
       await HeroToken.transferFakeHeroTokens(user);
-      await HeroToken.approve(DepositRegistry.address, 200,{ from: user });
+      await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
 
       await DepositRegistry.depositFor(user, { from: owner });
       assert.equal(await DepositRegistry.hasDeposited(user), true);

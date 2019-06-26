@@ -9,6 +9,8 @@ const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 const KYCContract = artifacts.require('KYCRegistry');
 const MockLoanContract = artifacts.require('LoanContractMock');
 
+const HeroAmount = '200000000000000000000';
+
 contract('DAIProxy Contract', function (accounts) {
     let DAIProxy;
     let Auth;
@@ -37,7 +39,7 @@ contract('DAIProxy Contract', function (accounts) {
         });
         it('Expects the amount of dai tokens to be reduced in the amount funded', async () => {
             try {
-                await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
+                await HeroFakeToken.approve(DepositRegistry.address, HeroAmount, { from: user });
                 await DepositRegistry.depositFor(user, {from: owner});
                 KYCRegistry = await KYCContract.new();
                 await KYCRegistry.add(user);
@@ -55,7 +57,7 @@ contract('DAIProxy Contract', function (accounts) {
         });
         it('Expects an error when there are not enough dai funds', async () => {
             try {
-                await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
+                await HeroFakeToken.approve(DepositRegistry.address, HeroAmount, { from: user });
                 await DepositRegistry.depositFor(user, {from: owner});
                 KYCRegistry = await KYCContract.new();
                 await KYCRegistry.add(user);
@@ -69,7 +71,7 @@ contract('DAIProxy Contract', function (accounts) {
         });
         it('Expects an error when user not KYC', async () => {
             try {
-                await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
+                await HeroFakeToken.approve(DepositRegistry.address, HeroAmount, { from: user });
                 await DepositRegistry.depositFor(user, {from: owner});
                 KYCRegistry = await KYCContract.new();
                 Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
@@ -108,7 +110,7 @@ contract('DAIProxy Contract', function (accounts) {
         });
         it('Expects the amount of dai tokens to be reduced in the amount repaid', async () => {
             try {
-                await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
+                await HeroFakeToken.approve(DepositRegistry.address, HeroAmount, { from: user });
                 await DepositRegistry.depositFor(user, {from: owner});
                 KYCRegistry = await KYCContract.new();
                 await KYCRegistry.add(user);
@@ -126,7 +128,7 @@ contract('DAIProxy Contract', function (accounts) {
         });
         it('Expects an error when there are not enough dai funds', async () => {
             try {
-                await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
+                await HeroFakeToken.approve(DepositRegistry.address, HeroAmount, { from: user });
                 await DepositRegistry.depositFor(user, {from: owner});
                 KYCRegistry = await KYCContract.new();
                 await KYCRegistry.add(user);
@@ -140,7 +142,7 @@ contract('DAIProxy Contract', function (accounts) {
         });
         it('Expects an error when user not KYC', async () => {
             try {
-                await HeroFakeToken.approve(DepositRegistry.address, 200, { from: user });
+                await HeroFakeToken.approve(DepositRegistry.address, HeroAmount, { from: user });
                 await DepositRegistry.depositFor(user, {from: owner});
                 KYCRegistry = await KYCContract.new();
                 Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);

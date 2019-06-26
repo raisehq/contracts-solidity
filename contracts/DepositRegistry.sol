@@ -5,7 +5,7 @@ import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
 contract DepositRegistry is Ownable {
   mapping(address => bool) deposited;
-  uint256 DEPOSIT_AMNT = 200;
+  uint256 DEPOSIT_AMNT = 200000000000000000000;
   ERC20 token;
 
   event ProxyDepositCompleted(address indexed user);
@@ -16,26 +16,21 @@ contract DepositRegistry is Ownable {
     token = ERC20(tokenAddress);
   }
 
-  function depositFor(address _user) public {
-    require(!deposited[_user], 'not again');
-    uint256 remaining = token.allowance(_user, address(this));
-    uint256 balance = token.balanceOf(_user);
-    require(balance >= DEPOSIT_AMNT, 'no enough founds');
-    require(remaining >= DEPOSIT_AMNT, 'not allowed');
-    
-    token.transferFrom(_user, address(this), DEPOSIT_AMNT);
-    deposited[_user] = true;
+  function depositFor(address from) public {
+    require(deposited[from] == false, 'alredy deposited');
+    require(token.allowance(from, address(this)) >= DEPOSIT_AMNT, 'address not approved amount');
 
-    emit UserDepositCompleted(_user);
-    emit ProxyDepositCompleted(msg.sender);
+    deposited[from] = true;
+    token.transferFrom(from, address(this), DEPOSIT_AMNT);
+
+    emit UserDepositCompleted(from);
+    emit ProxyDepositCompleted(from);
   }
 
   function withdraw(address to) public {
-    require(deposited[msg.sender], 'you are not in');
-    uint256 balance = token.balanceOf(address(this));
-    require(balance >= DEPOSIT_AMNT, 'no enough founds');
+    require(deposited[to], 'address not deposited');
+    deposited[to] = false;
     token.transfer(to, DEPOSIT_AMNT);
-
     emit UserWithdrawnCompleted(to);
   }
   function hasDeposited(address user) public view returns (bool) {

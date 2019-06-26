@@ -13,7 +13,7 @@ contract LoanContract is LoanContractInterface {
     using SafeMath for uint256;
     ERC20 DAIToken;
     DAIProxyInterface proxy;
-    address originator;
+    address public originator;
 
     uint256 public minAmount;
     uint256 public maxAmount;
