@@ -173,7 +173,7 @@ const migrationLive = async (deployer, accounts) => {
 
 module.exports = async (deployer, network, accounts) => {
   const deployerAddress = accounts[0];
-  if (network == 'mainnet') {
+  if (network == 'main') {
     await migrationLive(deployer, deployerAddress);
   } else {
     await migrationInt(deployer, accounts);
