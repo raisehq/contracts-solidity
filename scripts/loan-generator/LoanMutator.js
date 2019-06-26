@@ -86,8 +86,7 @@ const callAndAddress = async (contracts, method) => {
 }
 
 const sendAll = async (contracts, method, args) => {
-    const promiseMap = () => contracts.map(async contract => contract.methods[method]().send(args));
-    return Promise.all(promiseMap());
+    return mapSeries(contracts, (contract) => contract.methods[method]().send(args));
 }
 
 const reportAuctionEndings = (min, max) => {
