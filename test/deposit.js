@@ -34,13 +34,36 @@ contract('Deposit Contract', function (accounts) {
     it('should not be able to successfully call withdraw if the message sender is not deposited', async () => {
       HeroToken = await HeroFakeTokenContract.new();
       KYC = await KYCContract.new();
+
+      await KYC.add(owner, {from: owner });
+
       DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address,  { from: owner });
       await HeroToken.transferFakeHeroTokens(user);
       await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
 
       await DepositRegistry.depositFor(user, { from: owner });
+
       try {
-        DepositRegistry.withdraw(owner, {from: owner});
+        await DepositRegistry.withdraw(owner, {from: owner});
+      } catch (error) {
+        expect(error).to.not.equal(undefined);
+      }
+    });
+
+    it('should not be able to successfully call withdraw if the message sender has not passed KYC', async () => {
+      HeroToken = await HeroFakeTokenContract.new();
+      KYC = await KYCContract.new();
+
+      DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address,  { from: owner });
+      await HeroToken.transferFakeHeroTokens(user);
+      await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
+
+      await DepositRegistry.depositFor(user, { from: owner });
+
+      assert.equal(await DepositRegistry.hasDeposited(user), true);
+
+      try {
+        await DepositRegistry.withdraw(user, {from: user});
       } catch (error) {
         expect(error).to.not.equal(undefined);
       }

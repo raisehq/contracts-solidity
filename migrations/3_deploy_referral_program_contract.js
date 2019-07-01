@@ -39,8 +39,6 @@ const migration = async (deployer, accounts) => {
     }
   };
 
-  console.log(data);
-
   await FileHelper.write('./contracts.json', data);
 };
 
