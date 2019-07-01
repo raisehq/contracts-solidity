@@ -29,13 +29,6 @@ const migrationInt = async (deployer, accounts) => {
     from: deployerAddress
   });
 
-  await deployer.deploy(ReferralTracker, Deposit.address, HeroToken.address, {
-    from: deployerAddress
-  });
-
-  const depositContract = await Deposit.deployed();
-  await depositContract.setReferralTracker(ReferralTracker.address);
-
   await deployer.deploy(Auth, KYC.address, Deposit.address, {
     from: deployerAddress
   });
@@ -135,13 +128,6 @@ const migrationLive = async (deployer, accounts) => {
   await deployer.deploy(Deposit, heroTokenAddress, KYC.address, {
     from: deployerAddress
   });
-
-  await deployer.deploy(ReferralTracker, Deposit.address, HeroToken.address, {
-    from: deployerAddress
-  });
-
-  const depositContract = await Deposit.deployed();
-  await depositContract.setReferralTracker(ReferralTracker.address);
 
   await deployer.deploy(Auth, KYC.address, Deposit.address, {
     from: deployerAddress
