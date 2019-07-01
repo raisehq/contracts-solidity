@@ -4,7 +4,7 @@ import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 
 contract ReferralTracker is Ownable {
-    uint256 public referralBonus;
+    uint256 public REFERRAL_BONUS = 100000000000000000000;
 
     mapping(address => uint256) public unclaimedReferrals;
     address public registryAddress;
@@ -13,8 +13,7 @@ contract ReferralTracker is Ownable {
     event ReferralRegistered(address referrer);
     event ReferralBonusWithdrawn(address referrer, uint256 amount);
 
-    constructor(uint256 referralBonus_, address registryAddress_, address tokenAdress) public {
-        referralBonus = referralBonus_;
+    constructor(address registryAddress_, address tokenAdress) public {
         registryAddress = registryAddress_;
         token = ERC20(tokenAdress);
     }
@@ -36,10 +35,10 @@ contract ReferralTracker is Ownable {
 
     function withdraw(address to) public {
         require(unclaimedReferrals[msg.sender] > 0);
-        uint256 amount = referralBonus*unclaimedReferrals[msg.sender];
+        uint256 amount = REFERRAL_BONUS*unclaimedReferrals[msg.sender];
         unclaimedReferrals[msg.sender] = 0;
 
-        token.transferFrom(address(this), to, amount);
+        token.transfer(to, amount);
 
         emit ReferralBonusWithdrawn(msg.sender, amount);
     }

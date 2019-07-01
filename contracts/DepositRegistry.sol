@@ -17,10 +17,13 @@ contract DepositRegistry is Ownable {
   event UserDepositCompleted(address indexed user);
   event UserWithdrawnCompleted(address indexed user);
 
-  constructor(address tokenAddress, address referralAddress, address kycAddress) public {
+  constructor(address tokenAddress, address kycAddress) public {
     token = ERC20(tokenAddress);
-    ref = ReferralTracker(referralAddress);
     kyc = KYCRegistry(kycAddress);
+  }
+
+  function setReferralTracker(address contractAddress) public onlyOwner {
+    ref = ReferralTracker(contractAddress);
   }
 
   function depositFor(address from) public {
