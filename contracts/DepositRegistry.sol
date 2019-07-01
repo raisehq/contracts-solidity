@@ -28,10 +28,10 @@ contract DepositRegistry is Ownable {
   }
 
   function withdraw(address to) public {
-    require(deposited[to], 'address not deposited');
-    deposited[to] = false;
+    require(deposited[msg.sender], 'address not deposited');
+    deposited[msg.sender] = false;
     token.transfer(to, DEPOSIT_AMNT);
-    emit UserWithdrawnCompleted(to);
+    emit UserWithdrawnCompleted(msg.sender);
   }
   function hasDeposited(address user) public view returns (bool) {
     return deposited[user];
