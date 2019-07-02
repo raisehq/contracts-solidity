@@ -5,6 +5,7 @@ const HeroToken = artifacts.require('HeroOrigenToken');
 const DAI = artifacts.require('DAIFake');
 const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
+const ReferralTracker = artifacts.require('ReferralTracker');
 const devAccounts = require('../int.accounts.json');
 const { writeFile } = require('fs');
 
@@ -20,13 +21,14 @@ const FileHelper = {
 const migrationInt = async (deployer, accounts) => {
   const deployerAddress = accounts[0];
   await deployer.deploy(HeroToken, { from: deployerAddress });
-
   await deployer.deploy(DAI, { from: deployerAddress });
 
-  await deployer.deploy(Deposit, HeroToken.address, {
+  await deployer.deploy(KYC, { from: deployerAddress });
+
+  await deployer.deploy(Deposit, HeroToken.address, KYC.address, {
     from: deployerAddress
   });
-  await deployer.deploy(KYC, { from: deployerAddress });
+
   await deployer.deploy(Auth, KYC.address, Deposit.address, {
     from: deployerAddress
   });
@@ -39,9 +41,9 @@ const migrationInt = async (deployer, accounts) => {
     DAI.address,
     DAIProxy.address,
   ];
-  const dispatcherFrom = { from: deployerAddress }
+  const dispatcherFrom = { from: deployerAddress };
   const LoanFactory = new web3.eth.Contract(LoanDispatcher.abi, null, { data: LoanDispatcher.bytecode });
-  const LoanFactoryEstimatedGas = await LoanFactory.deploy({arguments: dispatcherArgs}).estimateGas(dispatcherFrom)
+  const LoanFactoryEstimatedGas = await LoanFactory.deploy({arguments: dispatcherArgs}).estimateGas(dispatcherFrom);
   
   await deployer.deploy(
     LoanDispatcher,
@@ -95,17 +97,17 @@ const migrationInt = async (deployer, accounts) => {
     // HEROTOKENS
     await heroDeployed.mint(IntAccounts[i], tokens, {
       from: deployerAddress,
-      gas: 8000000
+      gas: 800000
     });
     // DAI TOKENS
     await daiDeployed.transferAmountToAddress(IntAccounts[i], tokens, {
       from: deployerAddress,
-      gas: 8000000
+      gas: 800000
     });
     // ADD ADDRESS TO KYC
     await kycDeployed.add(IntAccounts[i], {
       from: deployerAddress,
-      gas: 8000000
+      gas: 800000
     });
     const inKyc = await kycDeployed.isConfirmed(IntAccounts[i]);
     if (inKyc) {
@@ -118,14 +120,15 @@ const migrationInt = async (deployer, accounts) => {
 };
 
 const migrationLive = async (deployer, accounts) => {
-  const deployerAddress = accounts[0]
+  const deployerAddress = accounts[0];
   const heroTokenAddress = process.env.HERO_TOKEN_ADDRESS;
   const daiAddress = process.env.DAI_ADDRESS;
 
-  await deployer.deploy(Deposit, heroTokenAddress, {
+  await deployer.deploy(KYC, { from: deployerAddress });
+  await deployer.deploy(Deposit, heroTokenAddress, KYC.address, {
     from: deployerAddress
   });
-  await deployer.deploy(KYC, { from: deployerAddress });
+
   await deployer.deploy(Auth, KYC.address, Deposit.address, {
     from: deployerAddress
   });

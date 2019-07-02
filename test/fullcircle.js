@@ -1,7 +1,7 @@
-const chai = require('chai')
-const chaiAsPromised = require('chai-as-promised')
-chai.use(chaiAsPromised)
-const truffleAssert = require('truffle-assertions')
+const chai = require('chai');
+const chaiAsPromised = require('chai-as-promised');
+chai.use(chaiAsPromised);
+const truffleAssert = require('truffle-assertions');
 const { expect } = chai;
 const web3 = global.web3;
 const DAIProxyContract = artifacts.require('DAIProxy');
@@ -25,7 +25,7 @@ contract('Integration', (accounts) => {
     let DepositRegistry;
     let Auth;
     let KYCRegistry;
-    let LoanDispatcher
+    let LoanDispatcher;
 
     const owner = accounts[0];
     const lender = accounts[1];
@@ -59,7 +59,7 @@ contract('Integration', (accounts) => {
             await KYCRegistry.add(borrower);
             
             // give permision to the deposit registry to deposit tokens instead of the lender
-            DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  { from: owner});
+            DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  KYCRegistry.address, { from: owner});
 
             await HeroToken.approve(DepositRegistry.address, HeroAmount, { from: lender });
             await HeroToken.approve(DepositRegistry.address, HeroAmount, { from: lender2 });
