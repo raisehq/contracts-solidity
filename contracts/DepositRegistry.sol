@@ -45,7 +45,7 @@ contract DepositRegistry is Ownable {
     deposited[from] = true;
     token.transferFrom(from, address(this), DEPOSIT_AMNT);
 
-    ref.registerReferral(referrer);
+    ref.registerReferral(referrer, msg.sender);
 
     emit UserDepositCompleted(from);
     emit ProxyDepositCompleted(from);
