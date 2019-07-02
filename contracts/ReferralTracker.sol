@@ -23,7 +23,7 @@ contract ReferralTracker is Ownable {
         _;
     }
 
-    function drawFunds(uint256 amount) public onlyOwner {
+    function addFunds(uint256 amount) public onlyOwner {
         token.transferFrom(msg.sender, address(this), amount);
     }
 
@@ -34,7 +34,7 @@ contract ReferralTracker is Ownable {
     }
 
     function withdraw(address to) public {
-        require(unclaimedReferrals[msg.sender] > 0);
+        require(unclaimedReferrals[msg.sender] > 0, 'no referrals to claim');
         uint256 amount = REFERRAL_BONUS*unclaimedReferrals[msg.sender];
         unclaimedReferrals[msg.sender] = 0;
 

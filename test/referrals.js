@@ -49,7 +49,7 @@ contract('Referral Tracker', function (accounts) {
       await HeroToken.transferFakeHeroTokens(owner);
       await HeroToken.approve(ReferralContract.address, HeroAmount,{ from: owner });
 
-      await ReferralContract.drawFunds(HeroAmount);
+      await ReferralContract.addFunds(HeroAmount);
 
       assert.equal(await HeroToken.balanceOf(ReferralContract.address), HeroAmount);
 
