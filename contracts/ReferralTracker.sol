@@ -10,7 +10,7 @@ contract ReferralTracker is Ownable {
     address public registryAddress;
     ERC20 token;
 
-    event ReferralRegistered(address referrer);
+    event ReferralRegistered(address referrer, address user);
     event ReferralBonusWithdrawn(address referrer, uint256 amount);
 
     constructor(address registryAddress_, address tokenAdress) public {
@@ -27,10 +27,10 @@ contract ReferralTracker is Ownable {
         token.transferFrom(msg.sender, address(this), amount);
     }
 
-    function registerReferral(address referrer) public onlyRegistry {
+    function registerReferral(address referrer, address user) public onlyRegistry {
         unclaimedReferrals[referrer] += 1;
 
-        emit ReferralRegistered(referrer);
+        emit ReferralRegistered(referrer, user);
     }
 
     function withdraw(address to) public {
