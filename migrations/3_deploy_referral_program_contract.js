@@ -13,8 +13,9 @@ const FileHelper = {
     )
 };
 
-const migration = async (deployer, accounts, network) => {
+const migration = async (deployer, accounts) => {
   let heroTokenAddress;
+  const network = await web3.eth.net.getId();
   const resp = await axios('https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
   const contracts = resp.data;
   if (network == 42) {
@@ -48,6 +49,6 @@ const migration = async (deployer, accounts, network) => {
 };
 
 
-module.exports = async (deployer, network, accounts) => {
-  await migration(deployer, accounts, network);
+module.exports = async (deployer, accounts) => {
+  await migration(deployer, accounts);
 };
