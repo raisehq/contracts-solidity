@@ -29,7 +29,7 @@ const migrationInt = async (deployer, accounts) => {
 
   const resp = await axios('https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
   const heroContracts = resp.data;
-  
+
   heroTokenAddress = heroContracts['HeroToken'].address;
   daiAddress = heroContracts['DAI'].address;
 
@@ -92,8 +92,8 @@ const migrationInt = async (deployer, accounts) => {
       abi: Auth.abi
     },
     DAI: {
-      address: DAI.address,
-      abi: HeroToken.abi
+      address: daiAddress,
+      abi: DAI.abi
     },
     DAIProxy: {
       address: DAIProxy.address,
@@ -104,20 +104,25 @@ const migrationInt = async (deployer, accounts) => {
       abi: LoanDispatcher.abi
     }
   };
+  console.log('prior contract api', web3.currentProvider)
   // 42 = Kovan
   // Give ERC20 to whitelist addresses and add KYC registry
   const heroContract = Contract({
     abi: HeroToken.abi,
-    address: heroTokenAddress
   });
   heroContract.setProvider(web3.currentProvider);
+  heroContract.setNetwork(network);
   const daiContract = Contract({
     abi: DAI.abi,
-    address: DAI.address
   })
+  console.log('current provider', web3.currentProvider)
   daiContract.setProvider(web3.currentProvider);
+
+  daiContract.setNetwork(network);
   const heroDeployed = await heroContract.at(heroTokenAddress);
+  console.log('prior instance', daiContract)
   const daiDeployed = await daiContract.at(daiAddress);
+  console.log('instance dai', daiDeployed)
   const kycDeployed = await KYC.deployed();
   const IntAccounts = [...accounts, ...devAccounts];
   if (IntAccounts.length > 0) {
