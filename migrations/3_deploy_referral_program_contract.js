@@ -1,5 +1,4 @@
 const Deposit = artifacts.require('DepositRegistry');
-const HeroToken = artifacts.require('HeroOrigenToken');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const { readFileSync, writeFile } = require('fs');
 const axios = require('axios');
@@ -14,26 +13,23 @@ const FileHelper = {
 };
 
 const migration = async (deployer, accounts) => {
-  let heroTokenAddress;
-  const network = await web3.eth.net.getId();
-  const resp = await axios('https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
-  const contracts = resp.data;
-  if (network == 42) {
-    heroTokenAddress = contracts.HeroToken.address;
-  } else {
-    heroTokenAddress = HeroToken.address;
-  } 
+  const { Deposit: DepositDeployed, HeroToken: HeroTokenDeployed } = JSON.parse(
+    readFileSync('./contracts.json')
+  );
 
   const deployerAddress = accounts[0];
-  const depositContractAddress = Deposit.address;
 
-  await deployer.deploy(ReferralTracker, depositContractAddress, heroTokenAddress, {
-    from: deployerAddress
-  });
+  await deployer.deploy(
+    ReferralTracker,
+    DepositDeployed.address,
+    HeroTokenDeployed.address,
+    {
+      from: deployerAddress
+    }
+  );
 
-  const depositContract = await Deposit.at(depositContractAddress);
+  const depositContract = await Deposit.at(DepositDeployed.address);
   await depositContract.setReferralTracker(ReferralTracker.address);
-
 
   const newContracts = {
     ...contracts,
@@ -47,7 +43,6 @@ const migration = async (deployer, accounts) => {
 
   await FileHelper.write('./contracts.json', newContracts);
 };
-
 
 module.exports = async (deployer, accounts) => {
   await migration(deployer, accounts);
