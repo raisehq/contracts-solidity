@@ -33,6 +33,7 @@
     "polished": "^2.3.3",
     "truffle": "^5.0.22",
     "truffle-assertions": "^0.9.1",
+    "truffle-contract": "^4.0.23",
     "truffle-hdwallet-provider": "^1.0.10",
     "truffle-privatekey-provider": "1.1.0",
     "use-force-update": "^1.0.3",

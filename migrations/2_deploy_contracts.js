@@ -7,8 +7,9 @@ const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const devAccounts = require('../int.accounts.json');
-const { writeFile } = require('fs');
+const { readFileSync, writeFile } = require('fs');
 const axios = require('axios');
+const Contract = require('truffle-contract');
 
 
 const FileHelper = {
@@ -23,35 +24,28 @@ const FileHelper = {
 const migrationInt = async (deployer, accounts) => {
   const deployerAddress = accounts[0];
   const network = await web3.eth.net.getId();
-  let herotokenAddress;
+  let heroTokenAddress;
   let daiAddress;
 
-  // 42 = Kovan
-  if (network == 42) {
-    const resp = await axios('https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
-    const heroContracts = resp.data;
+  const heroContracts = JSON.parse(readFileSync('./contracts.json'));
+  heroTokenAddress = heroContracts['HeroToken'].address;
+  daiAddress = heroContracts['DAI'].address;
 
-    HeroToken = await new web3.eth.Contract(
-      heroContracts['HeroToken'].abi,
-      heroContracts['HeroToken'].address
-    );
-
-    DAI = await new web3.eth.Contract(
-      heroContracts['DAI'].abi,
-      heroContracts['DAI'].address
-    );
-    herotokenAddress = HeroToken._address;
-    daiAddress = DAI._address;
-  } else {
-    await deployer.deploy(HeroToken, { from: deployerAddress });
-    await deployer.deploy(DAI, { from: deployerAddress });
-    herotokenAddress = HeroToken.address;
-    daiAddress = DAI.address;
+  console.log('before check hero and dai', heroTokenAddress, daiAddress)
+  if (network != 42 || !heroTokenAddress) {
+    const deployedHero = await deployer.deploy(HeroToken, { from: deployerAddress });
+    heroTokenAddress = deployedHero.address;
   }
+  if (network != 42 || !daiAddress) {
+    const deployedDAI = await deployer.deploy(DAI, { from: deployerAddress });
+    daiAddress = deployedDAI.address;
+  }
+
+  console.log('after check hero and dai', heroTokenAddress, daiAddress)
 
   await deployer.deploy(KYC, { from: deployerAddress });
 
-  await deployer.deploy(Deposit, herotokenAddress, KYC.address, {
+  await deployer.deploy(Deposit, heroTokenAddress, KYC.address, {
     from: deployerAddress
   });
 
@@ -70,7 +64,6 @@ const migrationInt = async (deployer, accounts) => {
   const dispatcherFrom = { from: deployerAddress };
   const LoanFactory = new web3.eth.Contract(LoanDispatcher.abi, null, { data: LoanDispatcher.bytecode });
   const LoanFactoryEstimatedGas = await LoanFactory.deploy({arguments: dispatcherArgs}).estimateGas(dispatcherFrom);
-  
   await deployer.deploy(
     LoanDispatcher,
     Auth.address,
@@ -81,7 +74,7 @@ const migrationInt = async (deployer, accounts) => {
 
   const data = {
     HeroToken: {
-      address: HeroToken.address,
+      address: heroTokenAddress,
       abi: HeroToken.abi
     },
     Deposit: {
@@ -109,20 +102,20 @@ const migrationInt = async (deployer, accounts) => {
       abi: LoanDispatcher.abi
     }
   };
-
-  let heroDeployed;
-  let daiDeployed;
-  
   // 42 = Kovan
   // Give ERC20 to whitelist addresses and add KYC registry
-  if (network == 42) {
-    heroDeployed = HeroToken;
-    daiDeployed = DAI;
-  } else {
-    heroDeployed = await HeroToken.deployed();
-    daiDeployed = await DAI.deployed();
-  }
-
+  const heroContract = Contract({
+    abi: HeroToken.abi,
+    address: heroTokenAddress
+  });
+  heroContract.setProvider(web3.currentProvider);
+  const daiContract = Contract({
+    abi: DAI.abi,
+    address: DAI.address
+  })
+  daiContract.setProvider(web3.currentProvider);
+  const heroDeployed = await heroContract.at(heroTokenAddress);
+  const daiDeployed = await daiContract.at(daiAddress);
   const kycDeployed = await KYC.deployed();
   const IntAccounts = [...accounts, ...devAccounts];
   if (IntAccounts.length > 0) {
@@ -132,36 +125,15 @@ const migrationInt = async (deployer, accounts) => {
     const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
     // HEROTOKENS
     // 42 = Kovan
-    if (network == 42) {
-      await heroDeployed.methods
-        .mint(
-          IntAccounts[i],
-          tokens
-        )
-        .send({
-          from: deployerAddress,
-          gas: 800000
-        });
-        // DAI TOKENS
-        await daiDeployed.methods
-        .mint(
-          IntAccounts[i], 
-          tokens)        
-        .send({
-            from: deployerAddress,
-            gas: 800000
-        });
-    } else {
-      await heroDeployed.mint(IntAccounts[i], tokens, {
-        from: deployerAddress,
-        gas: 800000
-      });
-      // DAI TOKENS
-      await daiDeployed.mint(IntAccounts[i], tokens, {
-        from: deployerAddress,
-        gas: 800000
-      });
-    }
+    await heroDeployed.mint(IntAccounts[i], tokens, {
+      from: deployerAddress,
+      gas: 800000
+    });
+    // DAI TOKENS
+    await daiDeployed.mint(IntAccounts[i], tokens, {
+      from: deployerAddress,
+      gas: 800000
+    });
     // ADD ADDRESS TO KYC
     await kycDeployed.add(IntAccounts[i], {
       from: deployerAddress,
@@ -174,7 +146,9 @@ const migrationInt = async (deployer, accounts) => {
       console.log(`Error adding ${IntAccounts[i]} to KYC but SENT 1000 HERO and 1000 FAKE DAI.`);
     }
   }
-  await FileHelper.write('./contracts.json', data);
+  if (network == 42) {
+    await FileHelper.write('./contracts.json', data);
+  }
 };
 
 const migrationLive = async (deployer, accounts) => {
