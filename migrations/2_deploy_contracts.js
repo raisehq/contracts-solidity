@@ -29,7 +29,7 @@ const migrationInt = async (deployer, accounts) => {
 
   const resp = await axios('https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
   const heroContracts = resp.data;
-  
+
   heroTokenAddress = heroContracts['HeroToken'].address;
   daiAddress = heroContracts['DAI'].address;
 
@@ -113,7 +113,7 @@ const migrationInt = async (deployer, accounts) => {
   heroContract.setProvider(web3.currentProvider);
   const daiContract = Contract({
     abi: DAI.abi,
-    address: DAI.address
+    address: daiAddress
   })
   daiContract.setProvider(web3.currentProvider);
   const heroDeployed = await heroContract.at(heroTokenAddress);
