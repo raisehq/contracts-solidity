@@ -26,12 +26,12 @@ const migrationInt = async (deployer, accounts) => {
   let heroTokenAddress;
   let daiAddress;
 
-  const { data: heroContract } = await axios(
+  const { data: contracts } = await axios(
     'https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json'
   );
 
-  heroTokenAddress = heroContracts['HeroToken'].address;
-  daiAddress = heroContracts['DAI'].address;
+  heroTokenAddress = contracts['HeroToken'].address;
+  daiAddress = contracts['DAI'].address;
 
   console.log('before check hero and dai', heroTokenAddress, daiAddress);
   if (network != 42 || !heroTokenAddress) {
