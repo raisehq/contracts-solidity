@@ -13,12 +13,17 @@ const FileHelper = {
     )
 };
 
-const migration = async (deployer, accounts) => {
+const migration = async (deployer, accounts, network) => {
+  let heroTokenAddress;
   const contracts = JSON.parse(readFileSync('./contracts.json'));
-  const heroTokenAddress = contracts.HeroToken.address;
+  if (network == 42) {
+    heroTokenAddress = contracts.HeroToken.address;
+  } else {
+    heroTokenAddress = HeroToken.address;
+  } 
 
   const deployerAddress = accounts[0];
-  const depositContractAddress = contracts["Deposit"]["address"];
+  const depositContractAddress = Deposit.address;
 
   await deployer.deploy(ReferralTracker, depositContractAddress, heroTokenAddress, {
     from: deployerAddress
@@ -43,5 +48,5 @@ const migration = async (deployer, accounts) => {
 
 
 module.exports = async (deployer, network, accounts) => {
-  await migration(deployer, accounts);
+  await migration(deployer, accounts, network);
 };
