@@ -8,9 +8,6 @@ const LoanDispatcher = artifacts.require('LoanContractDispatcher');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const devAccounts = require('../int.accounts.json');
 const { writeFile } = require('fs');
-const fs = require('fs');
-const http = require("http");
-
 const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 
 
@@ -22,7 +19,6 @@ const FileHelper = {
       )
     )
 };
-
 
 const getJSON = (url) => {
   var resp ;
