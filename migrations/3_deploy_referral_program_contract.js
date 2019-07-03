@@ -1,7 +1,6 @@
 const Deposit = artifacts.require('DepositRegistry');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const { readFileSync, writeFile } = require('fs');
-const axios = require('axios');
 
 const FileHelper = {
   write: (filepath, data) =>
@@ -12,23 +11,22 @@ const FileHelper = {
     )
 };
 
-const migration = async (deployer, accounts) => {
-  const { Deposit: DepositDeployed, HeroToken: HeroTokenDeployed } = JSON.parse(
-    readFileSync('./contracts.json')
-  );
+const migration = async (deployer, networks, accounts) => {
+  const contracts = JSON.parse(readFileSync('./contracts.json'));
 
   const deployerAddress = accounts[0];
 
   await deployer.deploy(
     ReferralTracker,
-    DepositDeployed.address,
-    HeroTokenDeployed.address,
+    contracts.Deposit.address,
+    contracts.HeroToken.address,
     {
       from: deployerAddress
     }
   );
 
-  const depositContract = await Deposit.at(DepositDeployed.address);
+  const depositContract = await Deposit.at(contracts.Deposit.address);
+
   await depositContract.setReferralTracker(ReferralTracker.address);
 
   const newContracts = {
@@ -44,6 +42,6 @@ const migration = async (deployer, accounts) => {
   await FileHelper.write('./contracts.json', newContracts);
 };
 
-module.exports = async (deployer, accounts) => {
-  await migration(deployer, accounts);
+module.exports = async (deployer, networks, accounts) => {
+  await migration(deployer, networks, accounts);
 };

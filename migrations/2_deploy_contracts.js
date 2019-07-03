@@ -34,13 +34,13 @@ const migrationInt = async (deployer, accounts) => {
   daiAddress = contracts['DAI'].address;
 
   console.log('before check hero and dai', heroTokenAddress, daiAddress);
-  if (network != 42 || !heroTokenAddress) {
+  if (!heroTokenAddress) {
     const deployedHero = await deployer.deploy(HeroToken, {
       from: deployerAddress
     });
     heroTokenAddress = deployedHero.address;
   }
-  if (network != 42 || !daiAddress) {
+  if (!daiAddress) {
     const deployedDAI = await deployer.deploy(DAI, { from: deployerAddress });
     daiAddress = deployedDAI.address;
   }
