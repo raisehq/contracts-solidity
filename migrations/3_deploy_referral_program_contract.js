@@ -15,7 +15,8 @@ const FileHelper = {
 
 const migration = async (deployer, accounts, network) => {
   let heroTokenAddress;
-  const contracts = JSON.parse(readFileSync('./contracts.json'));
+  const resp = await axios('https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
+  const contracts = resp.data;
   if (network == 42) {
     heroTokenAddress = contracts.HeroToken.address;
   } else {

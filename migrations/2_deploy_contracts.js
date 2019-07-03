@@ -27,7 +27,9 @@ const migrationInt = async (deployer, accounts) => {
   let heroTokenAddress;
   let daiAddress;
 
-  const heroContracts = JSON.parse(readFileSync('./contracts.json'));
+  const resp = await axios('https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
+  const heroContracts = resp.data;
+  
   heroTokenAddress = heroContracts['HeroToken'].address;
   daiAddress = heroContracts['DAI'].address;
 
