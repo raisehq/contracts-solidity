@@ -16,6 +16,7 @@ contract LoanContractDispatcher {
     }
 
     event LoanContractCreated(
+        address loanDispatcher,
         address contractAddress,
         address indexed originator,
         uint256 auctionBlockLength,
@@ -59,6 +60,7 @@ contract LoanContractDispatcher {
         isLoanContract[address(loanContract)] = true;
 
         emit LoanContractCreated(
+            address(this),
             address(loanContract),
             msg.sender,
             block.number + auctionBlockLength,
