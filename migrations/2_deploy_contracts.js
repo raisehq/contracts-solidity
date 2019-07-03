@@ -8,7 +8,7 @@ const LoanDispatcher = artifacts.require('LoanContractDispatcher');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const devAccounts = require('../int.accounts.json');
 const { writeFile } = require('fs');
-const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+const axios = require('axios');
 
 
 const FileHelper = {
@@ -20,31 +20,16 @@ const FileHelper = {
     )
 };
 
-const getJSON = (url) => {
-  var resp ;
-  var xmlHttp ;
-
-  resp  = '' ;
-  xmlHttp = new XMLHttpRequest();
-
-  if(xmlHttp != null)
-  {
-      xmlHttp.open( "GET", url, false );
-      xmlHttp.send( null );
-      resp = xmlHttp.responseText;
-  }
-
-  return JSON.parse(resp) ;
-}
-
 const migrationInt = async (deployer, accounts) => {
   const deployerAddress = accounts[0];
   const network = await web3.eth.net.getId();
   let herotokenAddress;
   let daiAddress;
 
+  // 42 = Kovan
   if (network == 42) {
-    const heroContracts = await getJSON('http://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
+    const resp = await axios('https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json');
+    const heroContracts = resp.data;
 
     HeroToken = await new web3.eth.Contract(
       heroContracts['HeroToken'].abi,
@@ -127,6 +112,8 @@ const migrationInt = async (deployer, accounts) => {
 
   let heroDeployed;
   let daiDeployed;
+  
+  // 42 = Kovan
   // Give ERC20 to whitelist addresses and add KYC registry
   if (network == 42) {
     heroDeployed = HeroToken;
@@ -144,7 +131,7 @@ const migrationInt = async (deployer, accounts) => {
   for (let i = 0; i < IntAccounts.length; i++) {
     const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
     // HEROTOKENS
-
+    // 42 = Kovan
     if (network == 42) {
       await heroDeployed.methods
         .mint(
