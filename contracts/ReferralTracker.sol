@@ -10,8 +10,8 @@ contract ReferralTracker is Ownable {
     address public registryAddress;
     ERC20 token;
 
-    event ReferralRegistered(address referrer, address user);
-    event ReferralBonusWithdrawn(address referrer, uint256 amount);
+    event ReferralRegistered(address indexed referrer, address indexed user);
+    event ReferralBonusWithdrawn(address indexed referrer, uint256 amount);
 
     constructor(address registryAddress_, address tokenAdress) public {
         registryAddress = registryAddress_;
