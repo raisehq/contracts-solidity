@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
 
 contract ReferralTracker is Ownable {
     uint256 public REFERRAL_BONUS = 100000000000000000000;
@@ -28,7 +29,7 @@ contract ReferralTracker is Ownable {
     }
 
     function registerReferral(address referrer, address user) public onlyRegistry {
-        unclaimedReferrals[referrer] += 1;
+        unclaimedReferrals[referrer] = unclaimedReferrals[referrer].add(1);
 
         emit ReferralRegistered(address(this), referrer, user);
     }
