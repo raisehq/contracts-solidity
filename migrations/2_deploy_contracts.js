@@ -1,49 +1,48 @@
 const Deposit = artifacts.require('DepositRegistry');
 const KYC = artifacts.require('KYCRegistry');
 const Auth = artifacts.require('Authorization');
-let HeroToken = artifacts.require('HeroOrigenToken');
-let DAI = artifacts.require('DAIFake');
+const HeroToken = artifacts.require('HeroOrigenToken');
+const DAI = artifacts.require('DAIFake');
 const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const devAccounts = require('../int.accounts.json');
-const { readFileSync, writeFile } = require('fs');
+const { writeFileSync } = require('fs');
 const axios = require('axios');
-const Contract = require('truffle-contract');
 
-const FileHelper = {
-  write: (filepath, data) =>
-    new Promise((resolve, reject) =>
-      writeFile(filepath, JSON.stringify(data), err =>
-        err ? reject(err) : resolve()
-      )
-    )
+const getContractTokens = async (deployer, network, deployerAddress) => {
+  if (network === 'kovan') {
+    const { data: contracts } = await axios(
+      'https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json'
+    );
+    // Check if the contract.json has the address of HeroToken and DAI
+    if (contracts['HeroToken'].address && contracts['DAI'].address) {
+      return {
+        heroTokenAddress: contracts['HeroToken'].address,
+        daiAddress: contracts['DAI'].address
+      };
+    }
+  }
+
+  // Deploy a new HeroToken and DAI
+  await deployer.deploy(HeroToken, {
+    from: deployerAddress
+  });
+  await deployer.deploy(DAI, { from: deployerAddress });
+  return {
+    heroTokenAddress: HeroToken.address,
+    daiAddress: DAI.address
+  };
 };
 
-const migrationInt = async (deployer, accounts) => {
+const migrationInt = async (deployer, network, accounts) => {
   const deployerAddress = accounts[0];
-  const network = await web3.eth.net.getId();
-  let heroTokenAddress;
-  let daiAddress;
 
-  const { data: contracts } = await axios(
-    'https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json'
+  const { heroTokenAddress, daiAddress } = await getContractTokens(
+    deployer,
+    network,
+    deployerAddress
   );
-
-  heroTokenAddress = contracts['HeroToken'].address;
-  daiAddress = contracts['DAI'].address;
-
-  console.log('before check hero and dai', heroTokenAddress, daiAddress);
-  if (!heroTokenAddress) {
-    const deployedHero = await deployer.deploy(HeroToken, {
-      from: deployerAddress
-    });
-    heroTokenAddress = deployedHero.address;
-  }
-  if (!daiAddress) {
-    const deployedDAI = await deployer.deploy(DAI, { from: deployerAddress });
-    daiAddress = deployedDAI.address;
-  }
 
   console.log('after check hero and dai', heroTokenAddress, daiAddress);
 
@@ -75,8 +74,7 @@ const migrationInt = async (deployer, accounts) => {
     DAIProxy.address,
     {
       from: deployerAddress,
-      gas: LoanFactoryEstimatedGas,
-      gasPrice: 10000000000
+      gas: LoanFactoryEstimatedGas
     }
   );
 
@@ -84,6 +82,10 @@ const migrationInt = async (deployer, accounts) => {
     HeroToken: {
       address: heroTokenAddress,
       abi: HeroToken.abi
+    },
+    DAI: {
+      address: daiAddress,
+      abi: DAI.abi
     },
     Deposit: {
       address: Deposit.address,
@@ -97,10 +99,7 @@ const migrationInt = async (deployer, accounts) => {
       address: Auth.address,
       abi: Auth.abi
     },
-    DAI: {
-      address: daiAddress,
-      abi: DAI.abi
-    },
+
     DAIProxy: {
       address: DAIProxy.address,
       abi: DAIProxy.abi
@@ -110,26 +109,12 @@ const migrationInt = async (deployer, accounts) => {
       abi: LoanDispatcher.abi
     }
   };
-  console.log('prior contract api', web3.currentProvider);
-  // 42 = Kovan
-  // Give ERC20 to whitelist addresses and add KYC registry
-  const heroContract = Contract({
-    abi: HeroToken.abi
-  });
-  heroContract.setProvider(web3.currentProvider);
-  heroContract.setNetwork(network);
-  const daiContract = Contract({
-    abi: DAI.abi
-  });
-  console.log('current provider', web3.currentProvider);
-  daiContract.setProvider(web3.currentProvider);
 
-  daiContract.setNetwork(network);
-  const heroDeployed = await heroContract.at(heroTokenAddress);
-  console.log('prior instance', daiContract);
-  const daiDeployed = await daiContract.at(daiAddress);
-  console.log('instance dai', daiDeployed);
+  // Give ERC20 to whitelist addresses and add KYC registry
+  const heroDeployed = await HeroToken.at(heroTokenAddress);
+  const daiDeployed = await DAI.at(daiAddress);
   const kycDeployed = await KYC.deployed();
+
   const IntAccounts = [...accounts, ...devAccounts];
   if (IntAccounts.length > 0) {
     console.log(
@@ -169,71 +154,16 @@ const migrationInt = async (deployer, accounts) => {
       );
     }
   }
-  if (network == 42) {
-    await FileHelper.write('./contracts.json', data);
-  }
-};
 
-const migrationLive = async (deployer, accounts) => {
-  const deployerAddress = accounts[0];
-  const heroTokenAddress = process.env.HERO_TOKEN_ADDRESS;
-  const daiAddress = process.env.DAI_ADDRESS;
-
-  await deployer.deploy(KYC, { from: deployerAddress });
-  await deployer.deploy(Deposit, heroTokenAddress, KYC.address, {
-    from: deployerAddress
-  });
-
-  await deployer.deploy(Auth, KYC.address, Deposit.address, {
-    from: deployerAddress
-  });
-  await deployer.deploy(DAIProxy, Auth.address, daiAddress, {
-    from: deployerAddress
-  });
-  await deployer.deploy(
-    LoanDispatcher,
-    Auth.address,
-    daiAddress,
-    DAIProxy.address,
-    { from: deployerAddress }
-  );
-
-  const data = {
-    HeroToken: {
-      address: heroTokenAddress
-    },
-    Deposit: {
-      address: Deposit.address,
-      abi: Deposit.abi
-    },
-    KYC: {
-      address: KYC.address,
-      abi: KYC.abi
-    },
-    Auth: {
-      address: Auth.address,
-      abi: Auth.abi
-    },
-    DAI: {
-      address: daiAddress
-    },
-    DAIProxy: {
-      address: DAIProxy.address,
-      abi: DAIProxy.abi
-    },
-    LoanDispatcher: {
-      address: LoanDispatcher.address,
-      abi: LoanDispatcher.abi
-    }
-  };
-  await FileHelper.write('./prod.contracts.json', data);
+  await writeFileSync('./contracts.json', JSON.stringify(data));
 };
 
 module.exports = async (deployer, network, accounts) => {
-  const deployerAddress = accounts[0];
-  if (network == 'main') {
-    await migrationLive(deployer, deployerAddress);
-  } else {
-    await migrationInt(deployer, accounts);
+  try {
+    await migrationInt(deployer, network, accounts);
+  } catch (err) {
+    // Prettier error output
+    console.error(err);
+    throw err;
   }
 };
