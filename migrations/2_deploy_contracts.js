@@ -129,17 +129,17 @@ const migrationInt = async (deployer, network, accounts) => {
     // 42 = Kovan
     await heroDeployed.mint(IntAccounts[i], tokens, {
       from: deployerAddress,
-      gas: 80000
+      gas: 800000
     });
     // DAI TOKENS
     await daiDeployed.mint(IntAccounts[i], tokens, {
       from: deployerAddress,
-      gas: 80000
+      gas: 800000
     });
     // ADD ADDRESS TO KYC
     await kycDeployed.add(IntAccounts[i], {
       from: deployerAddress,
-      gas: 80000
+      gas: 800000
     });
     const inKyc = await kycDeployed.isConfirmed(IntAccounts[i]);
     if (inKyc) {
