@@ -72,7 +72,6 @@ contract LoanContract is LoanContractInterface {
     event FailedToFund(address loanAddress, address indexed lender, uint256 amount);
     event LoanFundsWithdrawn(address loanAddress, address indexed borrower, uint256 amount);
     event LoanDefaulted(address loanAddress);
-    event RefundmaxAmount(address loanAddress, uint256 refundmaxAmount);
 
     modifier onlyCreated() {
         require(currentState == LoanState.CREATED, 'Incorrect loan status');
