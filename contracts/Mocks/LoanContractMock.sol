@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 
-import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
-import '../LoanContractInterface.sol';
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../LoanContractInterface.sol";
 
 contract LoanContractMock is LoanContractInterface {
     uint256 auctionBalance;
@@ -41,11 +41,11 @@ contract LoanContractMock is LoanContractInterface {
         return 3;
     }
 
-    function calculateValueWithInterest(uint256 value) public view returns(uint256) {
+    function calculateValueWithInterest(uint256 value) public view returns (uint256) {
         return value;
     }
 
-    function getLenderWithdrawnAmount(address lender) public pure returns (uint256){
+    function getLenderWithdrawnAmount(address lender) public pure returns (uint256) {
         lender;
         return 2;
     }

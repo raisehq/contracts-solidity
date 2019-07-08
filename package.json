@@ -14,10 +14,16 @@
     "test": "NODE_ENV=test truffle test",
     "test:ganache": "NODE_ENV=test truffle test --network ganache",
     "coverage": "./node_modules/.bin/solidity-coverage",
-    "lint": "solium -d contracts/"
+    "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
+    "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol"
   },
-  "author": "",
-  "license": "ISC",
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run prettier:solidity && npm run solhint && npm run test"
+    }
+  },
+  "author": "Hero Fintech",
+  "license": "AGPL-v3",
   "dependencies": {
     "axios": "^0.18.0",
     "bignumber.js": "^9.0.0",
@@ -40,8 +46,11 @@
     "web3-utils": "^1.0.0-beta.55"
   },
   "devDependencies": {
-    "ethlint": "^1.2.4",
-    "nodemon": "^1.18.10",
+    "husky": "^3.0.0",
+    "prettier": "^1.18.2",
+    "prettier-plugin-solidity": "^1.0.0-alpha.27",
+    "solhint": "^2.1.0",
+    "solhint-plugin-prettier": "0.0.3",
     "solidity-coverage": "^0.5.11"
   }
 }
