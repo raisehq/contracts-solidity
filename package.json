@@ -1,8 +1,8 @@
 {
-  "name": "blockchain-test",
-  "version": "1.0.0",
-  "description": "Prototype Blockchain",
-  "private": true,
+  "name": "herotoken-contracts-solidity",
+  "version": "0.1.0",
+  "description": "Herotoken solidity contracts",
+  "private": false,
   "scripts": {
     "ganache": "ganache-cli",
     "compile": "truffle compile",
@@ -19,7 +19,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run prettier:solidity && npm run solhint && npm run test"
+      "pre-commit": "npm run prettier:solidity && npm run solhint && npm run test",
       "pre-push": "npm run prettier:solidity && npm run solhint && npm run test"
     }
   },
