@@ -20,6 +20,7 @@
   "husky": {
     "hooks": {
       "pre-commit": "npm run prettier:solidity && npm run solhint && npm run test"
+      "pre-push": "npm run prettier:solidity && npm run solhint && npm run test"
     }
   },
   "author": "Hero Fintech",
