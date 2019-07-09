@@ -49,3 +49,13 @@ First migrate contracts in your local blockchain:
 
 Once migrated run the script via truffle, by default creates 10 loans, you can set the number of loans with `NUMBER_LOANS` env variable:
 `NUMBER_LOANS=200 npx truffle exec scripts/loan-generator/main.js --network ganache`
+
+## Known issues and remaining work
+
+* Ownership and operability of contracts need to be split in two roles
+* An emergency refund switch that enables investors to withdraw their investments should the borrower loose access to his keys before withdrawing the loan principal needs to be added 
+* Missing some validations in the loan contracts  
+* tests and coverage need to be added to CI
+
+
+
