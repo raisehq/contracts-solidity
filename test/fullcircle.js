@@ -135,6 +135,10 @@ contract('Integration', (accounts) => {
             const amountFundedByLender = await Loan.lenderBidAmount(lender);
             const fundedLoanState = Number(await Loan.currentState());
 
+            // console.log('state before withdraw::::>>>> ', Number(await Loan.currentState()))
+            // console.log('is loan expired:::::: ', (await Loan.isAuctionExpired()) )
+            // console.log('is loan defaulted:::::: ', (await Loan.isDefaulted()) )
+
             // borrower takes money from loan
             await Loan.withdrawLoan({from: borrower}); 
             
@@ -145,6 +149,7 @@ contract('Integration', (accounts) => {
             const interestAmount = totalDebt - fundingAmount;
             await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
             await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
+            
             const repayTx = await DAIProxy.repay(Loan.address, totalDebt, {from: borrower});
             
             // Check repay event
@@ -331,6 +336,78 @@ contract('Integration', (accounts) => {
             expect(Number(lender2BalanceAfterRepayment)).to.equal(Number(lender2AmountWithInterest) + Number(lenderTwoBeforeRepay));
             expect(lenderOneWitdrawn).to.equal(true);
             expect(lenderTwoWithdrawn).to.equal(true);
+        });
+        it('Expects the flow to work correctly for one lender to minimum fund a loan and for the borrower to withdraw after auction is expired and for the borrower to repay', async () => {
+            // lender funds loan
+            const fundingAmount = Number(await Loan.minAmount()); 
+            await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
+            const fundTx = await DAIProxy.fund(Loan.address, fundingAmount, {from: lender});
+            const lenderBalancePostFunding = Number(await DAIToken.balanceOf(lender));
+            const totalDebt = Number(await Loan.borrowerDebt());
+            
+            // Due we need to watch the LoanContract.sol events, need to change tx scope to point LoanContract.sol
+            const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
+            truffleAssert.eventEmitted(loanTxScope, 'Funded', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && ev.amount == fundingAmount);
+            truffleAssert.eventEmitted(loanTxScope, 'MinimumFundingReached', (ev) => ev.loanAddress == Loan.address && ev.currentBalance == fundingAmount);
+
+            // await for auction to expire
+            const auctionLengthBlock = (60 * 60) / averageMiningBlockTime;
+            await waitNBlocks(auctionLengthBlock + 2);
+            
+            // check if loan is funded
+            const loanFundedAmount = await Loan.auctionBalance();
+            const amountFundedByLender = await Loan.lenderBidAmount(lender);
+            const fundedLoanStateBeforeExpiry = Number(await Loan.currentState());
+
+            // console.log('state before withdraw::::>>>> ', Number(await Loan.currentState()))
+            // console.log('is loan expired:::::: ', (await Loan.isAuctionExpired()) )
+            // console.log('is loan defaulted:::::: ', (await Loan.isDefaulted()) )
+
+            // borrower takes money from loan
+            const withTx = await Loan.withdrawLoan({from: borrower}); 
+            const fundedLoanState = Number(await Loan.currentState());
+
+            truffleAssert.eventEmitted(withTx, 'FullyFunded', (ev) => ev.loanAddress == Loan.address && ev.balanceToRepay == totalDebt && ev.auctionBalance == fundingAmount);
+
+            // check borrower received amount
+            const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
+            
+            // borrower repays loan
+            const interestAmount = totalDebt - fundingAmount;
+            await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
+            await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
+            
+            const repayTx = await DAIProxy.repay(Loan.address, totalDebt, {from: borrower});
+            
+            // Check repay event
+            const repayLoanTxScope = await truffleAssert.createTransactionResult(Loan, repayTx.tx);
+            truffleAssert.eventEmitted(repayLoanTxScope, 'LoanRepaid');
+
+            const stateAfterRepay = Number(await Loan.currentState())
+
+            // lender takes out money
+            const txWithdraw = await Loan.withdrawRepayment({from: lender});
+            const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
+            const lenderWithdrawed = await Loan.lenderWithdrawn(lender);
+            const endState = Number(await Loan.currentState())
+
+            // Check repay event
+            truffleAssert.eventEmitted(txWithdraw, 'RepaymentWithdrawn');
+            truffleAssert.eventEmitted(txWithdraw, 'FullyRefunded');
+
+            // assertions
+            expect(lenderKYC).to.equal(true);
+            expect(borrowerKYC).to.equal(true);
+            expect(lenderHasDeposited).to.equal(true);
+            expect(fundedLoanStateBeforeExpiry).to.equal(0);
+            expect(fundedLoanState).to.equal(2);
+            expect(Number(loanFundedAmount)).to.equal(fundingAmount);
+            expect(Number(amountFundedByLender)).to.equal(fundingAmount);
+            expect(Number(borrowerWithdrawAmount)).to.equal(fundingAmount);
+            expect(stateAfterRepay).to.equal(4);
+            expect(Number(lenderBalanceAfterRepayment)).to.equal(lenderBalancePostFunding + totalDebt);
+            expect(lenderWithdrawed).to.equal(true);
+            expect(endState).to.equal(5);
         });
     });
 });

@@ -23,7 +23,6 @@ contract LoanContract is LoanContractInterface {
     uint256 public auctionFundedBlock;
     uint256 public auctionBlockLength;
 
-    uint256 public termStartTimestamp;
     uint256 public termEndTimestamp;
 
 
@@ -127,7 +126,7 @@ contract LoanContract is LoanContractInterface {
         auctionBlockLength = _auctionBlockLength;
         auctionStartBlock = block.number;
         auctionEndBlock = auctionStartBlock.add(auctionBlockLength);
-        
+
         termEndTimestamp = _termEndTimestamp;
 
         setState(LoanState.CREATED);
@@ -143,7 +142,6 @@ contract LoanContract is LoanContractInterface {
                 return false;
             } else {
                 setState(LoanState.ACTIVE);
-                borrowerDebt = calculateValueWithInterest(auctionBalance);
                 emit FailedToFund(address(this), lender, amount);
                 emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
                 return false;
@@ -152,6 +150,9 @@ contract LoanContract is LoanContractInterface {
 
         lenderBidAmount[lender] = lenderBidAmount[lender].add(amount);
         auctionBalance = auctionBalance.add(amount);
+
+        auctionFundedBlock = block.number;
+        borrowerDebt = calculateValueWithInterest(auctionBalance);
 
         if (auctionBalance >= minAmount && !minimumReached) {
             minimumReached = true;
@@ -163,9 +164,6 @@ contract LoanContract is LoanContractInterface {
 
         if (auctionBalance == maxAmount) {
             setState(LoanState.ACTIVE);
-            auctionFundedBlock = block.number;
-            termStartTimestamp = block.timestamp;
-            borrowerDebt = calculateValueWithInterest(auctionBalance);
             emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
         }
         return true;
@@ -245,7 +243,6 @@ contract LoanContract is LoanContractInterface {
 
     function isDefaulted() public view returns (bool) {
         if (
-            block.timestamp >= termStartTimestamp &&
             block.timestamp <= termEndTimestamp
         ) {
             return false;
@@ -260,11 +257,17 @@ contract LoanContract is LoanContractInterface {
 
     function updateStateMachine() public returns (LoanState) {
         if (isAuctionExpired() && currentState == LoanState.CREATED) {
-            setState(LoanState.FAILED_TO_FUND);
+            if (!minimumReached) {
+                setState(LoanState.FAILED_TO_FUND);
+            } else {
+                setState(LoanState.ACTIVE);
+                emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
+            }
         }
         if (isDefaulted() && currentState == LoanState.ACTIVE) {
             setState(LoanState.DEFAULTED);
         }
+
         return currentState;
     }
 
