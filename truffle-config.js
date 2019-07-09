@@ -50,18 +50,11 @@ module.exports = {
     //
 
     development: {
-      gas: 8000000,
-      provider: function() {
-        return new HDWalletProvider(privateKey, 'localhost:8545');
-      },
-      network_id: '*' // Match any network id
-    },
-    ganache: {
       host: 'localhost',
       port: 8545,
-      network_id: '*', // Match any network id
       gas: 8000000,
       gasPrice: 10000000000,
+      network_id: '*' // Match any network id
     },
     coverage: {
       host: "localhost",

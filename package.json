@@ -12,15 +12,13 @@
     "migration:reset": "truffle migration --reset --network development",
     "console": "truffle console --network kovan",
     "test": "NODE_ENV=test truffle test",
-    "test:ganache": "NODE_ENV=test truffle test --network ganache",
     "coverage": "./node_modules/.bin/solidity-coverage",
     "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run prettier:solidity && npm run solhint && npm run test",
-      "pre-push": "npm run prettier:solidity && npm run solhint && npm run test"
+      "pre-commit": "scripts/test.sh"
     }
   },
   "author": "Hero Fintech",
@@ -33,21 +31,16 @@
     "chai-as-promised": "^7.1.1",
     "concurrently": "^4.1.0",
     "dotenv": "^6.2.0",
-    "env-cmd": "^8.0.2",
     "faker": "^4.1.0",
-    "ganache-cli": "^6.3.0",
+    "ganache-cli": "^6.4.4",
+    "husky": "^2.7.0",
     "openzeppelin-solidity": "^2.3.0",
-    "polished": "^2.3.3",
-    "truffle": "^5.0.22",
+    "truffle": "^5.0.26",
     "truffle-assertions": "^0.9.1",
-    "truffle-contract": "^4.0.23",
-    "truffle-hdwallet-provider": "^1.0.10",
-    "truffle-privatekey-provider": "1.1.0",
-    "use-force-update": "^1.0.3",
+    "truffle-hdwallet-provider": "^1.0.13",
     "web3-utils": "^1.0.0-beta.55"
   },
   "devDependencies": {
-    "husky": "^3.0.0",
     "prettier": "^1.18.2",
     "prettier-plugin-solidity": "^1.0.0-alpha.27",
     "solhint": "^2.1.0",
