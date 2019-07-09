@@ -20,11 +20,12 @@ contract LoanContract is LoanContractInterface {
 
     uint256 public auctionStartBlock;
     uint256 public auctionEndBlock;
-    uint256 public auctionFundedBlock;
+
+    uint256 public lastFundedBlock;
+
     uint256 public auctionBlockLength;
 
     uint256 public termEndTimestamp;
-
 
     uint256 public auctionBalance;
     uint256 public borrowerDebt; // Amount borrower need to repay == auctionBalance + interests
@@ -61,8 +62,8 @@ contract LoanContract is LoanContractInterface {
     );
 
     event MinimumFundingReached(address loanAddress, uint256 currentBalance);
-    event FullyFunded(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance, uint256 indexed fundedTimestamp);
-    event Funded(address loanAddress, address indexed lender, uint256 amount);
+    event FullyFunded(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance, uint256 interest, uint256 fundedBlock);
+    event Funded(address loanAddress, address indexed lender, uint256 amount, uint256 interest, uint256 fundedBlock);
     event LoanRepaid(address loanAddress, uint256 indexed timestampRepaid);
     event RepaymentWithdrawn(address loanAddress, address indexed to, uint256 amount);
     event FullyRepaid(address loanAddress);
@@ -71,6 +72,7 @@ contract LoanContract is LoanContractInterface {
     event FailedToFund(address loanAddress, address indexed lender, uint256 amount);
     event LoanFundsWithdrawn(address loanAddress, address indexed borrower, uint256 amount);
     event LoanDefaulted(address loanAddress);
+    event AuctionSuccessful(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance, uint256 interest, uint256 fundedBlock);
 
     modifier onlyCreated() {
         require(currentState == LoanState.CREATED, 'Incorrect loan status');
@@ -143,7 +145,8 @@ contract LoanContract is LoanContractInterface {
             } else {
                 setState(LoanState.ACTIVE);
                 emit FailedToFund(address(this), lender, amount);
-                emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
+                uint256 interest = getInterestRate();
+                emit AuctionSuccessful(address(this), borrowerDebt, auctionBalance, interest, lastFundedBlock);
                 return false;
             }
         }
@@ -151,20 +154,22 @@ contract LoanContract is LoanContractInterface {
         lenderBidAmount[lender] = lenderBidAmount[lender].add(amount);
         auctionBalance = auctionBalance.add(amount);
 
-        auctionFundedBlock = block.number;
+        lastFundedBlock = block.number;
+        uint256 interest = getInterestRate();
         borrowerDebt = calculateValueWithInterest(auctionBalance);
 
         if (auctionBalance >= minAmount && !minimumReached) {
             minimumReached = true;
-            emit Funded(address(this), lender, amount);
-            emit MinimumFundingReached(address(this), auctionBalance);
+            emit Funded(address(this), lender, amount, interest, lastFundedBlock);
+            emit MinimumFundingReached(address(this), auctionBalance, interest);
         } else {
-            emit Funded(address(this), lender, amount);
+            emit Funded(address(this), lender, amount, interest, lastFundedBlock);
         }
 
         if (auctionBalance == maxAmount) {
             setState(LoanState.ACTIVE);
-            emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
+            emit FullyFunded(address(this), borrowerDebt, auctionBalance, interest, lastFundedBlock);
+            emit AuctionSuccessful(address(this), borrowerDebt, auctionBalance, interest, lastFundedBlock);
         }
         return true;
     }
@@ -261,7 +266,8 @@ contract LoanContract is LoanContractInterface {
                 setState(LoanState.FAILED_TO_FUND);
             } else {
                 setState(LoanState.ACTIVE);
-                emit FullyFunded(address(this), borrowerDebt, auctionBalance, block.timestamp);
+                uint256 interest = getInterestRate();
+                emit AuctionSuccessful(address(this), borrowerDebt, auctionBalance, interest, lastFundedBlock);
             }
         }
         if (isDefaulted() && currentState == LoanState.ACTIVE) {
@@ -279,7 +285,7 @@ contract LoanContract is LoanContractInterface {
         if (currentState == LoanState.CREATED) {
             return bpMaxInterestRate.mul(block.number.sub(auctionStartBlock)).div(auctionEndBlock.sub(auctionStartBlock));
         } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
-            return bpMaxInterestRate.mul(auctionFundedBlock.sub(auctionStartBlock)).div(auctionEndBlock.sub(auctionStartBlock));
+            return bpMaxInterestRate.mul(lastFundedBlock.sub(auctionStartBlock)).div(auctionEndBlock.sub(auctionStartBlock));
         } else {
             return 0;
         }
