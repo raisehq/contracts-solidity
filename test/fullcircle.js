@@ -367,7 +367,7 @@ contract('Integration', (accounts) => {
             const withTx = await Loan.withdrawLoan({from: borrower}); 
             const fundedLoanState = Number(await Loan.currentState());
 
-            truffleAssert.eventEmitted(withTx, 'FullyFunded', (ev) => ev.loanAddress == Loan.address && ev.balanceToRepay == totalDebt && ev.auctionBalance == fundingAmount);
+            truffleAssert.eventEmitted(withTx, 'AuctionSuccessful', (ev) => ev.loanAddress == Loan.address && ev.balanceToRepay == totalDebt && ev.auctionBalance == fundingAmount);
 
             // check borrower received amount
             const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);

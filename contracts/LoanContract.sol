@@ -61,12 +61,11 @@ contract LoanContract is LoanContractInterface {
         uint256 auctionEndBlock
     );
 
-    event MinimumFundingReached(address loanAddress, uint256 currentBalance);
+    event MinimumFundingReached(address loanAddress, uint256 currentBalance, uint256 interest);
     event FullyFunded(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance, uint256 interest, uint256 fundedBlock);
     event Funded(address loanAddress, address indexed lender, uint256 amount, uint256 interest, uint256 fundedBlock);
     event LoanRepaid(address loanAddress, uint256 indexed timestampRepaid);
     event RepaymentWithdrawn(address loanAddress, address indexed to, uint256 amount);
-    event FullyRepaid(address loanAddress);
     event RefundWithdrawn(address loanAddress, address indexed lender, uint256 amount);
     event FullyRefunded(address loanAddress);
     event FailedToFund(address loanAddress, address indexed lender, uint256 amount);
