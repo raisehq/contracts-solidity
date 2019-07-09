@@ -11,14 +11,14 @@
     "migration:kovan:reset": "truffle migration --reset --network kovan",
     "migration:reset": "truffle migration --reset --network development",
     "console": "truffle console --network kovan",
-    "test": "NODE_ENV=test truffle test",
+    "test": "bash scripts/test.sh",
     "coverage": "./node_modules/.bin/solidity-coverage",
     "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "scripts/test.sh"
+      "pre-commit": "bash scripts/test.sh"
     }
   },
   "author": "Hero Fintech",
