@@ -494,7 +494,7 @@ contract('LoanContract', (accounts) => {
         describe.skip('Method isDefaulted', () => {})
         describe.skip('Method isDefaulted', () => {})
         describe.skip('Method getFundingTimeLimit', () => {})
-        describe.skip('Method getInterestRate', () => {})
+        describe.skip('Method getInterestRate', () => {}) // TODO: do it
         describe.skip('Method getmaxAmountWithInterest', () => {})
     });
 });

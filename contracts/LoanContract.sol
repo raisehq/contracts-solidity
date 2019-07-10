@@ -14,6 +14,7 @@ contract LoanContract is LoanContractInterface {
     ERC20 DAIToken;
     DAIProxyInterface proxy;
     address public originator;
+    address public administrator;
 
     uint256 public minAmount;
     uint256 public maxAmount;
@@ -30,7 +31,6 @@ contract LoanContract is LoanContractInterface {
     uint256 public auctionBalance;
     uint256 public borrowerDebt; // Amount borrower need to repay == auctionBalance + interests
     uint256 public bpMaxInterestRate;
-
     uint256 internal interestRate;
 
     bool public loanWithdrawn;
@@ -58,7 +58,8 @@ contract LoanContract is LoanContractInterface {
         uint256 maxAmount,
         uint256 bpMaxInterestRate,
         uint256 auctionStartBlock,
-        uint256 auctionEndBlock
+        uint256 auctionEndBlock,
+        address indexed administrator
     );
 
     event MinimumFundingReached(address loanAddress, uint256 currentBalance, uint256 interest);
@@ -72,6 +73,11 @@ contract LoanContract is LoanContractInterface {
     event LoanFundsWithdrawn(address loanAddress, address indexed borrower, uint256 amount);
     event LoanDefaulted(address loanAddress);
     event AuctionSuccessful(address loanAddress, uint256 balanceToRepay, uint256 auctionBalance, uint256 interest, uint256 fundedBlock);
+
+    modifier onlyAdmin() {
+        require(msg.sender == administrator, 'Caller is not an administrator');
+        _;
+    }
 
     modifier onlyCreated() {
         require(currentState == LoanState.CREATED, 'Incorrect loan status');
@@ -114,11 +120,13 @@ contract LoanContract is LoanContractInterface {
         uint256 _bpMaxInterestRate,
         address _originator,
         address DAITokenAddress,
-        address proxyAddress
+        address proxyAddress,
+        address _administrator
     ) public {
         DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
         originator = _originator;
+        administrator = _administrator;
 
         bpMaxInterestRate = _bpMaxInterestRate;
         minAmount = _minAmount;
@@ -131,6 +139,16 @@ contract LoanContract is LoanContractInterface {
         termEndTimestamp = _termEndTimestamp;
 
         setState(LoanState.CREATED);
+        emit LoanCreated(
+            address(this),
+            originator,
+            minAmount,
+            maxAmount,
+            bpMaxInterestRate,
+            auctionStartBlock,
+            auctionEndBlock,
+            administrator
+        );
     }
 
     // Notes:
