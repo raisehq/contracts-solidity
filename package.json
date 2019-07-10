@@ -13,16 +13,17 @@
     "console": "truffle console --network kovan",
     "test": "bash scripts/test.sh",
     "coverage": "./node_modules/.bin/solidity-coverage",
-    "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
-    "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol"
+    "solhint": "./node_modules/.bin/solhint -f table contracts/*.sol",
+    "prettier:solidity": "./node_modules/.bin/prettier --write contracts/*.sol"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "bash scripts/test.sh"
+      "pre-commit": "npm run prettier:solidity && npm run solhint && SOLIDITY_COVERAGE=true bash scripts/test.sh && git add contracts && git add coverage*"
     }
   },
   "author": "Hero Fintech",
-  "license": "AGPL-v3",
+  "license": "GPL-3.0-only",
+  "repository": "https://gitlab.com/herohq/contracts-solidity.git",
   "dependencies": {
     "axios": "^0.18.0",
     "bignumber.js": "^9.0.0",
@@ -32,9 +33,10 @@
     "concurrently": "^4.1.0",
     "dotenv": "^6.2.0",
     "faker": "^4.1.0",
-    "ganache-cli": "^6.4.4",
+    "ganache-cli": "^6.4.1",
     "husky": "^2.7.0",
     "openzeppelin-solidity": "^2.3.0",
+    "solidity-coverage": "git+https://github.com/sc-forks/solidity-coverage.git#d71c962f8636f53494f32bcbc05db2a36d05f8f8",
     "truffle": "^5.0.26",
     "truffle-assertions": "^0.9.1",
     "truffle-hdwallet-provider": "^1.0.13",
@@ -44,7 +46,6 @@
     "prettier": "^1.18.2",
     "prettier-plugin-solidity": "^1.0.0-alpha.27",
     "solhint": "^2.1.0",
-    "solhint-plugin-prettier": "0.0.3",
-    "solidity-coverage": "^0.5.11"
+    "solhint-plugin-prettier": "0.0.3"
   }
 }

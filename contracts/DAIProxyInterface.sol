@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
 interface DAIProxyInterface {
     function fund(address loanAddress, uint256 fundingAmount) external;

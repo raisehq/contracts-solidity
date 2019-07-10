@@ -1,8 +1,8 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
-import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
-import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract ReferralTracker is Ownable {
     using SafeMath for uint256;
@@ -12,8 +12,17 @@ contract ReferralTracker is Ownable {
     address public registryAddress;
     ERC20 token;
 
-    event ReferralRegistered(address referralAddress, address indexed referrer, address indexed user);
-    event ReferralBonusWithdrawn(address referralAddress, address indexed referrer, uint256 amount, uint256 currentTrackerBalance);
+    event ReferralRegistered(
+        address referralAddress,
+        address indexed referrer,
+        address indexed user
+    );
+    event ReferralBonusWithdrawn(
+        address referralAddress,
+        address indexed referrer,
+        uint256 amount,
+        uint256 currentTrackerBalance
+    );
 
     constructor(address registryAddress_, address tokenAdress) public {
         registryAddress = registryAddress_;
@@ -21,7 +30,7 @@ contract ReferralTracker is Ownable {
     }
 
     modifier onlyRegistry() {
-        require(msg.sender == registryAddress, 'The executor is not the registry');
+        require(msg.sender == registryAddress, "The executor is not the registry");
         _;
     }
 
@@ -36,11 +45,11 @@ contract ReferralTracker is Ownable {
     }
 
     function withdraw(address to) public {
-        require(unclaimedReferrals[msg.sender] > 0, 'no referrals to claim');
+        require(unclaimedReferrals[msg.sender] > 0, "no referrals to claim");
         uint256 trackerBalance = token.balanceOf(address(this));
-        uint256 amount = REFERRAL_BONUS*unclaimedReferrals[msg.sender];
+        uint256 amount = REFERRAL_BONUS * unclaimedReferrals[msg.sender];
 
-        require(trackerBalance >= amount, 'Not enough founds');
+        require(trackerBalance >= amount, "Not enough founds");
         unclaimedReferrals[msg.sender] = 0;
 
         token.transfer(to, amount);

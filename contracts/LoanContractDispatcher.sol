@@ -1,7 +1,7 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
-import './Authorization.sol';
-import './LoanContract.sol';
+import "./Authorization.sol";
+import "./LoanContract.sol";
 
 contract LoanContractDispatcher is Ownable {
     Authorization auth;
@@ -19,7 +19,7 @@ contract LoanContractDispatcher is Ownable {
     mapping(address => bool) public isLoanContract;
 
     modifier onlyKYC {
-        require(auth.isKYCConfirmed(msg.sender), 'user does not have KYC');
+        require(auth.isKYCConfirmed(msg.sender), "user does not have KYC");
         _;
     }
 
@@ -40,11 +40,7 @@ contract LoanContractDispatcher is Ownable {
         address indexed administrator
     );
 
-    constructor(
-        address authAddress,
-        address _DAITokenAddress,
-        address _DAIProxyAddress
-    ) public {
+    constructor(address authAddress, address _DAITokenAddress, address _DAIProxyAddress) public {
         auth = Authorization(authAddress);
         DAITokenAddress = _DAITokenAddress;
         DAIProxyAddress = _DAIProxyAddress;
@@ -68,10 +64,7 @@ contract LoanContractDispatcher is Ownable {
         uint256 maxInterestRate,
         uint256 termEndTimestamp
     )
-    public
-    onlyKYC
-    returns (address)
-    {
+    public onlyKYC returns (address) {
         require(administrator != address(0), 'There is no administrator set');
         require();
         LoanContract loanContract = new LoanContract(

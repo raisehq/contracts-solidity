@@ -1,7 +1,6 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
-
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 contract KYCRegistry is Ownable {
     mapping(address => bool) KYCConfirmed;
@@ -9,12 +8,12 @@ contract KYCRegistry is Ownable {
     event RemoveFromKYC(address indexed user);
     event AddToKYC(address indexed user);
 
-    function remove(address addr) public onlyOwner{
+    function remove(address addr) public onlyOwner {
         KYCConfirmed[addr] = false;
         emit RemoveFromKYC(addr);
     }
 
-    function add(address addr) public onlyOwner{
+    function add(address addr) public onlyOwner {
         KYCConfirmed[addr] = true;
         emit AddToKYC(addr);
     }
