@@ -1,8 +1,8 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
-import './DepositRegistry.sol';
-import './KYCRegistry.sol';
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./DepositRegistry.sol";
+import "./KYCRegistry.sol";
 
 contract Authorization is Ownable {
     KYCRegistry kyc;

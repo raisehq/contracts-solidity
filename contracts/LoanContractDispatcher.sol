@@ -1,7 +1,7 @@
-pragma solidity ^0.5.0;
+pragma solidity 0.5.10;
 
-import './Authorization.sol';
-import './LoanContract.sol';
+import "./Authorization.sol";
+import "./LoanContract.sol";
 
 contract LoanContractDispatcher {
     Authorization auth;
@@ -11,7 +11,7 @@ contract LoanContractDispatcher {
     mapping(address => bool) public isLoanContract;
 
     modifier onlyKYC {
-        require(auth.isKYCConfirmed(msg.sender), 'user does not have KYC');
+        require(auth.isKYCConfirmed(msg.sender), "user does not have KYC");
         _;
     }
 
@@ -26,11 +26,7 @@ contract LoanContractDispatcher {
         uint256 termEndTimestamp
     );
 
-    constructor(
-        address authAddress,
-        address _DAITokenAddress,
-        address _DAIProxyAddress
-    ) public {
+    constructor(address authAddress, address _DAITokenAddress, address _DAIProxyAddress) public {
         auth = Authorization(authAddress);
         DAITokenAddress = _DAITokenAddress;
         DAIProxyAddress = _DAIProxyAddress;
@@ -42,11 +38,7 @@ contract LoanContractDispatcher {
         uint256 maxAmount,
         uint256 bpMaxInterestRate,
         uint256 termEndTimestamp
-    )
-    public
-    onlyKYC
-    returns (address)
-    {
+    ) public onlyKYC returns (address) {
         LoanContract loanContract = new LoanContract(
             auctionBlockLength,
             termEndTimestamp,

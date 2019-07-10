@@ -13,23 +13,14 @@ cleanup() {
   fi
 }
 
-if [ "$SOLIDITY_COVERAGE" = true ]; then
-  ganache_port=8555
-else
-  ganache_port=8545
-fi
+ganache_port=8545
 
 ganache_running() {
   nc -z localhost "$ganache_port"
 }
 
 start_ganache() {
-  # We define 10 accounts with balance 1M ether, needed for high-value tests.
-  if [ "$SOLIDITY_COVERAGE" = true ]; then
-    npx ganache-cli-coverage --emitFreeLogs true --allowUnlimitedContractSize true --gasLimit 0xfffffffffff --port "$ganache_port" > /dev/null &
-  else
-    npx ganache-cli --gasLimit 0xfffffffffff --port "$ganache_port" "${accounts[@]}" > /dev/null &
-  fi
+  npx ganache-cli --gasLimit 0xfffffffffff --port "$ganache_port" > /dev/null &
 
   ganache_pid=$!
 
@@ -42,21 +33,23 @@ start_ganache() {
   echo "Ganache launched!"
 }
 
-if ganache_running; then
-  echo "Using existing ganache instance"
-else
-  echo "Starting our own ganache instance"
-  start_ganache
-fi
 
 npx truffle version
 
 if [ "$SOLIDITY_COVERAGE" = true ]; then
+  echo "Launching test + coverage"
   npx solidity-coverage
 
   if [ "$CONTINUOUS_INTEGRATION" = true ]; then
     cat coverage/lcov.info | npx coveralls
   fi
 else
+  echo "Launching tests"
+  if ganache_running; then
+    echo "Using existing ganache instance"
+  else
+    echo "Starting our own ganache instance"
+    start_ganache
+  fi
   npx truffle test "$@"
 fi
