@@ -20,24 +20,24 @@
     </h1>
     <div class='clearfix'>
       <div class='fl pad1y space-right2'>
-        <span class="strong">78.1% </span>
+        <span class="strong">77.78% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>82/105</span>
+        <span class='fraction'>84/108</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">60.34% </span>
+        <span class="strong">58.33% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>35/58</span>
+        <span class='fraction'>35/60</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">86.36% </span>
+        <span class="strong">82.61% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>19/22</span>
+        <span class='fraction'>19/23</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">78.18% </span>
+        <span class="strong">77.19% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>86/110</span>
+        <span class='fraction'>88/114</span>
       </div>
     </div>
   </div>
@@ -404,7 +404,25 @@
 359
 360
 361
-362</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -495,6 +513,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -540,21 +564,33 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16×</span>
-<span class="cline-any cline-yes">16×</span>
-<span class="cline-any cline-yes">16×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16×</span>
-<span class="cline-any cline-yes">16×</span>
-<span class="cline-any cline-yes">16×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">17×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16×</span>
-<span class="cline-any cline-yes">16×</span>
-<span class="cline-any cline-yes">16×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">17×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">17×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -703,7 +739,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">39×</span>
+<span class="cline-any cline-yes">40×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -781,6 +817,7 @@ contract LoanContract is LoanContractInterface {
     ERC20 DAIToken;
     DAIProxyInterface proxy;
     address public originator;
+    address public administrator;
 &nbsp;
     uint256 public minAmount;
     uint256 public maxAmount;
@@ -797,7 +834,6 @@ contract LoanContract is LoanContractInterface {
     uint256 public auctionBalance;
     uint256 public borrowerDebt; // Amount borrower need to repay == auctionBalance + interests
     uint256 public bpMaxInterestRate;
-&nbsp;
     uint256 internal interestRate;
 &nbsp;
     bool public loanWithdrawn;
@@ -825,7 +861,8 @@ contract LoanContract is LoanContractInterface {
         uint256 maxAmount,
         uint256 bpMaxInterestRate,
         uint256 auctionStartBlock,
-        uint256 auctionEndBlock
+        uint256 auctionEndBlock,
+        address indexed administrator
     );
 &nbsp;
     event MinimumFundingReached(address loanAddress, uint256 currentBalance, uint256 interest);
@@ -857,6 +894,11 @@ contract LoanContract is LoanContractInterface {
         uint256 interest,
         uint256 fundedBlock
     );
+&nbsp;
+<span class="fstat-no" title="function not covered" >    modifier onlyAdmin(</span>) {
+<span class="cstat-no" title="statement not covered" >        require(msg.sender == administrator, "Caller is not an administrator")</span>;
+        _;
+    }
 &nbsp;
     modifier onlyCreated() {
         require(currentState == LoanState.CREATED, "Incorrect loan status");
@@ -899,11 +941,13 @@ contract LoanContract is LoanContractInterface {
         uint256 _bpMaxInterestRate,
         address _originator,
         address DAITokenAddress,
-        address proxyAddress
+        address proxyAddress,
+        address _administrator
     ) public {
         DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
         originator = _originator;
+        administrator = _administrator;
 &nbsp;
         bpMaxInterestRate = _bpMaxInterestRate;
         minAmount = _minAmount;
@@ -916,6 +960,16 @@ contract LoanContract is LoanContractInterface {
         termEndTimestamp = _termEndTimestamp;
 &nbsp;
         setState(LoanState.CREATED);
+        emit LoanCreated(
+            address(this),
+            originator,
+            minAmount,
+            maxAmount,
+            bpMaxInterestRate,
+            auctionStartBlock,
+            auctionEndBlock,
+            administrator
+        );
     }
 &nbsp;
     // Notes:
@@ -1132,7 +1186,7 @@ contract LoanContract is LoanContractInterface {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Wed Jul 10 2019 11:00:08 GMT+0200 (Central European Summer Time)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Wed Jul 10 2019 18:29:16 GMT+0200 (Central European Summer Time)
 </div>
 </div>
 <script src="../prettify.js"></script>

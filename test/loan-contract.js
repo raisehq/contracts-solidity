@@ -23,7 +23,7 @@ contract('LoanContract', (accounts) => {
     describe('Unit tests for LoanContract', () => {
         let loanAmount;
         let bpMacInterestRate;
-        let auctionBlockLength;
+        let auctionBlockLength; 
         let termEndTimestamp;
 
         beforeEach(async () => {
@@ -41,7 +41,7 @@ contract('LoanContract', (accounts) => {
                 bpMacInterestRate = 5;
                 auctionBlockLength = (60 * 60) / averageMiningBlockTime; // 1 hour in seconds
                 termEndTimestamp = currentBlock.timestamp + (2 * 60 * 60); // 2 hours in seconds
-
+                const administrator = borrower;
                 Loan = await LoanContract.new(
                     auctionBlockLength,
                     termEndTimestamp,
@@ -51,6 +51,7 @@ contract('LoanContract', (accounts) => {
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
+                    administrator
                 );
             } catch (error) {
                 throw error;

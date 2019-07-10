@@ -86,7 +86,7 @@ contract('Integration', (accounts) => {
 
             // initialize loan contract dispatcher
             LoanDispatcher = await LoanContractDispatcherContract.new(Auth.address, DAIToken.address, DAIProxy.address, {from:owner});
-
+            await LoanDispatcher.setAdministrator(owner, {from:owner});
             // Setup DAI amounts
             const daiBalance = 100;
             await DAIToken.transferAmountToAddress(lender, daiBalance, {from: owner});
@@ -99,13 +99,16 @@ contract('Integration', (accounts) => {
             const loanRepaymentTime = currentBlock.timestamp + (2 * 60 * 60); // 2 hours in seconds
             const loanMinAmount = 90;
             const loanMaxAmount = 100;
-            const bpMaxInterestRate = 5000;
+            const maxInterestRate = 5000;
+
+            await LoanDispatcher.setFixedMinAmount(10);
+            await LoanDispatcher.setFixedMaxInterest(5000);
 
             await LoanDispatcher.deploy(
                 auctionLengthBlock,
                 loanMinAmount,
                 loanMaxAmount,
-                bpMaxInterestRate,
+                maxInterestRate,
                 loanRepaymentTime,
                 {from: borrower}
             );

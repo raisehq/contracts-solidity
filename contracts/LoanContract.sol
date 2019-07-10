@@ -93,7 +93,7 @@ contract LoanContract is LoanContractInterface {
     );
 
     modifier onlyAdmin() {
-        require(msg.sender == administrator, 'Caller is not an administrator');
+        require(msg.sender == administrator, "Caller is not an administrator");
         _;
     }
 
