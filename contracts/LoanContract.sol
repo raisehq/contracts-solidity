@@ -30,12 +30,14 @@ contract LoanContract is LoanContractInterface {
 
     uint256 public auctionBalance;
     uint256 public borrowerDebt; // Amount borrower need to repay == auctionBalance + interests
-    uint256 public bpMaxInterestRate;
+    uint256 public maxInterestRate;
     uint256 internal interestRate;
 
     bool public loanWithdrawn;
     bool public minimumReached;
     bool public auctionEnded;
+
+    bool public loanWithdrawlUnlocked;
 
     mapping(address => uint256) public lenderBidAmount;
     mapping(address => bool) public lenderWithdrawn;
@@ -56,7 +58,7 @@ contract LoanContract is LoanContractInterface {
         address indexed originator,
         uint256 minAmount,
         uint256 maxAmount,
-        uint256 bpMaxInterestRate,
+        uint256 maxInterestRate,
         uint256 auctionStartBlock,
         uint256 auctionEndBlock,
         address indexed administrator
@@ -91,6 +93,13 @@ contract LoanContract is LoanContractInterface {
         uint256 interest,
         uint256 fundedBlock
     );
+    event FundsUnlockedWithdrawn(address loanAddress, address indexed lender, uint256 amount);
+    event FullyFundsUnlockedWithdrawn(address loanAddress);
+
+    modifier onlyUnlocked() {
+        require(loanWithdrawlUnlocked == true, "Loan funds are locked");
+        _;
+    }
 
     modifier onlyAdmin() {
         require(msg.sender == administrator, "Caller is not an administrator");
@@ -135,7 +144,7 @@ contract LoanContract is LoanContractInterface {
         uint256 _termEndTimestamp,
         uint256 _minAmount,
         uint256 _maxAmount,
-        uint256 _bpMaxInterestRate,
+        uint256 _maxInterestRate,
         address _originator,
         address DAITokenAddress,
         address proxyAddress,
@@ -146,7 +155,7 @@ contract LoanContract is LoanContractInterface {
         originator = _originator;
         administrator = _administrator;
 
-        bpMaxInterestRate = _bpMaxInterestRate;
+        maxInterestRate = _maxInterestRate;
         minAmount = _minAmount;
         maxAmount = _maxAmount;
 
@@ -156,13 +165,15 @@ contract LoanContract is LoanContractInterface {
 
         termEndTimestamp = _termEndTimestamp;
 
+        loanWithdrawlUnlocked = false;
+
         setState(LoanState.CREATED);
         emit LoanCreated(
             address(this),
             originator,
             minAmount,
             maxAmount,
-            bpMaxInterestRate,
+            maxInterestRate,
             auctionStartBlock,
             auctionEndBlock,
             administrator
@@ -232,6 +243,27 @@ contract LoanContract is LoanContractInterface {
         return true;
     }
 
+    function unlockFundsWithdrawl() public onlyAdmin {
+        loanWithdrawlUnlocked = true;
+    }
+
+    function withdrawFundsUnlocked() public onlyActive onlyUnlocked {
+        require(!loanWithdrawn, "Loan already withdrawn");
+        require(!lenderWithdrawn[msg.sender], "Lender already withdrawn");
+        require(lenderBidAmount[msg.sender] > 0, "Account did not deposit");
+
+        lenderWithdrawn[msg.sender] = true;
+
+        DAIToken.transfer(msg.sender, lenderBidAmount[msg.sender]);
+
+        emit FundsUnlockedWithdrawn(address(this), msg.sender, lenderBidAmount[msg.sender]);
+
+        if (DAIToken.balanceOf(address(this)) == 0) {
+            setState(LoanState.CLOSED);
+            emit FullyFundsUnlockedWithdrawn(address(this));
+        }
+    }
+
     //put these in proxy???
     // Seems this function bypass KYC? A user that we detect that did fraudulent KYC procedure
     // after the auction can be removed from KYC registry, but the fraud users could still refund from this method.
@@ -268,6 +300,7 @@ contract LoanContract is LoanContractInterface {
 
     function withdrawLoan() public onlyActive onlyOriginator {
         require(!loanWithdrawn, "Already withdrawn");
+        require(!loanWithdrawlUnlocked, "Loan unlocked for lender withdrawl");
 
         if (isDefaulted()) {
             setState(LoanState.DEFAULTED);
@@ -348,12 +381,12 @@ contract LoanContract is LoanContractInterface {
     function getInterestRate() public view returns (uint256) {
         if (currentState == LoanState.CREATED) {
             return
-                bpMaxInterestRate.mul(block.number.sub(auctionStartBlock)).div(
+                maxInterestRate.mul(block.number.sub(auctionStartBlock)).div(
                     auctionEndBlock.sub(auctionStartBlock)
                 );
         } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
             return
-                bpMaxInterestRate.mul(lastFundedBlock.sub(auctionStartBlock)).div(
+                maxInterestRate.mul(lastFundedBlock.sub(auctionStartBlock)).div(
                     auctionEndBlock.sub(auctionStartBlock)
                 );
         } else {

@@ -32,6 +32,7 @@ contract('Integration', (accounts) => {
     const borrower = accounts[2];
     const lender2 = accounts[3];
     const lender3 = accounts[4];
+    const admin = accounts[5];
 
     const averageMiningBlockTime = 15;
     
@@ -86,7 +87,7 @@ contract('Integration', (accounts) => {
 
             // initialize loan contract dispatcher
             LoanDispatcher = await LoanContractDispatcherContract.new(Auth.address, DAIToken.address, DAIProxy.address, {from:owner});
-            await LoanDispatcher.setAdministrator(owner, {from:owner});
+            await LoanDispatcher.setAdministrator(admin, {from:owner});
             // Setup DAI amounts
             const daiBalance = 100;
             await DAIToken.transferAmountToAddress(lender, daiBalance, {from: owner});
@@ -101,8 +102,8 @@ contract('Integration', (accounts) => {
             const loanMaxAmount = 100;
             const maxInterestRate = 5000;
 
-            await LoanDispatcher.setFixedMinAmount(10);
-            await LoanDispatcher.setFixedMaxInterest(5000);
+            await LoanDispatcher.setFixedMinAmount(10, {from: admin});
+            await LoanDispatcher.setFixedMaxInterest(5000, {from: admin});
 
             await LoanDispatcher.deploy(
                 auctionLengthBlock,
@@ -165,7 +166,7 @@ contract('Integration', (accounts) => {
             const txWithdraw = await Loan.withdrawRepayment({from: lender});
             const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
             const lenderWithdrawed = await Loan.lenderWithdrawn(lender);
-            const endState = Number(await Loan.currentState())
+            const endState = Number(await Loan.currentState());
 
             // Check repay event
             truffleAssert.eventEmitted(txWithdraw, 'RepaymentWithdrawn');
@@ -411,6 +412,78 @@ contract('Integration', (accounts) => {
             expect(Number(lenderBalanceAfterRepayment)).to.equal(lenderBalancePostFunding + totalDebt);
             expect(lenderWithdrawed).to.equal(true);
             expect(endState).to.equal(5);
+        });
+        it('Expects the lenders to be able to withdraw when loan funds are unlocked', async () => {
+            // lender funds loan
+            const fundingAmount = Number(await Loan.maxAmount()); 
+            await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
+            const fundTx = await DAIProxy.fund(Loan.address, fundingAmount, {from: lender});
+            
+            // Due we need to watch the LoanContract.sol events, need to change tx scope to point LoanContract.sol
+            const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
+            truffleAssert.eventEmitted(loanTxScope, 'Funded', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && ev.amount == fundingAmount);
+            truffleAssert.eventEmitted(loanTxScope, 'MinimumFundingReached', (ev) => ev.loanAddress == Loan.address && ev.currentBalance == fundingAmount);
+            truffleAssert.eventEmitted(loanTxScope, 'FullyFunded', (ev) => ev.loanAddress == Loan.address && ev.auctionBalance == fundingAmount);
+
+            // check if loan is funded
+            const loanFundedAmount = await Loan.auctionBalance();
+            const amountFundedByLender = await Loan.lenderBidAmount(lender);
+            const fundedLoanState = Number(await Loan.currentState());
+
+            await Loan.unlockFundsWithdrawl({from: admin});
+
+            const txWithdraw = await Loan.withdrawFundsUnlocked({from: lender});
+            truffleAssert.eventEmitted(txWithdraw, 'FundsUnlockedWithdrawn', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && ev.amount == fundingAmount);
+            truffleAssert.eventEmitted(txWithdraw, 'FullyFundsUnlockedWithdrawn', (ev) => ev.loanAddress == Loan.address);
+
+            // lender takes out money
+            const lenderBalanceAfterWithdrawl = await DAIToken.balanceOf(lender);
+            const lenderWithdrawed = await Loan.lenderWithdrawn(lender);
+            const endState = Number(await Loan.currentState());
+
+            expect(lenderKYC).to.equal(true);
+            expect(borrowerKYC).to.equal(true);
+            expect(lenderHasDeposited).to.equal(true);
+            expect(fundedLoanState).to.equal(2);
+            expect(Number(loanFundedAmount)).to.equal(fundingAmount);
+            expect(Number(amountFundedByLender)).to.equal(fundingAmount);
+            expect(Number(lenderBalanceAfterWithdrawl)).to.equal(fundingAmount);
+            expect(lenderWithdrawed).to.equal(true);
+            expect(endState).to.equal(5);
+        });
+        it('Expects the borrower to not be able to withdraw if the loan funds are unlocked', async  () => {
+            try {
+                // lender funds loan
+                const fundingAmount = Number(await Loan.maxAmount()); 
+                await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
+                const fundTx = await DAIProxy.fund(Loan.address, fundingAmount, {from: lender});
+                
+                // Due we need to watch the LoanContract.sol events, need to change tx scope to point LoanContract.sol
+                const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
+                truffleAssert.eventEmitted(loanTxScope, 'Funded', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && ev.amount == fundingAmount);
+                truffleAssert.eventEmitted(loanTxScope, 'MinimumFundingReached', (ev) => ev.loanAddress == Loan.address && ev.currentBalance == fundingAmount);
+                truffleAssert.eventEmitted(loanTxScope, 'FullyFunded', (ev) => ev.loanAddress == Loan.address && ev.balanceToRepay == totalDebt && ev.auctionBalance == fundingAmount);
+
+                // check if loan is funded
+                const loanFundedAmount = await Loan.auctionBalance();
+                const amountFundedByLender = await Loan.lenderBidAmount(lender);
+                const fundedLoanState = Number(await Loan.currentState());
+
+                await Loan.unlockFundsWithdrawl({from: admin});
+                expect(lenderKYC).to.equal(true);
+                expect(borrowerKYC).to.equal(true);
+                expect(lenderHasDeposited).to.equal(true);
+                expect(fundedLoanState).to.equal(2);
+                expect(Number(loanFundedAmount)).to.equal(fundingAmount);
+                expect(Number(amountFundedByLender)).to.equal(fundingAmount);
+                expect(Number(lenderBalanceAfterWithdrawl)).to.equal(fundingAmount);
+                
+                // borrower takes money from loan
+                await Loan.withdrawLoan({from: borrower});
+                
+            } catch (error) {
+                expect(error).to.not.equal(undefined);
+            }
         });
     });
 });
