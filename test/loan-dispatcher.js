@@ -16,7 +16,7 @@ const LoanContractDispatcherContract = artifacts.require('LoanContractDispatcher
 const HeroAmount = '200000000000000000000';
 const helpers = require('./helpers.js');
 
-contract('LoanContract', (accounts) => {
+contract('LoanContractDispatcher', (accounts) => {
     let DAIProxy;
     let DAIToken;
     let DepositRegistry;

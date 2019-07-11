@@ -66,9 +66,9 @@ contract('Integration', (accounts) => {
             await HeroToken.approve(DepositRegistry.address, HeroAmount, { from: lender2 });
             await HeroToken.approve(DepositRegistry.address, HeroAmount, { from: lender3 });
             
-            await DepositRegistry.depositFor(lender, {from: owner});
-            await DepositRegistry.depositFor(lender2, {from: owner});
-            await DepositRegistry.depositFor(lender3, {from: owner});
+            await DepositRegistry.depositFor(lender, {from: lender});
+            await DepositRegistry.depositFor(lender2, {from: lender2});
+            await DepositRegistry.depositFor(lender3, {from: lender3});
             
             // initialize proxies for lender and borrower
             Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
