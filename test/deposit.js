@@ -18,31 +18,22 @@ contract('Deposit Contract', function (accounts) {
   const owner = accounts[0];
   const user = accounts[1];
 
-  describe('deploy', () => {
-    it('should be able to deploy and create associated token contract', async () => {
-      HeroToken = await HeroFakeTokenContract.new();
-      KYC = await KYCContract.new();
-      DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address,  { from: owner });
-      await HeroToken.transferFakeHeroTokens(user);
-      await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
 
-      await DepositRegistry.depositFor(user, { from: owner });
-      assert.equal(await DepositRegistry.hasDeposited(user), true);
-
+  describe('Deposit Registry', () => {
+    before(async () =>  {
+      try{
+        HeroToken = await HeroFakeTokenContract.new();
+        KYC = await KYCContract.new();
+        DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address,  { from: owner });
+        await HeroToken.transferFakeHeroTokens(user);
+      }catch(error){
+        throw error;
+      }
     });
-
-    it('should not be able to successfully call withdraw if the message sender is not deposited', async () => {
-      HeroToken = await HeroFakeTokenContract.new();
-      KYC = await KYCContract.new();
-
-      await KYC.add(owner, {from: owner });
-
-      DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address,  { from: owner });
-      await HeroToken.transferFakeHeroTokens(user);
-      await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
-
-      await DepositRegistry.depositFor(user, { from: owner });
-
+   
+    it('should not allow withdrawing funds that have not been previously deposited', async () => {
+      assert.equal(await DepositRegistry.hasDeposited(user), false);
+      
       try {
         await DepositRegistry.withdraw(owner, {from: owner});
       } catch (error) {
@@ -50,18 +41,17 @@ contract('Deposit Contract', function (accounts) {
       }
     });
 
-    it('should not be able to successfully call withdraw if the message sender has not passed KYC', async () => {
-      HeroToken = await HeroFakeTokenContract.new();
-      KYC = await KYCContract.new();
+    it('should accept deposits', async () => {
+      try{
+        await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
+        await DepositRegistry.depositFor(user, { from: user });
+        assert.equal(await DepositRegistry.hasDeposited(user), true);
+      } catch(error){
+        throw error;
+      }
+    });
 
-      DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address,  { from: owner });
-      await HeroToken.transferFakeHeroTokens(user);
-      await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
-
-      await DepositRegistry.depositFor(user, { from: owner });
-
-      assert.equal(await DepositRegistry.hasDeposited(user), true);
-
+    it('should not allow withdrawing funds if lender is not verified', async () => {
       try {
         await DepositRegistry.withdraw(user, {from: user});
       } catch (error) {

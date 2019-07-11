@@ -49,6 +49,13 @@ module.exports = {
     // options below to some value.
     //
 
+    // development: {
+    //   gas: 8000000,
+    //   provider: function() {
+    //     return new HDWalletProvider(privateKey, 'localhost:8545');
+    //   },
+    //   network_id: '*' // Match any network id
+    // },
     development: {
       host: 'localhost',
       port: 8545,
