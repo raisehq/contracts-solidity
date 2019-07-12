@@ -48,7 +48,8 @@ contract LoanContract is LoanContractInterface {
         ACTIVE, // fully funded, inside timelimit
         DEFAULTED, // not repaid in time loanRepaymentLength
         REPAID, // the borrower repaid in full, lenders have yet to reclaim funds
-        CLOSED // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
+        CLOSED, // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
+        FROZEN // when admin unlocks withdrawals
     }
 
     LoanState public currentState;
@@ -96,8 +97,8 @@ contract LoanContract is LoanContractInterface {
     event FundsUnlockedWithdrawn(address loanAddress, address indexed lender, uint256 amount);
     event FullyFundsUnlockedWithdrawn(address loanAddress);
 
-    modifier onlyUnlocked() {
-        require(loanWithdrawlUnlocked == true, "Loan funds are locked");
+    modifier onlyFrozen() {
+        require(currentState == LoanState.FROZEN, "Loan status is not FROZEN");
         _;
     }
 
@@ -107,25 +108,25 @@ contract LoanContract is LoanContractInterface {
     }
 
     modifier onlyCreated() {
-        require(currentState == LoanState.CREATED, "Incorrect loan status");
+        require(currentState == LoanState.CREATED, "Loan status is not CREATED");
         _;
     }
 
     modifier onlyActive() {
         updateStateMachine();
-        require(currentState == LoanState.ACTIVE, "Incorrect loan status");
+        require(currentState == LoanState.ACTIVE, "Loan status is not ACTIVE");
         _;
     }
 
     modifier onlyRepaid() {
         updateStateMachine();
-        require(currentState == LoanState.REPAID, "Incorrect loan state");
+        require(currentState == LoanState.REPAID, "Loan status is not REPAID");
         _;
     }
 
     modifier onlyFailedToFund() {
         updateStateMachine();
-        require(currentState == LoanState.FAILED_TO_FUND, "Incorrect loan state");
+        require(currentState == LoanState.FAILED_TO_FUND, "Loan status is not FAILED_TO_FUND");
         _;
     }
 
@@ -164,8 +165,6 @@ contract LoanContract is LoanContractInterface {
         auctionEndBlock = auctionStartBlock.add(auctionBlockLength);
 
         termEndTimestamp = _termEndTimestamp;
-
-        loanWithdrawlUnlocked = false;
 
         setState(LoanState.CREATED);
         emit LoanCreated(
@@ -243,11 +242,11 @@ contract LoanContract is LoanContractInterface {
         return true;
     }
 
-    function unlockFundsWithdrawl() public onlyAdmin {
-        loanWithdrawlUnlocked = true;
+    function unlockFundsWithdrawal() public onlyAdmin {
+        setState(LoanState.FROZEN);
     }
 
-    function withdrawFundsUnlocked() public onlyActive onlyUnlocked {
+    function withdrawFundsUnlocked() public onlyFrozen {
         require(!loanWithdrawn, "Loan already withdrawn");
         require(!lenderWithdrawn[msg.sender], "Lender already withdrawn");
         require(lenderBidAmount[msg.sender] > 0, "Account did not deposit");
@@ -300,7 +299,6 @@ contract LoanContract is LoanContractInterface {
 
     function withdrawLoan() public onlyActive onlyOriginator {
         require(!loanWithdrawn, "Already withdrawn");
-        require(!loanWithdrawlUnlocked, "Loan unlocked for lender withdrawl");
 
         if (isDefaulted()) {
             setState(LoanState.DEFAULTED);

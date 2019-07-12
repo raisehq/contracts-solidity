@@ -95,7 +95,6 @@ contract('LoanContract', (accounts) => {
                     expect(error).to.equal(undefined);
                 }
             });
-
             it('Expects Lender to be able to fully fund a Loan and mutate from CREATED to ACTIVE state.', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
@@ -122,7 +121,6 @@ contract('LoanContract', (accounts) => {
                     expect(error).to.equal(undefined);
                 }
             });
-
             it('Expects Lender to be able to send bigger funds to Loan, only loan amunt needed, and mutate from CREATED to ACTIVE state', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
@@ -152,7 +150,6 @@ contract('LoanContract', (accounts) => {
                     expect(error).to.equal(undefined);
                 }
             });
-
             it('Expects Lender to NOT be able to fund after state is ACTIVE', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
@@ -172,7 +169,7 @@ contract('LoanContract', (accounts) => {
                     await truffleAssert.fails(
                         DAIProxy.fund(Loan.address, 50, {from: lender}),
                         truffleAssert.ErrorType.REVERT,
-                        "Incorrect loan status."
+                        "Loan status is not CREATED"
                     );
                     
 
@@ -198,7 +195,6 @@ contract('LoanContract', (accounts) => {
                     expect(error).to.equal(undefined);
                 }
             });
-
             it('Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND', async () => {
                 try {
                     const fundEndBlock = await Loan.auctionEndBlock();
@@ -288,7 +284,6 @@ contract('LoanContract', (accounts) => {
                     throw error;
                 }
             });
-
             it('Expects updateMachineState method to NOT mutate Loan state if state is CREATED and is not expired', async () => {
                 try {
                     // Contract init state should be CREATED
@@ -307,7 +302,6 @@ contract('LoanContract', (accounts) => {
                     throw error;
                 }
             });
-
             it('Expects updateMachineState method to NOT mutate from FAILED_TO_FUND state', async () => {
                 try {
                     // Contract init state should be CREATED
@@ -335,7 +329,6 @@ contract('LoanContract', (accounts) => {
                     throw error;
                 }
             });
-
             it('Expects updateMachineState method to NOT mutate from ACTIVE state if not defaulted', async () => {
                 try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
@@ -356,7 +349,6 @@ contract('LoanContract', (accounts) => {
                     throw error;
                 }
             });
-            
             it('Expects updateMachineState method to mutate from ACTIVE to DEFAULTED if repay expires', async () => {
                 try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
@@ -540,6 +532,14 @@ contract('LoanContract', (accounts) => {
                     expect(error).to.not.equal(undefined);
                 }
             });
+            it('Expect withdrawLoan to Not allow Borrower take loan if state == FROZEN', async () => {
+                try {
+                    await Loan.unlockFundsWithdrawal({from: admin});
+                    await Loan.withdrawLoan({from: borrower});
+                } catch (error) {
+                    expect(error).to.not.equal(undefined);
+                }
+            });
             it('Expect withdrawLoan to NOT allow Borrower take loan twice.', async () => {
                 try {
                     const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
@@ -716,6 +716,14 @@ contract('LoanContract', (accounts) => {
                     expect(error).to.not.equal(undefined);
                 }
             });
+            it('Expect withdrawRepayment to NOT allow lender to take repayment state == FROZEN', async () => {
+                try {
+                    await Loan.unlockFundsWithdrawal({from: admin});
+                    await Loan.withdrawRepayment({from: lender});
+                } catch (error) {
+                    expect(error).to.not.equal(undefined);
+                }
+            });
             it('Expect withdrawRepayment to NOT allow Borrower take repayament', async () => {
                 try {
                     await DAIToken.approve(DAIProxy.address, 100, { from: lender });
@@ -887,6 +895,14 @@ contract('LoanContract', (accounts) => {
                     expect(error).to.not.equal(undefined);
                 }
             });
+            it('Expect withdrawRefund to NOT allow Lender refund if state == FROZEN', async () => {
+                try {
+                    await Loan.unlockFundsWithdrawal({from: admin});
+                    await Loan.withdrawRefund({from: borrower});
+                } catch (error) {
+                    expect(error).to.not.equal(undefined);
+                }
+            })
         });
         describe('Method onRepaymentReceived', () => {
             beforeEach(async () => {
@@ -1064,7 +1080,10 @@ contract('LoanContract', (accounts) => {
                 await DAIToken.approve(DAIProxy.address, 100, { from: lender });
                 await DAIProxy.fund(Loan.address, 100, {from: lender});
                 
-                await Loan.unlockFundsWithdrawl({from: admin});
+                await Loan.unlockFundsWithdrawal({from: admin});
+
+                const state = Number(await Loan.currentState());
+                expect(state).to.equal(6);
 
                 await Loan.withdrawFundsUnlocked({from: lender});
                 const balance = Number(await DAIToken.balanceOf(lender));
@@ -1082,7 +1101,7 @@ contract('LoanContract', (accounts) => {
                 }
             });
         });
-        describe('Method unlockFundsWithdrawl', () => {
+        describe('Method unlockFundsWithdrawal', () => {
             beforeEach(async () => {
                 auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
                 termEndTimestamp = currentBlock.timestamp + 2 ;
@@ -1099,13 +1118,13 @@ contract('LoanContract', (accounts) => {
                 );
             });
             it('Expects to unlock the funds if admin', async () => {
-                await Loan.unlockFundsWithdrawl({from: admin});
-                const unlocked = await Loan.loanWithdrawlUnlocked();
-                expect(unlocked).to.equal(true);
+                await Loan.unlockFundsWithdrawal({from: admin});
+                const unlocked = Number(await Loan.currentState());
+                expect(unlocked).to.equal(6);
             });
             it('Expects to not unlock the funds if not admin', async () => {
                 try {
-                    await Loan.unlockFundsWithdrawl({from: owner});
+                    await Loan.unlockFundsWithdrawal({from: owner});
                 } catch (error) {
                     expect(error).to.not.equal(undefined);
                 }

@@ -48,14 +48,6 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
-
-    // development: {
-    //   gas: 8000000,
-    //   provider: function() {
-    //     return new HDWalletProvider(privateKey, 'localhost:8545');
-    //   },
-    //   network_id: '*' // Match any network id
-    // },
     development: {
       host: 'localhost',
       port: 8545,

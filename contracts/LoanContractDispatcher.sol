@@ -10,11 +10,11 @@ contract LoanContractDispatcher is Ownable {
 
     address public administrator;
 
-    uint256 public fixedMinAmount;
-    uint256 public fixedMaxAmount;
+    uint256 public minAmount;
+    uint256 public maxAmount;
 
-    uint256 public fixedMinInterest;
-    uint256 public fixedMaxInterest;
+    uint256 public minInterestRate;
+    uint256 public maxInterestRate;
 
     mapping(address => bool) public isLoanContract;
 
@@ -45,76 +45,80 @@ contract LoanContractDispatcher is Ownable {
         DAITokenAddress = _DAITokenAddress;
         DAIProxyAddress = _DAIProxyAddress;
 
-        fixedMinAmount = 1000;
-        fixedMaxAmount = 2500000;
+        minAmount = 1000;
+        maxAmount = 2500000;
 
-        fixedMinInterest = 0;
-        fixedMaxInterest = 3000;
+        minInterestRate = 0;
+        maxInterestRate = 3000;
     }
 
     function setAdministrator(address admin) public onlyOwner {
         administrator = admin;
     }
 
-    function setFixedMinAmount(uint256 minAmount) public onlyAdmin {
+    function setMinAmount(uint256 requestedMinAmount) public onlyAdmin {
         require(
-            minAmount <= fixedMaxAmount,
+            requestedMinAmount <= maxAmount,
             "Minimum amount needs to be lesser or equal than maximum amount"
         );
-        fixedMinAmount = minAmount;
+        minAmount = requestedMinAmount;
     }
 
-    function setFixedMaxAmount(uint256 maxAmount) public onlyAdmin {
+    function setMaxAmount(uint256 requestedMaxAmount) public onlyAdmin {
         require(
-            maxAmount >= fixedMinAmount,
+            requestedMaxAmount >= minAmount,
             "Maximum amount needs to be greater or equal than minimum amount"
         );
-        fixedMaxAmount = maxAmount;
+        maxAmount = requestedMaxAmount;
     }
 
-    function setFixedMinInterest(uint256 minInterest) public onlyAdmin {
+    function setMinInterestRate(uint256 requestedMinInterestRate) public onlyAdmin {
         require(
-            minInterest <= fixedMaxInterest,
+            requestedMinInterestRate <= maxInterestRate,
             "Minimum interest needs to be lesser or equal than maximum interest"
         );
-        fixedMinInterest = minInterest;
+        minInterestRate = requestedMinInterestRate;
     }
 
-    function setFixedMaxInterest(uint256 maxInterest) public onlyAdmin {
+    function setMaxInterestRate(uint256 requestedMaxInterestRate) public onlyAdmin {
         require(
-            maxInterest >= fixedMinInterest,
+            requestedMaxInterestRate >= minInterestRate,
             "Maximum interest needs to be greater or equal than minimum interest"
         );
-        fixedMaxInterest = maxInterest;
+        maxInterestRate = requestedMaxInterestRate;
     }
 
     function deploy(
         uint256 auctionBlockLength,
-        uint256 minAmount,
-        uint256 maxAmount,
-        uint256 maxInterestRate,
+        uint256 loanMinAmount,
+        uint256 loanMaxAmount,
+        uint256 loanMaxInterestRate,
         uint256 termEndTimestamp
     ) public onlyKYC returns (address) {
         require(administrator != address(0), "There is no administrator set");
         require(
-            minAmount >= fixedMinAmount && minAmount <= fixedMaxAmount && minAmount <= maxAmount,
+            loanMinAmount >= minAmount &&
+                loanMinAmount <= maxAmount &&
+                loanMinAmount <= loanMaxAmount,
             "minimum amount not correct"
         );
         require(
-            maxAmount >= fixedMinAmount && maxAmount <= fixedMaxAmount && maxAmount >= minAmount,
+            loanMaxAmount >= minAmount &&
+                loanMaxAmount <= maxAmount &&
+                loanMaxAmount >= loanMinAmount,
             "maximum amount not correct"
         );
         require(
-            maxInterestRate >= fixedMinInterest && maxInterestRate <= fixedMaxInterest,
+            loanMaxInterestRate >= minInterestRate && loanMaxInterestRate <= maxInterestRate,
             "maximum interest rate not correct"
         );
 
         LoanContract loanContract = new LoanContract(
             auctionBlockLength,
             termEndTimestamp,
-            minAmount,
-            maxAmount,
-            maxInterestRate,
+            loanMinAmount,
+            loanMaxAmount,
+            loanMaxInterestRate,
             msg.sender,
             DAITokenAddress,
             DAIProxyAddress,
@@ -127,9 +131,9 @@ contract LoanContractDispatcher is Ownable {
             address(loanContract),
             msg.sender,
             block.number + auctionBlockLength,
-            minAmount,
-            maxAmount,
-            maxInterestRate,
+            loanMinAmount,
+            loanMaxAmount,
+            loanMaxInterestRate,
             termEndTimestamp,
             administrator
         );

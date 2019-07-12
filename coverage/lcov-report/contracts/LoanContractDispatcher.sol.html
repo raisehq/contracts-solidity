@@ -25,9 +25,9 @@
         <span class='fraction'>26/26</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">85% </span>
+        <span class="strong">95% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>17/20</span>
+        <span class='fraction'>19/20</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -183,7 +183,11 @@
 138
 139
 140
-141</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+141
+142
+143
+144
+145</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -285,11 +289,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -335,11 +343,11 @@ contract LoanContractDispatcher is Ownable {
 &nbsp;
     address public administrator;
 &nbsp;
-    uint256 public fixedMinAmount;
-    uint256 public fixedMaxAmount;
+    uint256 public minAmount;
+    uint256 public maxAmount;
 &nbsp;
-    uint256 public fixedMinInterest;
-    uint256 public fixedMaxInterest;
+    uint256 public minInterestRate;
+    uint256 public maxInterestRate;
 &nbsp;
     mapping(address =&gt; bool) public isLoanContract;
 &nbsp;
@@ -370,76 +378,80 @@ contract LoanContractDispatcher is Ownable {
         DAITokenAddress = _DAITokenAddress;
         DAIProxyAddress = _DAIProxyAddress;
 &nbsp;
-        fixedMinAmount = 1000;
-        fixedMaxAmount = 2500000;
+        minAmount = 1000;
+        maxAmount = 2500000;
 &nbsp;
-        fixedMinInterest = 0;
-        fixedMaxInterest = 3000;
+        minInterestRate = 0;
+        maxInterestRate = 3000;
     }
 &nbsp;
     function setAdministrator(address admin) public onlyOwner {
         administrator = admin;
     }
 &nbsp;
-    function setFixedMinAmount(uint256 minAmount) public onlyAdmin {
+    function setMinAmount(uint256 requestedMinAmount) public onlyAdmin {
         require(
-            minAmount &lt;= fixedMaxAmount,
+            requestedMinAmount &lt;= maxAmount,
             "Minimum amount needs to be lesser or equal than maximum amount"
         );
-        fixedMinAmount = minAmount;
+        minAmount = requestedMinAmount;
     }
 &nbsp;
-    function setFixedMaxAmount(uint256 maxAmount) public onlyAdmin {
+    function setMaxAmount(uint256 requestedMaxAmount) public onlyAdmin {
         require(
-            maxAmount &gt;= fixedMinAmount,
+            requestedMaxAmount &gt;= minAmount,
             "Maximum amount needs to be greater or equal than minimum amount"
         );
-        fixedMaxAmount = maxAmount;
+        maxAmount = requestedMaxAmount;
     }
 &nbsp;
-    function setFixedMinInterest(uint256 minInterest) public onlyAdmin {
+    function setMinInterestRate(uint256 requestedMinInterestRate) public onlyAdmin {
         require(
-            minInterest &lt;= fixedMaxInterest,
+            requestedMinInterestRate &lt;= maxInterestRate,
             "Minimum interest needs to be lesser or equal than maximum interest"
         );
-        fixedMinInterest = minInterest;
+        minInterestRate = requestedMinInterestRate;
     }
 &nbsp;
-    function setFixedMaxInterest(uint256 maxInterest) public onlyAdmin {
+    function setMaxInterestRate(uint256 requestedMaxInterestRate) public onlyAdmin {
         require(
-            maxInterest &gt;= fixedMinInterest,
+            requestedMaxInterestRate &gt;= minInterestRate,
             "Maximum interest needs to be greater or equal than minimum interest"
         );
-        fixedMaxInterest = maxInterest;
+        maxInterestRate = requestedMaxInterestRate;
     }
 &nbsp;
     function deploy(
         uint256 auctionBlockLength,
-        uint256 minAmount,
-        uint256 maxAmount,
-        uint256 maxInterestRate,
+        uint256 loanMinAmount,
+        uint256 loanMaxAmount,
+        uint256 loanMaxInterestRate,
         uint256 termEndTimestamp
     ) public onlyKYC returns (address) {
         require(administrator != address(0), "There is no administrator set");
         require(
-            minAmount &gt;= fixedMinAmount &amp;&amp; minAmount &lt;= fixedMaxAmount &amp;&amp; minAmount &lt;= maxAmount,
+            loanMinAmount &gt;= minAmount &amp;&amp;
+                loanMinAmount &lt;= maxAmount &amp;&amp;
+                loanMinAmount &lt;= loanMaxAmount,
             "minimum amount not correct"
         );
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(
-            maxAmount &gt;= fixedMinAmount &amp;&amp; maxAmount &lt;= fixedMaxAmount &amp;&amp; maxAmount &gt;= minAmount,
+        require(
+            loanMaxAmount &gt;= minAmount &amp;&amp;
+                loanMaxAmount &lt;= maxAmount &amp;&amp;
+                loanMaxAmount &gt;= loanMinAmount,
             "maximum amount not correct"
         );
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(
-            maxInterestRate &gt;= fixedMinInterest &amp;&amp; maxInterestRate &lt;= fixedMaxInterest,
+        require(
+            loanMaxInterestRate &gt;= minInterestRate &amp;&amp; loanMaxInterestRate &lt;= maxInterestRate,
             "maximum interest rate not correct"
         );
 &nbsp;
         LoanContract loanContract = new LoanContract(
             auctionBlockLength,
             termEndTimestamp,
-            minAmount,
-            maxAmount,
-            maxInterestRate,
+            loanMinAmount,
+            loanMaxAmount,
+            loanMaxInterestRate,
             msg.sender,
             DAITokenAddress,
             DAIProxyAddress,
@@ -452,9 +464,9 @@ contract LoanContractDispatcher is Ownable {
             address(loanContract),
             msg.sender,
             block.number + auctionBlockLength,
-            minAmount,
-            maxAmount,
-            maxInterestRate,
+            loanMinAmount,
+            loanMaxAmount,
+            loanMaxInterestRate,
             termEndTimestamp,
             administrator
         );
@@ -469,7 +481,7 @@ contract LoanContractDispatcher is Ownable {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Thu Jul 11 2019 20:46:27 GMT+0200 (Central European Summer Time)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Jul 12 2019 11:53:47 GMT+0200 (Central European Summer Time)
 </div>
 </div>
 <script src="../prettify.js"></script>

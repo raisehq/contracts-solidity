@@ -102,8 +102,8 @@ contract('Integration', (accounts) => {
             const loanMaxAmount = 100;
             const maxInterestRate = 5000;
 
-            await LoanDispatcher.setFixedMinAmount(10, {from: admin});
-            await LoanDispatcher.setFixedMaxInterest(5000, {from: admin});
+            await LoanDispatcher.setMinAmount(10, {from: admin});
+            await LoanDispatcher.setMaxInterestRate(5000, {from: admin});
 
             await LoanDispatcher.deploy(
                 auctionLengthBlock,
@@ -430,7 +430,7 @@ contract('Integration', (accounts) => {
             const amountFundedByLender = await Loan.lenderBidAmount(lender);
             const fundedLoanState = Number(await Loan.currentState());
 
-            await Loan.unlockFundsWithdrawl({from: admin});
+            await Loan.unlockFundsWithdrawal({from: admin});
 
             const txWithdraw = await Loan.withdrawFundsUnlocked({from: lender});
             truffleAssert.eventEmitted(txWithdraw, 'FundsUnlockedWithdrawn', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && ev.amount == fundingAmount);
@@ -469,7 +469,7 @@ contract('Integration', (accounts) => {
                 const amountFundedByLender = await Loan.lenderBidAmount(lender);
                 const fundedLoanState = Number(await Loan.currentState());
 
-                await Loan.unlockFundsWithdrawl({from: admin});
+                await Loan.unlockFundsWithdrawal({from: admin});
                 expect(lenderKYC).to.equal(true);
                 expect(borrowerKYC).to.equal(true);
                 expect(lenderHasDeposited).to.equal(true);
