@@ -37,10 +37,12 @@ contract LoanContract is LoanContractInterface {
     bool public minimumReached;
     bool public auctionEnded;
 
-    bool public loanWithdrawlUnlocked;
+    struct Position {
+        uint256 bidAmount;
+        bool withdrawn;
+    }
 
-    mapping(address => uint256) public lenderBidAmount;
-    mapping(address => bool) public lenderWithdrawn;
+    mapping(address => Position) public lenderPosition;
 
     enum LoanState {
         CREATED, // accepts bids until timelimit initial state
@@ -207,7 +209,7 @@ contract LoanContract is LoanContractInterface {
             }
         }
 
-        lenderBidAmount[lender] = lenderBidAmount[lender].add(amount);
+        lenderPosition[lender].bidAmount = lenderPosition[lender].bidAmount.add(amount);
         auctionBalance = auctionBalance.add(amount);
 
         lastFundedBlock = block.number;
@@ -248,14 +250,18 @@ contract LoanContract is LoanContractInterface {
 
     function withdrawFundsUnlocked() public onlyFrozen {
         require(!loanWithdrawn, "Loan already withdrawn");
-        require(!lenderWithdrawn[msg.sender], "Lender already withdrawn");
-        require(lenderBidAmount[msg.sender] > 0, "Account did not deposit");
+        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+        require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposit");
 
-        lenderWithdrawn[msg.sender] = true;
+        lenderPosition[msg.sender].withdrawn = true;
 
-        DAIToken.transfer(msg.sender, lenderBidAmount[msg.sender]);
+        DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount);
 
-        emit FundsUnlockedWithdrawn(address(this), msg.sender, lenderBidAmount[msg.sender]);
+        emit FundsUnlockedWithdrawn(
+            address(this),
+            msg.sender,
+            lenderPosition[msg.sender].bidAmount
+        );
 
         if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
@@ -267,14 +273,14 @@ contract LoanContract is LoanContractInterface {
     // Seems this function bypass KYC? A user that we detect that did fraudulent KYC procedure
     // after the auction can be removed from KYC registry, but the fraud users could still refund from this method.
     function withdrawRefund() public onlyFailedToFund {
-        require(!lenderWithdrawn[msg.sender], "Lender already withdrawn");
-        require(lenderBidAmount[msg.sender] > 0, "Account did not deposited.");
+        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+        require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposited.");
 
-        lenderWithdrawn[msg.sender] = true;
+        lenderPosition[msg.sender].withdrawn = true;
 
-        emit RefundWithdrawn(address(this), msg.sender, lenderBidAmount[msg.sender]);
+        emit RefundWithdrawn(address(this), msg.sender, lenderPosition[msg.sender].bidAmount);
 
-        DAIToken.transfer(msg.sender, lenderBidAmount[msg.sender]);
+        DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount);
 
         if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
@@ -283,10 +289,10 @@ contract LoanContract is LoanContractInterface {
     }
 
     function withdrawRepayment() public onlyRepaid {
-        require(!lenderWithdrawn[msg.sender], "Lender already withdrawn");
-        require(lenderBidAmount[msg.sender] != 0, "Account did not deposited");
-        uint256 amount = calculateValueWithInterest(lenderBidAmount[msg.sender]);
-        lenderWithdrawn[msg.sender] = true;
+        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+        require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
+        uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
+        lenderPosition[msg.sender].withdrawn = true;
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
 
         DAIToken.transfer(msg.sender, amount);
@@ -401,10 +407,10 @@ contract LoanContract is LoanContractInterface {
     }
 
     function getLenderBidAmount(address lender) public view returns (uint256) {
-        return lenderBidAmount[lender];
+        return lenderPosition[lender].bidAmount;
     }
 
     function getLenderWithdrawn(address lender) public view returns (bool) {
-        return lenderWithdrawn[lender];
+        return lenderPosition[lender].withdrawn;
     }
 }

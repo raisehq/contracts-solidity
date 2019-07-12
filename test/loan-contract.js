@@ -84,8 +84,8 @@ contract('LoanContract', (accounts) => {
                     const loanState = await Loan.currentState();
                     // Subscribe to events
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
-                    const fundedByLender = await Loan.lenderBidAmount(lender, {from: owner});
-
+                    const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
+                    
                     expect(Number(fundedByLender)).to.equal(50);
                     expect(Number(auctionBalanceAmount)).to.equal(50);
 
@@ -109,7 +109,7 @@ contract('LoanContract', (accounts) => {
                     // Subscribe to events
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
 
-                    const fundedByLender = await Loan.lenderBidAmount(lender, {from: owner});
+                    const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
                     
                     expect(Number(fundedByLender)).to.equal(100);
                     expect(Number(auctionBalanceAmount)).to.equal(100);
@@ -137,7 +137,7 @@ contract('LoanContract', (accounts) => {
 
                     // Subscribe to events
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
-                    const fundedByLender = await Loan.lenderBidAmount(lender, {from: owner});
+                    const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
                     
                     expect(Number(fundedByLender)).to.equal(100);
                     expect(Number(auctionBalanceAmount)).to.equal(100);
@@ -184,7 +184,7 @@ contract('LoanContract', (accounts) => {
                     const lenderAfterBalance = await DAIToken.balanceOf(lender);
                     // Subscribe to events
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
-                    const fundedByLender = await Loan.lenderBidAmount(lender, {from: owner});
+                    const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
                     
                     // Check balances
                     expect(Number(fundedByLender)).to.equal(100);
@@ -790,7 +790,7 @@ contract('LoanContract', (accounts) => {
                 const lenderBalance = await DAIToken.balanceOf(lender);
 
                 await Loan.withdrawRefund({from: lender});
-                const lenderBidAmountInContractAfterWithdraw = await Loan.lenderBidAmount(lender);
+                const lenderBidAmountInContractAfterWithdraw = await Loan.getLenderBidAmount(lender);
                 const lenderBalanceAfter = await DAIToken.balanceOf(lender);
                 expect(Number(lenderBalance)).to.equal(100)
                 expect(Number(lenderBalanceAfter)).to.equal(150);

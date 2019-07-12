@@ -20,24 +20,24 @@
     </h1>
     <div class='clearfix'>
       <div class='fl pad1y space-right2'>
-        <span class="strong">89.17% </span>
+        <span class="strong">89.92% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>107/120</span>
+        <span class='fraction'>107/119</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">76.39% </span>
+        <span class="strong">77.14% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>55/72</span>
+        <span class='fraction'>54/70</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">96.15% </span>
+        <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>25/26</span>
+        <span class='fraction'>26/26</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">89.76% </span>
+        <span class="strong">90.48% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>114/127</span>
+        <span class='fraction'>114/126</span>
       </div>
     </div>
   </div>
@@ -453,7 +453,15 @@
 408
 409
 410
-411</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+411
+412
+413
+414
+415
+416
+417</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -712,6 +720,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2×</span>
 <span class="cline-any cline-yes">2×</span>
 <span class="cline-any cline-yes">2×</span>
@@ -754,7 +766,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">16×</span>
-<span class="cline-any cline-yes">14×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">14×</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -857,11 +868,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">15×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">pragma solidity 0.5.10;
 &nbsp;
@@ -902,10 +914,12 @@ contract LoanContract is LoanContractInterface {
     bool public minimumReached;
     bool public auctionEnded;
 &nbsp;
-    bool public loanWithdrawlUnlocked;
+    struct Position {
+        uint256 bidAmount;
+        bool withdrawn;
+    }
 &nbsp;
-    mapping(address =&gt; uint256) public lenderBidAmount;
-    mapping(address =&gt; bool) public lenderWithdrawn;
+    mapping(address =&gt; Position) public lenderPosition;
 &nbsp;
     enum LoanState {
         CREATED, // accepts bids until timelimit initial state
@@ -1072,7 +1086,7 @@ contract LoanContract is LoanContractInterface {
             }
         }
 &nbsp;
-        lenderBidAmount[lender] = lenderBidAmount[lender].add(amount);
+        lenderPosition[lender].bidAmount = lenderPosition[lender].bidAmount.add(amount);
         auctionBalance = auctionBalance.add(amount);
 &nbsp;
         lastFundedBlock = block.number;
@@ -1113,14 +1127,18 @@ contract LoanContract is LoanContractInterface {
 &nbsp;
     function withdrawFundsUnlocked() public onlyFrozen {
         <span class="missing-if-branch" title="else path not taken" >E</span>require(!loanWithdrawn, "Loan already withdrawn");
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(!lenderWithdrawn[msg.sender], "Lender already withdrawn");
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(lenderBidAmount[msg.sender] &gt; 0, "Account did not deposit");
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(lenderPosition[msg.sender].bidAmount &gt; 0, "Account did not deposit");
 &nbsp;
-        lenderWithdrawn[msg.sender] = true;
+        lenderPosition[msg.sender].withdrawn = true;
 &nbsp;
-        DAIToken.transfer(msg.sender, lenderBidAmount[msg.sender]);
+        DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount);
 &nbsp;
-        emit FundsUnlockedWithdrawn(address(this), msg.sender, lenderBidAmount[msg.sender]);
+        emit FundsUnlockedWithdrawn(
+            address(this),
+            msg.sender,
+            lenderPosition[msg.sender].bidAmount
+        );
 &nbsp;
         <span class="missing-if-branch" title="else path not taken" >E</span>if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
@@ -1132,14 +1150,14 @@ contract LoanContract is LoanContractInterface {
     // Seems this function bypass KYC? A user that we detect that did fraudulent KYC procedure
     // after the auction can be removed from KYC registry, but the fraud users could still refund from this method.
     function withdrawRefund() public onlyFailedToFund {
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(!lenderWithdrawn[msg.sender], "Lender already withdrawn");
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(lenderBidAmount[msg.sender] &gt; 0, "Account did not deposited.");
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(lenderPosition[msg.sender].bidAmount &gt; 0, "Account did not deposited.");
 &nbsp;
-        lenderWithdrawn[msg.sender] = true;
+        lenderPosition[msg.sender].withdrawn = true;
 &nbsp;
-        emit RefundWithdrawn(address(this), msg.sender, lenderBidAmount[msg.sender]);
+        emit RefundWithdrawn(address(this), msg.sender, lenderPosition[msg.sender].bidAmount);
 &nbsp;
-        DAIToken.transfer(msg.sender, lenderBidAmount[msg.sender]);
+        DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount);
 &nbsp;
         <span class="missing-if-branch" title="else path not taken" >E</span>if (DAIToken.balanceOf(address(this)) == 0) {
             setState(LoanState.CLOSED);
@@ -1148,10 +1166,10 @@ contract LoanContract is LoanContractInterface {
     }
 &nbsp;
     function withdrawRepayment() public onlyRepaid {
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(!lenderWithdrawn[msg.sender], "Lender already withdrawn");
-        require(lenderBidAmount[msg.sender] != 0, "Account did not deposited");
-        uint256 amount = calculateValueWithInterest(lenderBidAmount[msg.sender]);
-        lenderWithdrawn[msg.sender] = true;
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+        require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
+        uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
+        lenderPosition[msg.sender].withdrawn = true;
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
 &nbsp;
         DAIToken.transfer(msg.sender, amount);
@@ -1164,12 +1182,12 @@ contract LoanContract is LoanContractInterface {
 &nbsp;
     function withdrawLoan() public onlyActive onlyOriginator {
         require(!loanWithdrawn, "Already withdrawn");
-<span class="missing-if-branch" title="else path not taken" >E</span>
-        if (isDefaulted()) {
-        <span class="missing-if-branch" title="if path not taken" >I</span>    setState(LoanState.DEFAULTED);
-<span class="cstat-no" title="statement not covered" >            emit LoanDefaulted(address(th</span>is));
+&nbsp;
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (isDefaulted()) {
+<span class="cstat-no" title="statement not covered" >            setState(LoanState.DEFAULTED)</span>;
+<span class="cstat-no" title="statement not covered" >            emit LoanDefaulted(address(this));</span>
 <span class="cstat-no" title="statement not covered" >            return;</span>
-        }<span class="cstat-no" title="statement not covered" ></span>
+        }
 &nbsp;
         loanWithdrawn = true;
         emit LoanFundsWithdrawn(address(this), msg.sender, auctionBalance);
@@ -1182,16 +1200,16 @@ contract LoanContract is LoanContractInterface {
         onlyProxy
         returns (bool)
     {
-        require(from == originator, "from address is not the originator");
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(amount == borrowerDebt, "Incorrect sum repaid");
-        require(borrowerDebt != 0, "Borrower does not have any debt.");
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(from == originator, "from address is not the originator");
+        require(amount == borrowerDebt, "Incorrect sum repaid");
+        <span class="missing-if-branch" title="else path not taken" >E</span>require(borrowerDebt != 0, "Borrower does not have any debt.");
         <span class="missing-if-branch" title="else path not taken" >E</span>require(borrowerDebt == amount, "Repayment amount is not the same");
-<span class="missing-if-branch" title="else path not taken" >E</span>
-        if (isDefaulted()) {
-        <span class="missing-if-branch" title="if path not taken" >I</span>    setState(LoanState.DEFAULTED);
-<span class="cstat-no" title="statement not covered" >            emit LoanDefaulted(address(th</span>is));
+&nbsp;
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (isDefaulted()) {
+<span class="cstat-no" title="statement not covered" >            setState(LoanState.DEFAULTED)</span>;
+<span class="cstat-no" title="statement not covered" >            emit LoanDefaulted(address(this));</span>
 <span class="cstat-no" title="statement not covered" >            return false;</span>
-        }<span class="cstat-no" title="statement not covered" ></span>
+        }
 &nbsp;
         setState(LoanState.REPAID);
         emit LoanRepaid(address(this), block.timestamp);
@@ -1247,14 +1265,14 @@ contract LoanContract is LoanContractInterface {
                 maxInterestRate.mul(block.number.sub(auctionStartBlock)).div(
                     auctionEndBlock.sub(auctionStartBlock)
                 );
-        } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
-            ret<span class="missing-if-branch" title="else path not taken" >E</span>urn
+        } else <span class="missing-if-branch" title="else path not taken" >E</span>if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
+            return
                 maxInterestRate.mul(lastFundedBlock.sub(auctionStartBlock)).div(
                     auctionEndBlock.sub(auctionStartBlock)
                 );
         } else {
-            return 0;
-        }<span class="cstat-no" title="statement not covered" ></span>
+<span class="cstat-no" title="statement not covered" >            return 0;</span>
+        }
     }
 &nbsp;
     function getMaxAmount() public view returns (uint256) {
@@ -1266,12 +1284,12 @@ contract LoanContract is LoanContractInterface {
     }
 &nbsp;
     function getLenderBidAmount(address lender) public view returns (uint256) {
-        return lenderBidAmount[lender];
+        return lenderPosition[lender].bidAmount;
     }
 &nbsp;
     function getLenderWithdrawn(address lender) public view returns (bool) {
-<span class="fstat-no" title="function not covered" >        return lenderWithdrawn[lender];</span>
-    }<span class="cstat-no" title="statement not covered" ></span>
+        return lenderPosition[lender].withdrawn;
+    }
 }
 &nbsp;</pre></td></tr>
 </table></pre>
@@ -1279,7 +1297,7 @@ contract LoanContract is LoanContractInterface {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Jul 12 2019 11:53:47 GMT+0200 (Central European Summer Time)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Jul 12 2019 13:09:55 GMT+0200 (Central European Summer Time)
 </div>
 </div>
 <script src="../prettify.js"></script>

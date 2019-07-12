@@ -136,7 +136,7 @@ contract('Integration', (accounts) => {
 
             // check if loan is funded
             const loanFundedAmount = await Loan.auctionBalance();
-            const amountFundedByLender = await Loan.lenderBidAmount(lender);
+            const amountFundedByLender = await Loan.getLenderBidAmount(lender);
             const fundedLoanState = Number(await Loan.currentState());
 
             // console.log('state before withdraw::::>>>> ', Number(await Loan.currentState()))
@@ -165,7 +165,7 @@ contract('Integration', (accounts) => {
             // lender takes out money
             const txWithdraw = await Loan.withdrawRepayment({from: lender});
             const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
-            const lenderWithdrawed = await Loan.lenderWithdrawn(lender);
+            const lenderWithdrawed = await Loan.getLenderWithdrawn(lender);
             const endState = Number(await Loan.currentState());
 
             // Check repay event
@@ -202,9 +202,9 @@ contract('Integration', (accounts) => {
             
             // check if loan is funded
             const loanFundedAmount = await Loan.auctionBalance();
-            const amountFundedByLender = await Loan.lenderBidAmount(lender);
-            const amountFundedByLender2 = await Loan.lenderBidAmount(lender2);
-            const amountFundedByLender3 = await Loan.lenderBidAmount(lender3);               
+            const amountFundedByLender = await Loan.getLenderBidAmount(lender);
+            const amountFundedByLender2 = await Loan.getLenderBidAmount(lender2);
+            const amountFundedByLender3 = await Loan.getLenderBidAmount(lender3);               
             const lenderBalance = await DAIToken.balanceOf(lender);               
             const lender2Balance = await DAIToken.balanceOf(lender2);                
             const lender3Balance = await DAIToken.balanceOf(lender3);
@@ -245,9 +245,9 @@ contract('Integration', (accounts) => {
             const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
             const lender2BalanceAfterRepayment = await DAIToken.balanceOf(lender2);
             const lender3BalanceAfterRepayment = await DAIToken.balanceOf(lender3);
-            const lendedOneWithdrawn = await Loan.lenderWithdrawn(lender);
-            const lenderTwoWithdrawn = await Loan.lenderWithdrawn(lender2);
-            const lenderThreeWithdrawn = await Loan.lenderWithdrawn(lender3);
+            const lendedOneWithdrawn = await Loan.getLenderWithdrawn(lender);
+            const lenderTwoWithdrawn = await Loan.getLenderWithdrawn(lender2);
+            const lenderThreeWithdrawn = await Loan.getLenderWithdrawn(lender3);
 
             expect(lenderKYC).to.equal(true);
             expect(lender2KYC).to.equal(true);
@@ -284,8 +284,8 @@ contract('Integration', (accounts) => {
             
             // check if loan is funded
             const loanFundedAmount = await Loan.auctionBalance();
-            const amountFundedByLender = await Loan.lenderBidAmount(lender);
-            const amountFundedByLender2 = await Loan.lenderBidAmount(lender2);               
+            const amountFundedByLender = await Loan.getLenderBidAmount(lender);
+            const amountFundedByLender2 = await Loan.getLenderBidAmount(lender2);               
             const lenderBalance = await DAIToken.balanceOf(lender);               
             const lender2Balance = await DAIToken.balanceOf(lender2);     
             
@@ -322,8 +322,8 @@ contract('Integration', (accounts) => {
             await Loan.withdrawRepayment({from: lender2});
             const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
             const lender2BalanceAfterRepayment = await DAIToken.balanceOf(lender2);
-            const lenderOneWitdrawn = await Loan.lenderWithdrawn(lender);
-            const lenderTwoWithdrawn = await Loan.lenderWithdrawn(lender2);
+            const lenderOneWitdrawn = await Loan.getLenderWithdrawn(lender);
+            const lenderTwoWithdrawn = await Loan.getLenderWithdrawn(lender2);
 
             expect(lenderKYC).to.equal(true);
             expect(lender2KYC).to.equal(true);
@@ -360,7 +360,7 @@ contract('Integration', (accounts) => {
             
             // check if loan is funded
             const loanFundedAmount = await Loan.auctionBalance();
-            const amountFundedByLender = await Loan.lenderBidAmount(lender);
+            const amountFundedByLender = await Loan.getLenderBidAmount(lender);
             const fundedLoanStateBeforeExpiry = Number(await Loan.currentState());
 
             // console.log('state before withdraw::::>>>> ', Number(await Loan.currentState()))
@@ -392,7 +392,7 @@ contract('Integration', (accounts) => {
             // lender takes out money
             const txWithdraw = await Loan.withdrawRepayment({from: lender});
             const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
-            const lenderWithdrawed = await Loan.lenderWithdrawn(lender);
+            const lenderWithdrawed = await Loan.getLenderWithdrawn(lender);
             const endState = Number(await Loan.currentState())
 
             // Check repay event
@@ -427,7 +427,7 @@ contract('Integration', (accounts) => {
 
             // check if loan is funded
             const loanFundedAmount = await Loan.auctionBalance();
-            const amountFundedByLender = await Loan.lenderBidAmount(lender);
+            const amountFundedByLender = await Loan.getLenderBidAmount(lender);
             const fundedLoanState = Number(await Loan.currentState());
 
             await Loan.unlockFundsWithdrawal({from: admin});
@@ -438,7 +438,7 @@ contract('Integration', (accounts) => {
 
             // lender takes out money
             const lenderBalanceAfterWithdrawl = await DAIToken.balanceOf(lender);
-            const lenderWithdrawed = await Loan.lenderWithdrawn(lender);
+            const lenderWithdrawed = await Loan.getLenderWithdrawn(lender);
             const endState = Number(await Loan.currentState());
 
             expect(lenderKYC).to.equal(true);
