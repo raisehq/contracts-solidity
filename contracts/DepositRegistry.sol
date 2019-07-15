@@ -23,7 +23,6 @@ contract DepositRegistry is Ownable {
         _;
     }
 
-    event ProxyDepositCompleted(address depositRegistry, address indexed user);
     event UserDepositCompleted(address depositRegistry, address indexed user);
     event UserWithdrawnCompleted(address depositRegistry, address indexed user);
     event AddressUnlockedForWithdrawal(address depositRegistry, address indexed user);
@@ -52,7 +51,6 @@ contract DepositRegistry is Ownable {
         token.transferFrom(from, address(this), DEPOSIT_AMNT);
 
         emit UserDepositCompleted(address(this), from);
-        emit ProxyDepositCompleted(address(this), from);
     }
 
     function depositForWithReferral(address from, address referrer) public {
@@ -72,7 +70,6 @@ contract DepositRegistry is Ownable {
         token.transferFrom(from, address(this), DEPOSIT_AMNT);
 
         emit UserDepositCompleted(address(this), from);
-        emit ProxyDepositCompleted(address(this), from);
     }
 
     function withdraw(address to) public {
