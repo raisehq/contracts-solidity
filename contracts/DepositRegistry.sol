@@ -79,8 +79,7 @@ contract DepositRegistry is Ownable {
             "cannot withdraw without KYC or unlocked"
         );
 
-        deposits[msg.sender].deposited = false;
-        deposits[msg.sender].unlockedForWithdrawal = false;
+        delete deposits[msg.sender];
         token.transfer(to, DEPOSIT_AMNT);
         emit UserWithdrawnCompleted(address(this), msg.sender);
     }
