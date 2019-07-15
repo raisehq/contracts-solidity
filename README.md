@@ -54,6 +54,3 @@ Once migrated run the script via truffle, by default creates 10 loans, you can s
 
 * Ownership of defaulted loans isn't transferred to debt collection agents  
 * tests and coverage need to be added to CI
-
-
-
