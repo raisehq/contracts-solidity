@@ -39,7 +39,8 @@ contract('LoanContractDispatcher', (accounts) => {
 
                 // adding lender and borrower to KYC
                 KYCRegistry = await KYCContract.new();
-                await KYCRegistry.add(borrower);
+                await KYCRegistry.setAdministrator(admin);
+                await KYCRegistry.addAddressToKYC(borrower, {from: admin});
                 
                 // give permision to the deposit registry to deposit tokens instead of the lender
                 DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  KYCRegistry.address, { from: owner});

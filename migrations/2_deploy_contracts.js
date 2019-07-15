@@ -37,6 +37,7 @@ const getContractTokens = async (deployer, network, deployerAddress) => {
 
 const migrationInt = async (deployer, network, accounts) => {
   const deployerAddress = accounts[0];
+  const admin = accounts[1];
 
   const { heroTokenAddress, daiAddress } = await getContractTokens(
     deployer,
@@ -123,6 +124,7 @@ const migrationInt = async (deployer, network, accounts) => {
       '\n'
     );
   }
+  await kycDeployed.setAdministrator(admin, {from:deployerAddress});
   for (let i = 0; i < IntAccounts.length; i++) {
     const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
     // HEROTOKENS
@@ -137,8 +139,8 @@ const migrationInt = async (deployer, network, accounts) => {
       gas: 800000
     });
     // ADD ADDRESS TO KYC
-    await kycDeployed.add(IntAccounts[i], {
-      from: deployerAddress,
+    await kycDeployed.addAddressToKYC(IntAccounts[i], {
+      from: admin,
       gas: 800000
     });
     const inKyc = await kycDeployed.isConfirmed(IntAccounts[i]);

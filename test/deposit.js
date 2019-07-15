@@ -28,6 +28,7 @@ contract('Deposit Contract', function (accounts) {
 			try{
 				HeroToken = await HeroFakeTokenContract.new();
 				KYC = await KYCContract.new({from: owner});
+				await KYC.setAdministrator(admin);
 			}catch(error){
 				throw error;
 			}
@@ -213,7 +214,7 @@ contract('Deposit Contract', function (accounts) {
 				await HeroToken.approve(DepositRegistry.address, HeroAmount, { from: user });
 				const balanceBefore = Number(await HeroToken.balanceOf(user));
 				await DepositRegistry.depositFor(user, { from: user });
-				await KYC.add(user, {from: owner});
+				await KYC.addAddressToKYC(user, {from: admin});
 
 				const deposited = await DepositRegistry.hasDeposited(user);
 				expect(deposited).to.equal(true);

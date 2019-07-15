@@ -11,18 +11,8 @@ contract KYCRegistry is Ownable {
         _;
     }
 
-    event RemoveFromKYC(address indexed user);
-    event AddToKYC(address indexed user);
-
-    function remove(address addr) public onlyOwner {
-        KYCConfirmed[addr] = false;
-        emit RemoveFromKYC(addr);
-    }
-
-    function add(address addr) public onlyOwner {
-        KYCConfirmed[addr] = true;
-        emit AddToKYC(addr);
-    }
+    event RemovedFromKYC(address indexed user);
+    event AddedToKYC(address indexed user);
 
     function isConfirmed(address addr) public view returns (bool) {
         return KYCConfirmed[addr];
@@ -32,15 +22,15 @@ contract KYCRegistry is Ownable {
         admin = _admin;
     }
 
-    function removeAddressFromKYCAdmin(address addr) public onlyAdmin {
+    function removeAddressFromKYC(address addr) public onlyAdmin {
         require(KYCConfirmed[addr], "Address not KYCed");
         KYCConfirmed[addr] = false;
-        emit RemoveFromKYC(addr);
+        emit RemovedFromKYC(addr);
     }
 
-    function addAddressToKYCAdmin(address addr) public onlyAdmin {
+    function addAddressToKYC(address addr) public onlyAdmin {
         require(!KYCConfirmed[addr], "Address already KYCed");
         KYCConfirmed[addr] = true;
-        emit AddToKYC(addr);
+        emit AddedToKYC(addr);
     }
 }

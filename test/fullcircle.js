@@ -54,10 +54,11 @@ contract('Integration', (accounts) => {
             
             // adding lender and borrower to KYC
             KYCRegistry = await KYCContract.new();
-            await KYCRegistry.add(lender);
-            await KYCRegistry.add(lender2);
-            await KYCRegistry.add(lender3);
-            await KYCRegistry.add(borrower);
+            await KYCRegistry.setAdministrator(admin);
+            await KYCRegistry.addAddressToKYC(lender, {from: admin});
+            await KYCRegistry.addAddressToKYC(lender2, {from: admin});
+            await KYCRegistry.addAddressToKYC(lender3, {from: admin});
+            await KYCRegistry.addAddressToKYC(borrower, {from: admin});
             
             // give permision to the deposit registry to deposit tokens instead of the lender
             DepositRegistry = await DepositRegistryContract.new(HeroToken.address,  KYCRegistry.address, { from: owner});

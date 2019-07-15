@@ -22,7 +22,7 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>13/13</span>
+        <span class='fraction'>9/9</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -32,12 +32,12 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>7/7</span>
+        <span class='fraction'>5/5</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>14/14</span>
+        <span class='fraction'>10/10</span>
       </div>
     </div>
   </div>
@@ -79,17 +79,7 @@
 34
 35
 36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+37</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -98,29 +88,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11×</span>
-<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-yes">82×</span>
+<span class="cline-any cline-yes">78×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">103×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">73×</span>
-<span class="cline-any cline-yes">73×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">105×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-yes">19×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -130,9 +110,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4×</span>
-<span class="cline-any cline-yes">2×</span>
-<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">75×</span>
+<span class="cline-any cline-yes">71×</span>
+<span class="cline-any cline-yes">71×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">pragma solidity 0.5.10;
@@ -148,18 +128,8 @@ contract KYCRegistry is Ownable {
         _;
     }
 &nbsp;
-    event RemoveFromKYC(address indexed user);
-    event AddToKYC(address indexed user);
-&nbsp;
-    function remove(address addr) public onlyOwner {
-        KYCConfirmed[addr] = false;
-        emit RemoveFromKYC(addr);
-    }
-&nbsp;
-    function add(address addr) public onlyOwner {
-        KYCConfirmed[addr] = true;
-        emit AddToKYC(addr);
-    }
+    event RemovedFromKYC(address indexed user);
+    event AddedToKYC(address indexed user);
 &nbsp;
     function isConfirmed(address addr) public view returns (bool) {
         return KYCConfirmed[addr];
@@ -169,16 +139,16 @@ contract KYCRegistry is Ownable {
         admin = _admin;
     }
 &nbsp;
-    function removeAddressFromKYCAdmin(address addr) public onlyAdmin {
+    function removeAddressFromKYC(address addr) public onlyAdmin {
         require(KYCConfirmed[addr], "Address not KYCed");
         KYCConfirmed[addr] = false;
-        emit RemoveFromKYC(addr);
+        emit RemovedFromKYC(addr);
     }
 &nbsp;
-    function addAddressToKYCAdmin(address addr) public onlyAdmin {
+    function addAddressToKYC(address addr) public onlyAdmin {
         require(!KYCConfirmed[addr], "Address already KYCed");
         KYCConfirmed[addr] = true;
-        emit AddToKYC(addr);
+        emit AddedToKYC(addr);
     }
 }
 &nbsp;</pre></td></tr>
@@ -187,7 +157,7 @@ contract KYCRegistry is Ownable {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Mon Jul 15 2019 17:23:13 GMT+0200 (Central European Summer Time)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Mon Jul 15 2019 17:56:48 GMT+0200 (Central European Summer Time)
 </div>
 </div>
 <script src="../prettify.js"></script>

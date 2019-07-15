@@ -27,8 +27,11 @@ const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 const kovanApi = 'https://kovan.infura.io/v3/b707e018ae6f427384b54ad4df490a78';
 const HDWalletProvider = require('truffle-hdwallet-provider');
-const privateKey =
+const ownerKey =
   process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
+const adminKey = 
+  process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
+const privateKeys = [ownerKey, adminKey]
 
 module.exports = {
   /**
@@ -66,7 +69,7 @@ module.exports = {
       gas: 8000000,
       gasPrice: 10000000000,
       provider: function() {
-        return new HDWalletProvider(privateKey, kovanApi);
+        return new HDWalletProvider(privateKeys, kovanApi, 0, 2);
       },
       network_id: '42', // Kovan network id
       skipDryRun: true
