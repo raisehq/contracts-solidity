@@ -6,7 +6,7 @@ This repo contains the set of smart contracts that provide the foundations for t
 
 Contracts are currently only available on the Kovan testnet. The latest addresses are available here: 
 
-https://s3-ap-southeast-1.amazonaws.com/herotoken/Hero+Whitepaper_111617.pdf
+http://blockchain-definitions.s3-website-eu-west-1.amazonaws.com/v1/contracts.json
 
 The Kovan migration script will also deploy fake DAI and HERO tokens to support testing. 
 
@@ -52,10 +52,5 @@ Once migrated run the script via truffle, by default creates 10 loans, you can s
 
 ## Known issues and remaining work
 
-* Ownership and operability of contracts need to be split in two roles
-* An emergency refund switch that enables investors to withdraw their investments should the borrower loose access to his keys before withdrawing the loan principal needs to be added 
-* Missing some validations in the loan contracts  
+* Ownership of defaulted loans isn't transferred to debt collection agents
 * tests and coverage need to be added to CI
-
-
-
