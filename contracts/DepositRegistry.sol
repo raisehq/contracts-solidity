@@ -6,16 +6,27 @@ import "./ReferralTracker.sol";
 import "./KYCRegistry.sol";
 
 contract DepositRegistry is Ownable {
-    mapping(address => bool) deposited;
+    struct Deposit {
+        bool deposited;
+        bool unlockedForWithdrawal;
+    }
+    mapping(address => Deposit) deposits;
+    address public admin;
     uint256 DEPOSIT_AMNT = 200000000000000000000;
     ERC20 token;
 
     KYCRegistry kyc;
-    ReferralTracker ref;
+    ReferralTracker public ref;
 
-    event ProxyDepositCompleted(address indexed user);
-    event UserDepositCompleted(address indexed user);
-    event UserWithdrawnCompleted(address indexed user);
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "caller is not the admin");
+        _;
+    }
+
+    event ProxyDepositCompleted(address depositRegistry, address indexed user);
+    event UserDepositCompleted(address depositRegistry, address indexed user);
+    event UserWithdrawnCompleted(address depositRegistry, address indexed user);
+    event AddressUnlockedForWithdrawal(address depositRegistry, address indexed user);
 
     constructor(address tokenAddress, address kycAddress) public {
         token = ERC20(tokenAddress);
@@ -26,46 +37,68 @@ contract DepositRegistry is Ownable {
         ref = ReferralTracker(contractAddress);
     }
 
+    function setAdministrator(address _admin) public onlyOwner {
+        admin = _admin;
+    }
+
     function depositFor(address from) public {
-        require(deposited[from] == false, "alredy deposited");
+        require(deposits[from].deposited == false, "already deposited");
         require(
             token.allowance(from, address(this)) >= DEPOSIT_AMNT,
             "address not approved amount"
         );
 
-        deposited[from] = true;
+        deposits[from].deposited = true;
         token.transferFrom(from, address(this), DEPOSIT_AMNT);
 
-        emit UserDepositCompleted(from);
-        emit ProxyDepositCompleted(from);
+        emit UserDepositCompleted(address(this), from);
+        emit ProxyDepositCompleted(address(this), from);
     }
 
     function depositForWithReferral(address from, address referrer) public {
-        require(deposited[from] == false, "alredy deposited");
+        require(from != referrer, "can not refer to itself");
+        require(deposits[referrer].deposited, "referrer has not deposited");
+        require(deposits[from].deposited == false, "alredy deposited");
         require(
             token.allowance(from, address(this)) >= DEPOSIT_AMNT,
             "address not approved amount"
         );
         require(msg.sender == from, "cannot deposit with a referral from another address");
 
-        deposited[from] = true;
-        token.transferFrom(from, address(this), DEPOSIT_AMNT);
+        deposits[from].deposited = true;
 
         ref.registerReferral(referrer, msg.sender);
 
-        emit UserDepositCompleted(from);
-        emit ProxyDepositCompleted(from);
+        token.transferFrom(from, address(this), DEPOSIT_AMNT);
+
+        emit UserDepositCompleted(address(this), from);
+        emit ProxyDepositCompleted(address(this), from);
     }
 
     function withdraw(address to) public {
-        require(deposited[msg.sender], "address not deposited");
-        require(kyc.isConfirmed(msg.sender), "cannot withdraw without KYC");
+        require(deposits[msg.sender].deposited, "address not deposited");
+        require(
+            deposits[msg.sender].unlockedForWithdrawal || kyc.isConfirmed(msg.sender),
+            "cannot withdraw without KYC or unlocked"
+        );
 
-        deposited[msg.sender] = false;
+        deposits[msg.sender].deposited = false;
+        deposits[msg.sender].unlockedForWithdrawal = false;
         token.transfer(to, DEPOSIT_AMNT);
-        emit UserWithdrawnCompleted(msg.sender);
+        emit UserWithdrawnCompleted(address(this), msg.sender);
     }
+
+    function unlockAddressForWithdrawal(address user) public onlyAdmin {
+        require(deposits[user].deposited, "address has not deposited");
+        deposits[user].unlockedForWithdrawal = true;
+        emit AddressUnlockedForWithdrawal(address(this), user);
+    }
+
     function hasDeposited(address user) public view returns (bool) {
-        return deposited[user];
+        return deposits[user].deposited;
+    }
+
+    function isUnlocked(address user) public view returns (bool) {
+        return deposits[user].unlockedForWithdrawal;
     }
 }

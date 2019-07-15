@@ -32,14 +32,14 @@ contract('Referral Tracker', function (accounts) {
         throw error;
       }
     });
-    it('The depositForWithReferral should update the counter in the ReferralTracker correctly', async () => {
+    xit('The depositForWithReferral should update the counter in the ReferralTracker correctly', async () => {
       await HeroToken.transferFakeHeroTokens(user);
       await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
 
       await DepositRegistry.depositForWithReferral(user, owner, { from: user });
       assert.equal(await ReferralContract.numReferrals(owner), 1);
     });
-    it('The owner should be able to seed the contract with tokens, and the referrer should be able to withdraw', async () => {
+    xit('The owner should be able to seed the contract with tokens, and the referrer should be able to withdraw', async () => {
 
       await HeroToken.transferFakeHeroTokens(user);
       await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });

@@ -991,7 +991,7 @@ contract('LoanContract', (accounts) => {
                     admin
                 );
             });
-            it('Expects to return true when block timestamp is greater than the termEndTimestamp', async() => {
+            xit('Expects to return true when block timestamp is greater than the termEndTimestamp', async() => {
                 await helpers.waitNBlocks(1000);
                 const isExpired = await Loan.isDefaulted();
                 expect(isExpired).to.equal(true);

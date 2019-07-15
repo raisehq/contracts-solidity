@@ -20,28 +20,28 @@
     </h1>
     <div class='clearfix'>
       <div class='fl pad1y space-right2'>
-        <span class="strong">60% </span>
+        <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>3/5</span>
+        <span class='fraction'>13/13</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>0/0</span>
+        <span class='fraction'>6/6</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">66.67% </span>
+        <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>2/3</span>
+        <span class='fraction'>7/7</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">60% </span>
+        <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>3/5</span>
+        <span class='fraction'>14/14</span>
       </div>
     </div>
   </div>
-  <div class='status-line medium'></div>
+  <div class='status-line high'></div>
 <pre><table class="coverage">
 <tr><td class="line-count quiet">1
 2
@@ -67,7 +67,29 @@
 22
 23
 24
-25</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -76,19 +98,41 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">66×</span>
-<span class="cline-any cline-yes">66×</span>
+<span class="cline-any cline-yes">11×</span>
+<span class="cline-any cline-yes">7×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">102×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">73×</span>
+<span class="cline-any cline-yes">73×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">105×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">pragma solidity 0.5.10;
@@ -96,14 +140,20 @@
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 &nbsp;
 contract KYCRegistry is Ownable {
-    mapping(address =&gt; bool) KYCConfirmed;
+    mapping(address =&gt; bool) public KYCConfirmed;
+    address public admin;
+&nbsp;
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "caller is not the admin");
+        _;
+    }
 &nbsp;
     event RemoveFromKYC(address indexed user);
     event AddToKYC(address indexed user);
 &nbsp;
-<span class="fstat-no" title="function not covered" >    function remove(address addr) public onlyOwne</span>r {
-<span class="cstat-no" title="statement not covered" >        KYCConfirmed[addr] = false</span>;
-<span class="cstat-no" title="statement not covered" >        emit RemoveFromKYC(addr);</span>
+    function remove(address addr) public onlyOwner {
+        KYCConfirmed[addr] = false;
+        emit RemoveFromKYC(addr);
     }
 &nbsp;
     function add(address addr) public onlyOwner {
@@ -114,6 +164,22 @@ contract KYCRegistry is Ownable {
     function isConfirmed(address addr) public view returns (bool) {
         return KYCConfirmed[addr];
     }
+&nbsp;
+    function setAdministrator(address _admin) public onlyOwner {
+        admin = _admin;
+    }
+&nbsp;
+    function removeAddressFromKYCAdmin(address addr) public onlyAdmin {
+        require(KYCConfirmed[addr], "Address not KYCed");
+        KYCConfirmed[addr] = false;
+        emit RemoveFromKYC(addr);
+    }
+&nbsp;
+    function addAddressToKYCAdmin(address addr) public onlyAdmin {
+        require(!KYCConfirmed[addr], "Address already KYCed");
+        KYCConfirmed[addr] = true;
+        emit AddToKYC(addr);
+    }
 }
 &nbsp;</pre></td></tr>
 </table></pre>
@@ -121,7 +187,7 @@ contract KYCRegistry is Ownable {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Jul 12 2019 13:09:55 GMT+0200 (Central European Summer Time)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Mon Jul 15 2019 17:05:24 GMT+0200 (Central European Summer Time)
 </div>
 </div>
 <script src="../prettify.js"></script>

@@ -20,28 +20,28 @@
     </h1>
     <div class='clearfix'>
       <div class='fl pad1y space-right2'>
-        <span class="strong">100% </span>
+        <span class="strong">35.71% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>14/14</span>
+        <span class='fraction'>5/14</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">16.67% </span>
+        <span class="quiet">Branches</span>
+        <span class='fraction'>1/6</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">50% </span>
-        <span class="quiet">Branches</span>
+        <span class="quiet">Functions</span>
         <span class='fraction'>3/6</span>
       </div>
       <div class='fl pad1y space-right2'>
-        <span class="strong">100% </span>
-        <span class="quiet">Functions</span>
-        <span class='fraction'>6/6</span>
-      </div>
-      <div class='fl pad1y space-right2'>
-        <span class="strong">100% </span>
+        <span class="strong">40% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>15/15</span>
+        <span class='fraction'>6/15</span>
       </div>
     </div>
   </div>
-  <div class='status-line high'></div>
+  <div class='status-line low'></div>
 <pre><table class="coverage">
 <tr><td class="line-count quiet">1
 2
@@ -133,32 +133,19 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4×</span>
-<span class="cline-any cline-yes">4×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
-<span class="cline-any cline-yes">2×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">8×</span>
+<span class="cline-any cline-yes">8×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1×</span>
-<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -166,7 +153,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">pragma solidity 0.5.10;
@@ -205,8 +205,8 @@ contract ReferralTracker is Ownable {
         _;
     }
 &nbsp;
-    function addFunds(uint256 amount) public onlyOwner {
-        token.transferFrom(msg.sender, address(this), amount);
+<span class="fstat-no" title="function not covered" >    function addFunds(uint256 amount) public onlyOwne</span>r {
+<span class="cstat-no" title="statement not covered" >        token.transferFrom(msg.sender, address(this), amount)</span>;
     }
 &nbsp;
     function registerReferral(address referrer, address user) public onlyRegistry {
@@ -215,21 +215,21 @@ contract ReferralTracker is Ownable {
         emit ReferralRegistered(address(this), referrer, user);
     }
 &nbsp;
-    function withdraw(address to) public {
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(unclaimedReferrals[msg.sender] &gt; 0, "no referrals to claim");
-        uint256 trackerBalance = token.balanceOf(address(this));
-        uint256 amount = REFERRAL_BONUS * unclaimedReferrals[msg.sender];
+<span class="fstat-no" title="function not covered" >    function withdraw(address to) publi</span>c {
+<span class="cstat-no" title="statement not covered" >        require(unclaimedReferrals[msg.sender] &gt; 0, "no referrals to claim")</span>;
+<span class="cstat-no" title="statement not covered" >        uint256 trackerBalance = token.balanceOf(address(this));</span>
+<span class="cstat-no" title="statement not covered" >        uint256 amount = REFERRAL_BONUS * unclaimedReferrals[msg.sender];</span>
 &nbsp;
-        <span class="missing-if-branch" title="else path not taken" >E</span>require(trackerBalance &gt;= amount, "Not enough founds");
-        unclaimedReferrals[msg.sender] = 0;
+<span class="cstat-no" title="statement not covered" >        require(trackerBalance &gt;= amount, "Not enough founds")</span>;
+<span class="cstat-no" title="statement not covered" >        unclaimedReferrals[msg.sender] = 0</span>;
 &nbsp;
-        token.transfer(to, amount);
+<span class="cstat-no" title="statement not covered" >        token.transfer(to, amount)</span>;
 &nbsp;
-        emit ReferralBonusWithdrawn(address(this), msg.sender, amount, trackerBalance);
+<span class="cstat-no" title="statement not covered" >        emit ReferralBonusWithdrawn(address(this), msg.sender, amount, trackerBalance);</span>
     }
 &nbsp;
-    function numReferrals(address user) public view returns (uint256) {
-        return unclaimedReferrals[user];
+<span class="fstat-no" title="function not covered" >    function numReferrals(address user) public view returns (uint256</span>) {
+<span class="cstat-no" title="statement not covered" >        return unclaimedReferrals[user];</span>
     }
 }
 &nbsp;</pre></td></tr>
@@ -238,7 +238,7 @@ contract ReferralTracker is Ownable {
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Fri Jul 12 2019 13:09:55 GMT+0200 (Central European Summer Time)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Mon Jul 15 2019 17:05:24 GMT+0200 (Central European Summer Time)
 </div>
 </div>
 <script src="../prettify.js"></script>
