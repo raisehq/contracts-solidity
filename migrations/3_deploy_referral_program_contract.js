@@ -3,7 +3,9 @@ const HeroToken = artifacts.require('HeroOrigenToken');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const { readFileSync, writeFileSync } = require('fs');
 
-const migration = async (deployer, networks, deployerAddress) => {
+const migration = async (deployer, networks, accounts) => {
+  const deployerAddress = accounts[0];
+  const admin = accounts[1];
   // Read the contracts deployed from step 2
   const contracts = JSON.parse(readFileSync('./contracts.json'));
 
@@ -18,7 +20,10 @@ const migration = async (deployer, networks, deployerAddress) => {
   const referralContract = await ReferralTracker.deployed();
 
   await depositContract.setReferralTracker(referralContract.address);
-
+  
+  await referralContract.setAdministrator(admin);
+  await referralContract.addPauser(admin);
+  
   const newContracts = {
     ...contracts,
     ...{
@@ -34,8 +39,7 @@ const migration = async (deployer, networks, deployerAddress) => {
 
 module.exports = async (deployer, networks, accounts) => {
   try {
-    const deployerAddress = accounts[0];
-    await migration(deployer, networks, deployerAddress);
+    await migration(deployer, networks, accounts);
   } catch (err) {
     // Prettier error output
     console.error(err);

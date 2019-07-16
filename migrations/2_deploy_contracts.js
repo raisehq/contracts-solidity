@@ -115,6 +115,13 @@ const migrationInt = async (deployer, network, accounts) => {
   const heroDeployed = await HeroToken.at(heroTokenAddress);
   const daiDeployed = await DAI.at(daiAddress);
   const kycDeployed = await KYC.deployed();
+  const depositDeployed = await Deposit.deployed();
+  const dispatcherDeployed = await LoanDispatcher.deployed();
+
+  // set administrator
+  await depositDeployed.setAdministrator(admin, {from:deployerAddress});
+  await kycDeployed.setAdministrator(admin, {from:deployerAddress});
+  await dispatcherDeployed.setAdministrator(admin, {from:deployerAddress});
 
   const IntAccounts = [...accounts, ...devAccounts];
   if (IntAccounts.length > 0) {
@@ -124,7 +131,7 @@ const migrationInt = async (deployer, network, accounts) => {
       '\n'
     );
   }
-  await kycDeployed.setAdministrator(admin, {from:deployerAddress});
+
   for (let i = 0; i < IntAccounts.length; i++) {
     const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
     // HEROTOKENS
