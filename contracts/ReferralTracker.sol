@@ -3,13 +3,15 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
-contract ReferralTracker is Ownable {
+contract ReferralTracker is Ownable, Pausable {
     using SafeMath for uint256;
     uint256 public REFERRAL_BONUS = 100000000000000000000;
 
     mapping(address => uint256) public unclaimedReferrals;
     address public registryAddress;
+    address public admin;
     ERC20 token;
 
     event ReferralRegistered(
@@ -23,6 +25,7 @@ contract ReferralTracker is Ownable {
         uint256 amount,
         uint256 currentTrackerBalance
     );
+    event FundsAdded(address referralAddress, address fundsDepositor, uint256 amount);
 
     constructor(address registryAddress_, address tokenAdress) public {
         registryAddress = registryAddress_;
@@ -30,12 +33,22 @@ contract ReferralTracker is Ownable {
     }
 
     modifier onlyRegistry() {
-        require(msg.sender == registryAddress, "The executor is not the registry");
+        require(msg.sender == registryAddress, "the caller is not the registry");
         _;
     }
 
-    function addFunds(uint256 amount) public onlyOwner {
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "the caller is not the admin");
+        _;
+    }
+
+    function setAdministrator(address _admin) public onlyOwner {
+        admin = _admin;
+    }
+
+    function addFunds(uint256 amount) public onlyAdmin {
         token.transferFrom(msg.sender, address(this), amount);
+        emit FundsAdded(address(this), msg.sender, amount);
     }
 
     function registerReferral(address referrer, address user) public onlyRegistry {
@@ -44,20 +57,16 @@ contract ReferralTracker is Ownable {
         emit ReferralRegistered(address(this), referrer, user);
     }
 
-    function withdraw(address to) public {
+    function withdraw(address to) public whenNotPaused {
         require(unclaimedReferrals[msg.sender] > 0, "no referrals to claim");
         uint256 trackerBalance = token.balanceOf(address(this));
         uint256 amount = REFERRAL_BONUS * unclaimedReferrals[msg.sender];
 
-        require(trackerBalance >= amount, "Not enough founds");
-        unclaimedReferrals[msg.sender] = 0;
+        require(trackerBalance >= amount, "Not enough funds");
+        delete unclaimedReferrals[msg.sender];
 
         token.transfer(to, amount);
 
         emit ReferralBonusWithdrawn(address(this), msg.sender, amount, trackerBalance);
-    }
-
-    function numReferrals(address user) public view returns (uint256) {
-        return unclaimedReferrals[user];
     }
 }
