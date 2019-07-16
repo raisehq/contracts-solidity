@@ -46,7 +46,7 @@ contract ReferralTracker is Ownable, Pausable {
         admin = _admin;
     }
 
-    function addFunds(uint256 amount) public onlyAdmin {
+    function addFunds(uint256 amount) public onlyAdmin whenNotPaused {
         token.transferFrom(msg.sender, address(this), amount);
         emit FundsAdded(address(this), msg.sender, amount);
     }
