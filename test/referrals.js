@@ -103,6 +103,15 @@ contract('Referral Tracker', function (accounts) {
 					"the caller is not the admin"
 				);
 			});
+			it('Expects to fail if contract is paused', async () => {
+				await ReferralContract.addPauser(admin);
+				await ReferralContract.pause({from:admin});
+				await truffleAssert.fails(
+					ReferralContract.addFunds(HeroAmount, {from: admin}),
+					truffleAssert.ErrorType.REVERT,
+					"Pausable: paused"
+				);
+			});
 		});
 		describe('method registerReferral', () => {
 			beforeEach(async () => {
