@@ -51,7 +51,7 @@ contract ReferralTracker is Ownable, Pausable {
         emit FundsAdded(address(this), msg.sender, amount);
     }
 
-    function registerReferral(address referrer, address user) public onlyRegistry {
+    function registerReferral(address referrer, address user) public onlyRegistry whenNotPaused {
         unclaimedReferrals[referrer] = unclaimedReferrals[referrer].add(1);
 
         emit ReferralRegistered(address(this), referrer, user);

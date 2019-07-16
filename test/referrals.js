@@ -157,6 +157,21 @@ contract('Referral Tracker', function (accounts) {
 				const referralCount = Number(await ReferralContract.unclaimedReferrals(referrer));
 				expect(referralCount).to.equal(2); 
 			});
+			it('Expects to fail when contract is paused', async () => {
+				await HeroToken.transferFakeHeroTokens(user);
+				await HeroToken.transferFakeHeroTokens(referrer);
+				await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: user });
+				await HeroToken.approve(DepositRegistry.address, HeroAmount,{ from: referrer });
+				await DepositRegistry.depositFor(referrer, {from: referrer});
+				
+				await ReferralContract.addPauser(admin);
+				await ReferralContract.pause({from:admin});
+				await truffleAssert.fails(
+					DepositRegistry.depositForWithReferral(user, referrer, { from: user }),
+					truffleAssert.ErrorType.REVERT,
+					"Pausable: paused"
+				);
+			});
 		});
 		describe('method withdraw', () => {
 			beforeEach(async () => {
