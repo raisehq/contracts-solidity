@@ -113,6 +113,63 @@ contract('Referral Tracker', function (accounts) {
 				);
 			});
 		});
+		describe('method removeFunds', () => {
+			before(async () => {
+				try {
+					ReferralContract = await ReferralTracker.new(DepositRegistry.address, HeroToken.address, { from: owner });
+					await ReferralContract.setAdministrator(admin, {from: owner});
+				} catch (error) {
+					throw error;
+				}
+			});
+			it('Expects to remove funds if admin and funds > 0', async () => {
+				await HeroToken.transferFakeHeroTokens(admin);
+				const balanceAdminB = Number(await HeroToken.balanceOf(admin));
+				await HeroToken.approve(ReferralContract.address, HeroAmount,{ from: admin });
+				await ReferralContract.addFunds(HeroAmount, {from: admin});
+				
+				const balanceB = Number(await HeroToken.balanceOf(ReferralContract.address));
+				await ReferralContract.removeFunds(admin, {from:admin});
+				const balanceA = Number(await HeroToken.balanceOf(ReferralContract.address));
+				const balanceAdminA = Number(await HeroToken.balanceOf(admin));
+			
+				expect(balanceAdminB).to.equal(balanceAdminA);
+				expect(balanceB).to.equal(Number(HeroAmount));
+				expect(balanceA).to.equal(0);
+			});
+			it('Expects to remove funds if admin and funds > 0 and paused', async () => {
+				await ReferralContract.addPauser(admin, {from: owner});
+				await HeroToken.transferFakeHeroTokens(admin);
+				const balanceAdminB = Number(await HeroToken.balanceOf(admin));
+				await HeroToken.approve(ReferralContract.address, HeroAmount,{ from: admin });
+				await ReferralContract.addFunds(HeroAmount, {from: admin});
+				
+				await ReferralContract.pause();
+
+				const balanceB = Number(await HeroToken.balanceOf(ReferralContract.address));
+				await ReferralContract.removeFunds(admin, {from:admin});
+				const balanceA = Number(await HeroToken.balanceOf(ReferralContract.address));
+				const balanceAdminA = Number(await HeroToken.balanceOf(admin));
+			
+				expect(balanceAdminB).to.equal(balanceAdminA);
+				expect(balanceB).to.equal(Number(HeroAmount));
+				expect(balanceA).to.equal(0);
+			});
+			it('Expects to not remove funds if not admin', async () => {
+				await truffleAssert.fails(
+					ReferralContract.removeFunds(admin, {from: owner}),
+					truffleAssert.ErrorType.REVERT,
+					"the caller is not the admin"
+				);
+			});
+			it('Expects to not remove funds if admin and funds = 0', async () => {
+				await truffleAssert.fails(
+					ReferralContract.removeFunds(admin, {from: admin}),
+					truffleAssert.ErrorType.REVERT,
+					"ReferralTracker has no funds to withdraw"
+				);
+			});
+		});
 		describe('method registerReferral', () => {
 			beforeEach(async () => {
 				try {

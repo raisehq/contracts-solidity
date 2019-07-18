@@ -26,6 +26,7 @@ contract ReferralTracker is Ownable, Pausable {
         uint256 currentTrackerBalance
     );
     event FundsAdded(address referralAddress, address fundsDepositor, uint256 amount);
+    event FundsRemoved(address referralAddress, address fundsWithdrawer, uint256 amount);
 
     constructor(address registryAddress_, address tokenAdress) public {
         registryAddress = registryAddress_;
@@ -49,6 +50,13 @@ contract ReferralTracker is Ownable, Pausable {
     function addFunds(uint256 amount) public onlyAdmin whenNotPaused {
         token.transferFrom(msg.sender, address(this), amount);
         emit FundsAdded(address(this), msg.sender, amount);
+    }
+
+    function removeFunds(address to) public onlyAdmin {
+        uint256 amount = token.balanceOf(address(this));
+        require(amount > 0, "ReferralTracker has no funds to withdraw");
+        token.transfer(to, amount);
+        emit FundsRemoved(address(this), msg.sender, amount);
     }
 
     function registerReferral(address referrer, address user) public onlyRegistry whenNotPaused {
