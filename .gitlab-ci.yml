@@ -1,0 +1,59 @@
+image: node:11
+
+stages:
+  - prepare
+  - test
+  - deploy
+  - publish
+ 
+variables:
+  AWS_DEFAULT_REGION: eu-west-1 
+  BUCKET_NAME: blockchain-definitions/v2
+
+cache:
+  paths:
+    - node_modules/
+    - contracts.json 
+
+Prepare:
+  stage: prepare
+  script:
+    - npm i
+  artifacts:
+    paths: 
+      - node_modules/
+  only:
+    - integration
+    - master
+
+Test:
+  stage: test
+  before_script:
+    - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
+  script:
+    - npm test
+  only:
+    - integration
+    - master
+
+Deploy:
+  stage: deploy
+  script:
+    - npm run migration:kovan 
+  artifacts:
+    paths: 
+      - contracts.json
+  only:
+    - integration
+    - master
+      
+Publish:
+  image: "python:latest"  
+  stage: publish
+  before_script:
+    - pip install awscli  
+  script:
+    - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts.json 
+  only:
+    - integration
+    - master

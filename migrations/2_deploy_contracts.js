@@ -5,30 +5,33 @@ const HeroToken = artifacts.require('HeroOrigenToken');
 const DAI = artifacts.require('DAIFake');
 const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
-const ReferralTracker = artifacts.require('ReferralTracker');
 const devAccounts = require('../int.accounts.json');
-const { writeFileSync } = require('fs');
+const {writeFileSync} = require('fs');
 const axios = require('axios');
 
 const getContractTokens = async (deployer, network, deployerAddress) => {
   if (network === 'kovan') {
-    const { data: contracts } = await axios(
-      'https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v1/contracts.json'
-    );
-    // Check if the contract.json has the address of HeroToken and DAI
-    if (contracts['HeroToken'].address && contracts['DAI'].address) {
-      return {
-        heroTokenAddress: contracts['HeroToken'].address,
-        daiAddress: contracts['DAI'].address
-      };
+    try {
+      const {data: contracts} = await axios(
+        'https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v2/contracts.json'
+      );
+      // Check if the contract.json has the address of HeroToken and DAI
+      if (contracts['HeroToken'].address && contracts['DAI'].address) {
+        return {
+          heroTokenAddress: contracts['HeroToken'].address,
+          daiAddress: contracts['DAI'].address
+        };
+      }
+    } catch (error) {
+      if (error.response.status !== 404) throw error;
+      console.log('No exist previous contracts.json we continue and create new one.');
     }
   }
-
   // Deploy a new HeroToken and DAI
   await deployer.deploy(HeroToken, {
     from: deployerAddress
   });
-  await deployer.deploy(DAI, { from: deployerAddress });
+  await deployer.deploy(DAI, {from: deployerAddress});
   return {
     heroTokenAddress: HeroToken.address,
     daiAddress: DAI.address
@@ -39,7 +42,7 @@ const migrationInt = async (deployer, network, accounts) => {
   const deployerAddress = accounts[0];
   const admin = accounts[1];
 
-  const { heroTokenAddress, daiAddress } = await getContractTokens(
+  const {heroTokenAddress, daiAddress} = await getContractTokens(
     deployer,
     network,
     deployerAddress
@@ -47,7 +50,7 @@ const migrationInt = async (deployer, network, accounts) => {
 
   console.log('after check hero and dai', heroTokenAddress, daiAddress);
 
-  await deployer.deploy(KYC, { from: deployerAddress });
+  await deployer.deploy(KYC, {from: deployerAddress});
 
   await deployer.deploy(Deposit, heroTokenAddress, KYC.address, {
     from: deployerAddress
@@ -61,23 +64,17 @@ const migrationInt = async (deployer, network, accounts) => {
   });
 
   const dispatcherArgs = [Auth.address, daiAddress, DAIProxy.address];
-  const dispatcherFrom = { from: deployerAddress };
+  const dispatcherFrom = {from: deployerAddress};
   const LoanFactory = new web3.eth.Contract(LoanDispatcher.abi, null, {
     data: LoanDispatcher.bytecode
   });
   const LoanFactoryEstimatedGas = await LoanFactory.deploy({
     arguments: dispatcherArgs
   }).estimateGas(dispatcherFrom);
-  await deployer.deploy(
-    LoanDispatcher,
-    Auth.address,
-    daiAddress,
-    DAIProxy.address,
-    {
-      from: deployerAddress,
-      gas: LoanFactoryEstimatedGas
-    }
-  );
+  await deployer.deploy(LoanDispatcher, Auth.address, daiAddress, DAIProxy.address, {
+    from: deployerAddress,
+    gas: LoanFactoryEstimatedGas
+  });
 
   const data = {
     HeroToken: {
@@ -119,51 +116,44 @@ const migrationInt = async (deployer, network, accounts) => {
   const dispatcherDeployed = await LoanDispatcher.deployed();
 
   // set administrator
-  await depositDeployed.setAdministrator(admin, {from:deployerAddress});
-  await kycDeployed.setAdministrator(admin, {from:deployerAddress});
-  await dispatcherDeployed.setAdministrator(admin, {from:deployerAddress});
+  await depositDeployed.setAdministrator(admin, {from: deployerAddress});
+  await kycDeployed.setAdministrator(admin, {from: deployerAddress});
+  await dispatcherDeployed.setAdministrator(admin, {from: deployerAddress});
 
-  const IntAccounts = [...accounts, ...devAccounts];
+  const IntAccounts = [...new Set([...accounts, ...devAccounts])]; //unique accounts not repeated
+
   if (IntAccounts.length > 0) {
-    console.log(
-      `> Sending tokens and adding to KYC registry ${IntAccounts.length +
-        1} accounts`,
-      '\n'
-    );
+    console.log(`> Sending tokens and adding to KYC registry ${IntAccounts.length} accounts`, '\n');
   }
-
-  for (let i = 0; i < IntAccounts.length; i++) {
-    const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
-    // HEROTOKENS
-    // 42 = Kovan
-    await heroDeployed.mint(IntAccounts[i], tokens, {
-      from: deployerAddress,
-      gas: 800000
-    });
-    // DAI TOKENS
-    await daiDeployed.mint(IntAccounts[i], tokens, {
-      from: deployerAddress,
-      gas: 800000
-    });
-    // ADD ADDRESS TO KYC
-    await kycDeployed.addAddressToKYC(IntAccounts[i], {
-      from: admin,
-      gas: 800000
-    });
-    const inKyc = await kycDeployed.isConfirmed(IntAccounts[i]);
-    if (inKyc) {
-      console.log(
-        `Added ${IntAccounts[i]} to KYC and sent 1000 HERO and 1000 FAKE DAI.`
-      );
-    } else {
-      console.log(
-        `Error adding ${
-          IntAccounts[i]
-        } to KYC but SENT 1000 HERO and 1000 FAKE DAI.`
-      );
+  try {
+    for (let i = 0; i < IntAccounts.length; i++) {
+      const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
+      // HEROTOKENS
+      // 42 = Kovan
+      await heroDeployed.mint(IntAccounts[i], tokens, {
+        from: deployerAddress,
+        gas: 800000
+      });
+      // DAI TOKENS
+      await daiDeployed.mint(IntAccounts[i], tokens, {
+        from: deployerAddress,
+        gas: 800000
+      });
+      // ADD ADDRESS TO KYC
+      await kycDeployed.addAddressToKYC(IntAccounts[i], {
+        from: admin,
+        gas: 800000
+      });
+      const inKyc = await kycDeployed.isConfirmed(IntAccounts[i]);
+      if (inKyc) {
+        console.log(`Added ${IntAccounts[i]} to KYC and sent 1000 HERO and 1000 FAKE DAI.`);
+      } else {
+        console.log(`Error adding ${IntAccounts[i]} to KYC but SENT 1000 HERO and 1000 FAKE DAI.`);
+      }
     }
+  } catch (err) {
+    console.error('ERROR MINT AND SEND ', err);
   }
-
   await writeFileSync('./contracts.json', JSON.stringify(data));
 };
 
