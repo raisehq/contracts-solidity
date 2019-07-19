@@ -29,6 +29,18 @@ const migration = async (deployer, networks, accounts) => {
     gas: 800000
   });
 
+  const tokens = web3.utils.toWei('100000', 'ether'); // 100K tokens
+
+  const HeroInstance = await HeroToken.at(heroTokenAddress);
+  await HeroInstance.approve(referralContract.address, tokens, {
+    from: admin,
+    gas: 800000
+  });
+  await referralContract.addFunds(tokens, {
+    from: admin,
+    gas: 800000
+  });
+
   const isPauser = await referralContract.isPauser(admin);
   console.log('> ADMIN IS PAUSER : ', isPauser);
   !isPauser &&

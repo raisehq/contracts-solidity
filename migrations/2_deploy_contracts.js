@@ -17,16 +17,22 @@ const getContractTokens = async (deployer, network, deployerAddress) => {
       );
       // Check if the contract.json has the address of HeroToken and DAI
       if (contracts['HeroToken'].address && contracts['DAI'].address) {
-        return {
-          heroTokenAddress: contracts['HeroToken'].address,
-          daiAddress: contracts['DAI'].address
-        };
+        // Check if deployer is owner of already deployed contracts
+        const HeroInstance = await HeroToken.at(contracts['HeroToken'].address);
+        const owner = await HeroInstance.owner();
+        if (owner === deployerAddress) {
+          return {
+            heroTokenAddress: contracts['HeroToken'].address,
+            daiAddress: contracts['DAI'].address
+          };
+        }
       }
     } catch (error) {
       if (error.response.status !== 404) throw error;
       console.log('No exist previous contracts.json we continue and create new one.');
     }
   }
+
   // Deploy a new HeroToken and DAI
   await deployer.deploy(HeroToken, {
     from: deployerAddress

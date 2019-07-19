@@ -24,7 +24,7 @@ Prepare:
       - node_modules/
   only:
     - integration
-    - master
+    #- master
 
 Test:
   stage: test
@@ -45,7 +45,7 @@ Deploy:
       - contracts.json
   only:
     - integration
-    - master
+    #- master
       
 Publish:
   image: "python:latest"  
@@ -56,4 +56,4 @@ Publish:
     - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts.json 
   only:
     - integration
-    - master
+    #- master
