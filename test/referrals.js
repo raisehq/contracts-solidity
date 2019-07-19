@@ -170,6 +170,33 @@ contract('Referral Tracker', function (accounts) {
 				);
 			});
 		});
+		describe('method getTrackerBalance', () => {
+			beforeEach(async () => {
+				try {
+					ReferralContract = await ReferralTracker.new(DepositRegistry.address, HeroToken.address, { from: owner });
+					await ReferralContract.setAdministrator(admin, {from: owner});
+				} catch (error) {
+					throw error;
+				}
+			});
+			it('Expects to get correct balance', async () => {
+				await HeroToken.transferFakeHeroTokens(admin);
+				await HeroToken.approve(ReferralContract.address, HeroAmount,{ from: admin });
+				await ReferralContract.addFunds(HeroAmount, {from: admin});
+				const funds = Number(await HeroToken.balanceOf(ReferralContract.address));
+				const balance = Number(await ReferralContract.getTrackerBalance());
+
+				expect(funds).to.equal(Number(HeroAmount));
+				expect(funds).to.equal(balance);
+			});
+			it('Expects to get 0 balance', async () => {
+				const funds = Number(await HeroToken.balanceOf(ReferralContract.address));
+				const balance = Number(await ReferralContract.getTrackerBalance());
+
+				expect(funds).to.equal(Number(HeroAmount));
+				expect(funds).to.equal(balance);
+			});
+		});
 		describe('method registerReferral', () => {
 			beforeEach(async () => {
 				try {
