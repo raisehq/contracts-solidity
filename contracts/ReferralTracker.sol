@@ -77,4 +77,8 @@ contract ReferralTracker is Ownable, Pausable {
 
         emit ReferralBonusWithdrawn(address(this), msg.sender, amount, trackerBalance);
     }
+
+    function getTrackerBalance() public view returns (uint256) {
+        return token.balanceOf(address(this));
+    }
 }

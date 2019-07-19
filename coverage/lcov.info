@@ -801,7 +801,8 @@ FN:50,addFunds
 FN:55,removeFunds
 FN:62,registerReferral
 FN:68,withdraw
-FNF:8
+FN:81,getTrackerBalance
+FNF:9
 FNH:8
 FNDA:26,constructor
 FNDA:11,onlyRegistry
@@ -811,6 +812,7 @@ FNDA:5,addFunds
 FNDA:4,removeFunds
 FNDA:7,registerReferral
 FNDA:6,withdraw
+FNDA:0,getTrackerBalance
 DA:32,26
 DA:33,26
 DA:37,11
@@ -833,7 +835,8 @@ DA:73,4
 DA:74,2
 DA:76,2
 DA:78,2
-LF:22
+DA:82,0
+LF:23
 LH:22
 BRDA:37,1,0,9
 BRDA:37,1,1,2
