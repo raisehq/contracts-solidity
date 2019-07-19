@@ -187,14 +187,12 @@ contract('Referral Tracker', function (accounts) {
 				const balance = Number(await ReferralContract.getTrackerBalance());
 
 				expect(funds).to.equal(Number(HeroAmount));
-				expect(funds).to.equal(balance);
+				expect(balance).to.equal(Number(HeroAmount));
 			});
 			it('Expects to get 0 balance', async () => {
-				const funds = Number(await HeroToken.balanceOf(ReferralContract.address));
 				const balance = Number(await ReferralContract.getTrackerBalance());
 
-				expect(funds).to.equal(Number(HeroAmount));
-				expect(funds).to.equal(balance);
+				expect(balance).to.equal(0);
 			});
 		});
 		describe('method registerReferral', () => {
