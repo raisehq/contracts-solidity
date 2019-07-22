@@ -6,7 +6,7 @@ const {readFileSync, writeFileSync} = require('fs');
 const migration = async (deployer, networks, accounts) => {
   const deployerAddress = accounts[0];
   const admin = accounts[1];
-  // Read the contracts deployed from step 2
+  
   const contracts = JSON.parse(readFileSync('./contracts.json'));
 
   const heroTokenAddress = contracts['HeroToken'].address;
