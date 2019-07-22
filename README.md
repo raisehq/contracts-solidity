@@ -50,6 +50,18 @@ First migrate contracts in your local blockchain:
 Once migrated run the script via truffle, by default creates 10 loans, you can set the number of loans with `NUMBER_LOANS` env variable:
 `NUMBER_LOANS=200 npx truffle exec scripts/loan-generator/main.js --network ganache`
 
+## Ledger Nano S migration guide
+
+1. Connect your Ledger via USB to your computer.
+2. Unlock your Ledger.
+3. Change to the Ethereum app
+4. At the Ethereum app, go to Options and set the following:
+    - Contract data: Yes
+    - Browser support: No
+5. Check that your 0 index address have Ether in the network you will do the migration.
+6. Run `npx truffle migrate --network NETWORK_ledger`, for example `npx truffle migrate --network kovan_ledger`
+7. Proceed to confirm every transaction with your Ledger.
+
 ## Known issues and remaining work
 
 * Ownership of defaulted loans isn't transferred to debt collection agents  
