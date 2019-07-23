@@ -13,14 +13,19 @@ const migrationInt = async (deployer, network, accounts) => {
     const daiAddress = contracts['DAI'].address;
     console.log('after check hero and dai', heroTokenAddress, daiAddress);
 
-    await deployer.deploy(KYC, {from: deployerAddress});
+    await deployer.deploy(KYC, {
+        from: deployerAddress
+    
+    });
 
     await deployer.deploy(Deposit, heroTokenAddress, KYC.address, {
         from: deployerAddress
+    
     });
 
     await deployer.deploy(Auth, KYC.address, Deposit.address, {
         from: deployerAddress
+    
     });
 
     const data = {
@@ -54,17 +59,23 @@ const migrationInt = async (deployer, network, accounts) => {
     try {
         for (let i = 0; i < IntAccounts.length; i++) {
             // ADD ADDRESS TO KYC
-            await kycDeployed.addAddressToKYC(IntAccounts[i], {
-                from: admin,
-                gas: 800000
-            });
 
             const inKyc = await kycDeployed.isConfirmed(IntAccounts[i]);
             
             if (inKyc) {
-                console.log(`Added ${IntAccounts[i]} to KYC`);
+                console.log(`Already in ${IntAccounts[i]} to KYC`);
             } else {
-                console.log(`Error adding ${IntAccounts[i]} to KYC`);
+                await kycDeployed.addAddressToKYC(IntAccounts[i], {
+                    from: admin,
+                    gas: 800000
+                });
+    
+                const kyced = await kycDeployed.isConfirmed(IntAccounts[i]);
+                if (kyced) {
+                    console.log(`Added ${IntAccounts[i]} to KYC`);
+                } else {
+                    console.log(`Error adding ${IntAccounts[i]} to KYC`);
+                }
             }
         }
     } catch (err) {

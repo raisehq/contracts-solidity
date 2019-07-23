@@ -1,4 +1,6 @@
+require("@babel/polyfill");
 const fs = require('fs');
+const LedgerProvider = require('@deconet/truffle-ledger-provider');
 
 /**
  * Use this file to configure your truffle project. It's seeded with some
@@ -25,14 +27,19 @@ const fs = require('fs');
 //
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
-const kovanApi = 'https://kovan.infura.io/v3/b707e018ae6f427384b54ad4df490a78';
+const infuraApi = (network) => `https://${network}.infura.io/v3/b707e018ae6f427384b54ad4df490a78`;
 const HDWalletProvider = require('truffle-hdwallet-provider');
 const ownerKey =
   process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
 const adminKey = 
   process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
 const privateKeys = [ownerKey, adminKey]
-
+const ledgerDefaultConfig = {
+  path: "44'/60'/0'/0", // ledger default derivation path
+  askConfirm: false,
+  accountsLength: 1,
+  accountsOffset: 1
+}
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -55,7 +62,7 @@ module.exports = {
       host: 'localhost',
       port: 8545,
       gas: 8000000,
-      gasPrice: 10000000000,
+      gasPrice: 1000000000,
       network_id: '*' // Match any network id
     },
     coverage: {
@@ -67,40 +74,49 @@ module.exports = {
     },
     kovan: {
       gas: 8000000,
-      gasPrice: 10000000000,
+      gasPrice: 1000000000,
       provider: function() {
-        return new HDWalletProvider(privateKeys, kovanApi, 0, 2);
+        return new HDWalletProvider(privateKeys, infuraApi('kovan'), 0, 2);
       },
       network_id: '42', // Kovan network id
-      skipDryRun: true
+    },
+    kovan_ledger: {
+      gas: 8000000,
+      gasPrice: 1000000000,
+      network_id: '42', // rinkeby,
+      skipDryRun: true,
+      provider: function() {
+        const ledgerOptions = {
+          ...ledgerDefaultConfig,
+          networkId: 42, // kovan
+        };
+        return new LedgerProvider(ledgerOptions, infuraApi('kovan'), true);
+      }
+    },
+    rinkeby_ledger: {
+      gas: 8000000,
+      gasPrice: 1000000000,
+      network_id: '4', // rinkeby
+      provider: function() {
+        const ledgerOptions = {
+          ...ledgerDefaultConfig,
+          networkId: 4, // rinkeby
+        };
+        return new LedgerProvider(ledgerOptions, infuraApi('rinkeby'));
+      },
+    },
+    mainnet_ledger: {
+      gas: 8000000,
+      gasPrice: 1000000000,
+      network_id: '1', // mainnet
+      provider: function() {
+        const ledgerOptions = {
+          ...ledgerDefaultConfig,
+          networkId: 1, // mainnet
+        };
+        return new LedgerProvider(ledgerOptions, infuraApi('mainnet'));
+      },
     }
-    // Another network with more advanced options...
-    // advanced: {
-    // port: 8777,             // Custom port
-    // network_id: 1342,       // Custom network
-    // gas: 8500000,           // Gas sent with each transaction (default: ~6700000)
-    // gasPrice: 20000000000,  // 20 gwei (in wei) (default: 100 gwei)
-    // from: <address>,        // Account to send txs from (default: accounts[0])
-    // websockets: true        // Enable EventEmitter interface for web3 (default: false)
-    // },
-
-    // Useful for deploying to a public network.
-    // NB: It's important to wrap the provider as a function.
-    // ropsten: {
-    // provider: () => new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/YOUR-PROJECT-ID`),
-    // network_id: 3,       // Ropsten's id
-    // gas: 5500000,        // Ropsten has a lower block limit than mainnet
-    // confirmations: 2,    // # of confs to wait between deployments. (default: 0)
-    // timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
-    // skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
-    // },
-
-    // Useful for private networks
-    // private: {
-    // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
-    // network_id: 2111,   // This network is yours, in the cloud.
-    // production: true    // Treats this network as if it was a public net. (default: false)
-    // }
   },
 
   // Set default mocha options here, use special reporters etc.

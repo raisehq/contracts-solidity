@@ -18,6 +18,7 @@ cache:
 Prepare:
   stage: prepare
   script:
+    - sudo apt install libudev-dev libusb-1.0-0-dev
     - npm i
   artifacts:
     paths: 

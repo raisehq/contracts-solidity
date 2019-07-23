@@ -53,7 +53,9 @@ const migrationInt = async (deployer, network, accounts) => {
 
 module.exports = async (deployer, network, accounts) => {
 	try {
-		await migrationInt(deployer, network, accounts);
+		if (network !== 'mainnet') {
+			await migrationInt(deployer, network, accounts);
+		}
 	} catch (err) {
 		// Prettier error output
 		console.error(err);
