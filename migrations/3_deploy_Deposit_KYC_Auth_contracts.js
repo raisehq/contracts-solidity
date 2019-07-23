@@ -13,6 +13,10 @@ const migrationInt = async (deployer, network, accounts) => {
     const daiAddress = contracts['DAI'].address;
     console.log('after check hero and dai', heroTokenAddress, daiAddress);
 
+    // TODO::
+    // if they already exist and are not modified no need for redeployment, and anything else
+    // but if one of them is modified the contracts that have it as dependency need to be redeployed
+
     await deployer.deploy(KYC, {
         from: deployerAddress
     
