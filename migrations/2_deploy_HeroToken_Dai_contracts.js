@@ -1,7 +1,7 @@
 const HeroToken = artifacts.require('HeroOrigenToken');
 const DAI = artifacts.require('DAIFake');
 const devAccounts = require('../int.accounts.json');
-const {writeFileSync} = require('fs');
+const {writeFileSync, readFileSync} = require('fs');
 const axios = require('axios');
 const DAIabi = require('../abis/DAI-abi.json');
 const Heroabi = require('../abis/Hero-abi.json');
@@ -16,6 +16,19 @@ const getS3Contracts = async () => {
         if (error.response.status !== 404) throw error;
         console.log('No exist previous contracts.json we continue and create new one.');
         return {};
+    }
+}
+
+const getContracts = async () => {
+    try {
+        const contracts = JSON.parse(readFileSync('./contracts.json'));
+        return contracts;
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            const contracts = await getS3Contracts();
+            return contracts;
+        }
+        throw error;
     }
 }
 
@@ -37,7 +50,7 @@ const getContractTokens = async (contracts, deployerAddress) => {
         }
         return {};
     } catch (error) {
-        console.log('Error in getContractTockens::: ', error);
+        console.log('Cannot create instance of Contract HeroToken, no code for address: ', contracts['HeroToken'].address);
         return {};
     }
 };
@@ -49,34 +62,41 @@ const migrationInt = async (deployer, network, accounts) => {
         
         let HeroTokenAddress = '';
         let DAIAddress = '';
-        let contracts = {};
+        let contracts = await getContracts();
 
         if (network !== 'development') {
-            contracts = await getS3Contracts();
+            // contracts = await getS3Contracts();
             const { heroTokenAddress, daiAddress } = await getContractTokens(contracts, deployerAddress);
             
             HeroTokenAddress = heroTokenAddress;
             DAIAddress = daiAddress
             
-            if (!heroTokenAddress) { // deploy in kovan only if they are not deployed already
+            if (!heroTokenAddress || !daiAddress) { // deploy in kovan only if they are not deployed already
                 await deployer.deploy(HeroToken, {
                     from: deployerAddress,
                     overwrite: false
                 });
-                HeroTokenAddress = HeroToken.address;
-            }
-            if (!daiAddress) {
                 await deployer.deploy(DAI, {
                     from: deployerAddress,
                     overwrite: false
                 });
+                
+                HeroTokenAddress = HeroToken.address;
                 DAIAddress = DAI.address;
             }
         } else { // Deploy a new HeroToken and DAI because in local we do not have them
+            // await deployer.deploy([
+            //     [HeroToken, {from: deployerAddress}],
+            //     [DAI, {from: deployerAddress}],
+            // ])
             await deployer.deploy(HeroToken, {
-                from: deployerAddress
+                from: deployerAddress,
+                overwrite: false
             });
-            await deployer.deploy(DAI, {from: deployerAddress});
+            await deployer.deploy(DAI, {
+                from: deployerAddress,
+                overwrite: false
+            });
             
             HeroTokenAddress = HeroToken.address;
             DAIAddress = DAI.address;
@@ -123,7 +143,7 @@ const migrationInt = async (deployer, network, accounts) => {
 
         await writeFileSync('./contracts.json', JSON.stringify(newContracts));
     } catch (err) {
-        throw error;
+        throw err;
     }
 };
 

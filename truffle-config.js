@@ -78,6 +78,7 @@ module.exports = {
       provider: function() {
         return new HDWalletProvider(privateKeys, infuraApi('kovan'), 0, 2);
       },
+      skipDryRun: true,
       network_id: '42', // Kovan network id
     },
     kovan_ledger: {

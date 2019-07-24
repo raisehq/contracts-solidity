@@ -3,39 +3,43 @@ const LoanDispatcher = artifacts.require('LoanContractDispatcher');
 const {readFileSync, writeFileSync} = require('fs');
 
 const migrationInt = async (deployer, network, accounts) => {
+	const contracts = JSON.parse(readFileSync('./contracts.json'));
 	const deployerAddress = accounts[0];
 	const admin = accounts[1];
 
-	const contracts = JSON.parse(readFileSync('./contracts.json'));
 	const daiAddress = contracts['DAI'].address;
 	const authAddress = contracts['Auth'].address;
 
-	await deployer.deploy(DAIProxy, authAddress, daiAddress, {
-		from: deployerAddress
-	});
-
-	const dispatcherArgs = [authAddress, daiAddress, DAIProxy.address];
-	const dispatcherFrom = {from: deployerAddress};
-	const LoanFactory = new web3.eth.Contract(LoanDispatcher.abi, null, {
-		data: LoanDispatcher.bytecode
-	});
-	const LoanFactoryEstimatedGas = await LoanFactory.deploy({
-		arguments: dispatcherArgs
-	}).estimateGas(dispatcherFrom);
-
-	await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxy.address, {
-		from: deployerAddress,
-		gas: LoanFactoryEstimatedGas
-	});
+	const oldDaiProxyByteCode = contracts['DAIProxy'].bytecode;
+	const oldLoanDispatcherBytecode = contracts['LoanDispatcher'].bytecode;
+	
+	if (oldDaiProxyByteCode !== DAIProxy.bytecode) {
+		await deployer.deploy(DAIProxy, authAddress, daiAddress, {
+			from: deployerAddress
+		});
+		await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxy.address, {
+			from: deployerAddress
+		});
+	}
+	else if (oldLoanDispatcherBytecode !== LoanDispatcher.bytecode) {
+		console.log('|============ DAIProxy: no changes to deploy ==============|');
+		await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxy.address, {
+			from: deployerAddress
+		});
+	} else {
+		console.log('|============ DAIProxy && LoanDispatcher: no changes to deploy ==============|');
+	}
 
 	const data = {
 		DAIProxy: {
 			address: DAIProxy.address,
-			abi: DAIProxy.abi
+			abi: DAIProxy.abi,
+			bytecode: DAIProxy.bytecode
 		},
 		LoanDispatcher: {
 			address: LoanDispatcher.address,
-			abi: LoanDispatcher.abi
+			abi: LoanDispatcher.abi,
+			bytecode: LoanDispatcher.bytecode
 		}
 	};
 
