@@ -18,8 +18,9 @@ cache:
 
 Prepare:
   stage: prepare
+  before_script:
+    - apt-get update && apt-get install libudev-dev libusb-1.0-0-dev
   script:
-    - apt install libudev-dev libusb-1.0-0-dev
     - npm i
   artifacts:
     paths: 
