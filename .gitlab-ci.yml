@@ -8,7 +8,8 @@ stages:
  
 variables:
   AWS_DEFAULT_REGION: eu-west-1 
-  BUCKET_NAME: blockchain-definitions/v2
+  BUCKET_NAME: blockchain-definitions/v3
+
 
 cache:
   paths:
@@ -25,7 +26,6 @@ Prepare:
       - node_modules/
   only:
     - integration
-    #- master
 
 Test:
   stage: test
@@ -46,7 +46,6 @@ Deploy:
       - contracts.json
   only:
     - integration
-    #- master
       
 Publish:
   image: "python:latest"  
@@ -54,7 +53,6 @@ Publish:
   before_script:
     - pip install awscli  
   script:
-    - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts.json 
+    - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts-kovan.json 
   only:
     - integration
-    #- master

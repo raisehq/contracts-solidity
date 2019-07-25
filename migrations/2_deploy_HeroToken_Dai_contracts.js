@@ -6,26 +6,26 @@ const axios = require('axios');
 const DAIabi = require('../abis/DAI-abi.json');
 const Heroabi = require('../abis/Hero-abi.json');
 
-const getS3Contracts = async () => {
+const getS3Contracts = async (network) => {
     try {
         const {data: contracts} = await axios(
-            'https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v2/contracts.json'
+            `https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v3/contracts-${network}.json`
         );
         return contracts;
     } catch (error) {
         if (error.response.status !== 404) throw error;
-        console.log('No exist previous contracts.json we continue and create new one.');
+        console.log(`No exist previous contracts-${network}.json we continue and create new one.`);
         return {};
     }
 }
 
-const getContracts = async () => {
+const getContracts = async (network) => {
     try {
-        const contracts = JSON.parse(readFileSync('./contracts.json'));
+        const contracts = JSON.parse(readFileSync(`./contracts-${network}.json`));
         return contracts;
     } catch (error) {
         if (error.code === 'ENOENT') {
-            const contracts = await getS3Contracts();
+            const contracts = await getS3Contracts(network);
             return contracts;
         }
         throw error;
@@ -35,7 +35,7 @@ const getContracts = async () => {
 const getContractTokens = async (contracts, deployerAddress) => {
     try {
         // Check if the contract.json has the address of HeroToken and DAI
-        if (contracts['HeroToken'].address) {
+        if (contracts['HeroToken'] && contracts['HeroToken'].address) {
             // Check if deployer is owner of already deployed contracts.
             const HeroInstance = await HeroToken.at(contracts['HeroToken'].address);
             const owner = await HeroInstance.owner();
@@ -57,15 +57,19 @@ const getContractTokens = async (contracts, deployerAddress) => {
 
 const migrationInt = async (deployer, network, accounts) => {
     try {
-        console.log(`Deploying in network:: ${network}`);
         const deployerAddress = accounts[0];
         
         let HeroTokenAddress = '';
         let DAIAddress = '';
-        let contracts = await getContracts();
+        let contracts = await getContracts(network);
 
+        const oldHeroTokenBytecode = contracts['HeroToken'] ? contracts['HeroToken'].bytecode : undefined;
+        const oldDAIBytecode = contracts['DAI'] ? contracts['DAI'].bytecode : undefined;
+
+        const daiHasBeenUpdated = DAI.bytecode !== oldDAIBytecode;
+        const herotokenHasBeenUpdated = HeroToken.bytecode !== oldHeroTokenBytecode;
+        
         if (network !== 'development') {
-            // contracts = await getS3Contracts();
             const { heroTokenAddress, daiAddress } = await getContractTokens(contracts, deployerAddress);
             
             HeroTokenAddress = heroTokenAddress;
@@ -85,10 +89,6 @@ const migrationInt = async (deployer, network, accounts) => {
                 DAIAddress = DAI.address;
             }
         } else { // Deploy a new HeroToken and DAI because in local we do not have them
-            // await deployer.deploy([
-            //     [HeroToken, {from: deployerAddress}],
-            //     [DAI, {from: deployerAddress}],
-            // ])
             await deployer.deploy(HeroToken, {
                 from: deployerAddress,
                 overwrite: false
@@ -102,46 +102,52 @@ const migrationInt = async (deployer, network, accounts) => {
             DAIAddress = DAI.address;
         }
 
-        const data = {
-            HeroToken: {
-                address: HeroTokenAddress,
-                abi: HeroToken.abi
-            },
-            DAI: {
-                address: DAIAddress,
-                abi: DAI.abi
+        if (herotokenHasBeenUpdated || daiHasBeenUpdated) {
+            const IntAccounts = [...new Set([...accounts, ...devAccounts])]; //unique accounts not repeated
+            if (IntAccounts.length > 0) {
+                console.log(`> Sending tokens to ${IntAccounts.length} accounts`, '\n');
             }
-        };
-
-        // Give ERC20 to whitelist addresses
-        const heroDeployed = await HeroToken.at(HeroTokenAddress);
-        const daiDeployed = await DAI.at(DAIAddress);
-
-        const IntAccounts = [...new Set([...accounts, ...devAccounts])]; //unique accounts not repeated
-
-        if (IntAccounts.length > 0) {
-            console.log(`> Sending tokens to ${IntAccounts.length} accounts`, '\n');
-        }
-        for (let i = 0; i < IntAccounts.length; i++) {
             const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
-            // HEROTOKENS
-            await heroDeployed.mint(IntAccounts[i], tokens, {
-                from: deployerAddress,
-                gas: 800000
-            });
-            // DAI TOKENS
-            await daiDeployed.mint(IntAccounts[i], tokens, {
-                from: deployerAddress,
-                gas: 800000
-            });
-        }
-        
-        const newContracts = {
-            ...contracts,
-            ...data
-        };
+                    
+            if (herotokenHasBeenUpdated) {
+                const heroDeployed = await HeroToken.at(HeroTokenAddress);
+                for (let i = 0; i < IntAccounts.length; i++) {
+                    await heroDeployed.mint(IntAccounts[i], tokens, {
+                        from: deployerAddress,
+                        gas: 800000
+                    });
+                }
+            }
+            if (daiHasBeenUpdated) {
+                const daiDeployed = await DAI.at(DAIAddress);
+                for (let i = 0; i < IntAccounts.length; i++) {
+                    await daiDeployed.mint(IntAccounts[i], tokens, {
+                        from: deployerAddress,
+                        gas: 800000
+                    });
+                }
+            }
 
-        await writeFileSync('./contracts.json', JSON.stringify(newContracts));
+            const data = {
+                HeroToken: {
+                    address: HeroTokenAddress,
+                    abi: HeroToken.abi,
+                    bytecode: HeroToken.bytecode
+                },
+                DAI: {
+                    address: DAIAddress,
+                    abi: DAI.abi,
+                    bytecode: DAI.bytecode
+                }
+            };
+            
+            const newContracts = {
+                ...contracts,
+                ...data
+            };
+
+            await writeFileSync(`./contracts-${network}.json`, JSON.stringify(newContracts));
+        }
     } catch (err) {
         throw err;
     }
@@ -149,11 +155,10 @@ const migrationInt = async (deployer, network, accounts) => {
 
 const mainnetMigrationInit = async (deployer, network, accounts) => {
     try {
-        console.log(`Deploying Main net in network:: ${network}`);
         const heroTokenAddress = '0x02585e4a14da274d02df09b222d4606b10a4e940'; // hardcoded address of hero token contract on mainnet,
         const daiAddress = '0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359'; // hardcoded addres of dai token contract on mainnet;
 
-        const contracts = await getS3Contracts();
+        const contracts = await getContracts(network);
 
         const data = {
             HeroToken: {
@@ -171,7 +176,7 @@ const mainnetMigrationInit = async (deployer, network, accounts) => {
             ...data
         };
 
-        await writeFileSync('./contracts.json', JSON.stringify(newContracts));
+        await writeFileSync(`./contracts-${network}.json`, JSON.stringify(newContracts));
     } catch (error) {
         throw error;
     }

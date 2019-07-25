@@ -81,7 +81,4 @@ contract ReferralTracker is Ownable, Pausable {
     function getTrackerBalance() public view returns (uint256) {
         return token.balanceOf(address(this));
     }
-    function getTrackerBalance2() public view returns (uint256) {
-        return token.balanceOf(address(this));
-    }
 }
