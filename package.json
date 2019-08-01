@@ -20,7 +20,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run prettier:solidity && npm run solhint && SOLIDITY_COVERAGE=true bash scripts/test.sh && git add contracts && git add coverage*"
+      "pre-commit": "npm run prettier:solidity && npm run solhint"
     }
   },
   "author": "Hero Fintech",

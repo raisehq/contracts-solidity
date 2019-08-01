@@ -32,8 +32,11 @@ Test:
   stage: test
   before_script:
     - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
+  artifacts:
+    paths: 
+      - coverage/
   script:
-    - npm test
+    - npm run compile && npm test && npm run solhint && SOLIDITY_COVERAGE=true bash scripts/test.sh
   only:
     - integration
     - master
@@ -41,7 +44,7 @@ Test:
 Deploy:
   stage: deploy
   script:
-    - npm run migration:kovan 
+    - npm run migration:kovan && npm run migration:goerli
   artifacts:
     paths: 
       - contracts.json
@@ -49,7 +52,7 @@ Deploy:
   only:
     - integration
       
-Publish:
+PublishContracts:
   image: "python:latest"  
   stage: publish
   artifacts:
@@ -58,6 +61,32 @@ Publish:
   before_script:
     - pip install awscli  
   script:
-    - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts.json  && aws s3 cp build/* s3://${BUCKET_NAME}/artifacts/
+    - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts.json
+  only:
+    - integration
+
+PublishArtifacts:
+  image: "python:latest"  
+  stage: publish
+  artifacts:
+    paths: 
+      - build/
+  before_script:
+    - pip install awscli  
+  script:
+    -  aws s3 cp build/contracts/* s3://${BUCKET_NAME}/artifacts/
+  only:
+    - integration
+
+PublishCoverage:
+  image: "python:latest"  
+  stage: publish
+  artifacts:
+    paths: 
+      - coverage/
+  before_script:
+    - pip install awscli  
+  script:
+    - aws s3 cp -r coverage s3://${BUCKET_NAME}/
   only:
     - integration
