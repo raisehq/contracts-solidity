@@ -145,7 +145,7 @@ const migrationInt = async (deployer, network, accounts) => {
                 ...contracts,
                 ...data
             };
-
+            
             await writeFileSync(`./contracts-${network}.json`, JSON.stringify(newContracts));
         }
     } catch (err) {

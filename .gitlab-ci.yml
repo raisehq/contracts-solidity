@@ -14,7 +14,7 @@ variables:
 cache:
   paths:
     - node_modules/
-    - contracts.json 
+    - contracts-kovan.json 
 
 Prepare:
   stage: prepare
