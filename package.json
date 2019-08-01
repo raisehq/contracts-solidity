@@ -9,6 +9,8 @@
     "migration": "truffle migration --network development",
     "migration:kovan": "truffle migration --network kovan",
     "migration:kovan:reset": "truffle migration --reset --network kovan",
+    "migration:goerli": "truffle migration --network goerli",
+    "migration:goerli:reset": "truffle migration --reset --network goerli",
     "migration:reset": "truffle migration --reset --network development",
     "console": "truffle console --network kovan",
     "test": "bash scripts/test.sh",
