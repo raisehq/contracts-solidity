@@ -54,6 +54,6 @@ Publish:
   before_script:
     - pip install awscli  
   script:
-    - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts-kovan.json 
+    - aws s3 cp contracts-kovan.json s3://${BUCKET_NAME}/contracts-kovan.json 
   only:
     - integration
