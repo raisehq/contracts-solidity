@@ -14,6 +14,8 @@ const migrationInt = async (deployer, network, accounts) => {
 
         const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
         const depositAddress = _.get(contracts, `address.${netId}.Deposit`);
+        const depositAbi = _.get(contracts, `abi.Deposit`);
+        const depositBytecode = _.get(contracts, `bytecode.Deposit`);
 
         const depositHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Deposit', Deposit);
         const referralHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'ReferraTracker', ReferralTracker);
@@ -62,16 +64,16 @@ const migrationInt = async (deployer, network, accounts) => {
             const data = {
                 address: {
                     [netId]: {
-                        Deposit: Deposit.address,
+                        Deposit: depositAddress,
                         ReferralTracker: ReferralTracker.address
                     }
                 },
                 abi: {
-                    Deposit: Deposit.abi,
+                    Deposit: depositAbi,
                     ReferralTracker: ReferralTracker.abi
                 },
                 bytecode: {
-                    Deposit: Deposit.bytecode,
+                    Deposit: depositBytecode,
                     ReferralTracker: ReferralTracker.bytecode
                 }
             };
