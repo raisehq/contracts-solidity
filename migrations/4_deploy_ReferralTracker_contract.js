@@ -1,19 +1,22 @@
+const _ = require('lodash');
 const Deposit = artifacts.require('DepositRegistry');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const HeroToken = artifacts.require('HeroOrigenToken');
-const {readFileSync, writeFileSync} = require('fs');
+const {writeFileSync} = require('fs');
+const { getContracts } = require('../scripts/helpers');
 
 const migrationInt = async (deployer, network, accounts) => {
     try {
-        const contracts = JSON.parse(readFileSync(`./contracts-${network}.json`));
+        const contracts = await getContracts();
         const deployerAddress = accounts[0];
         const admin = accounts[1];
+        const netId = await web3.eth.net.getId();
 
-        const heroTokenAddress = contracts['HeroToken'].address;
+        const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
 
         // Contracts deployment if updated logic::
-        const oldDepositBytecode = contracts['Deposit'] ? contracts['Deposit'].bytecode : undefined;
-        const oldReferralBytecode = contracts['ReferralTracker'] ? contracts['ReferralTracker'].bytecode : undefined;
+        const oldDepositBytecode = _.get(contracts, 'bytecode.Deposit');
+        const oldReferralBytecode = _.get(contracts, 'bytecode.ReferralTracker');
 
         const depositHasBeenUpdated = oldDepositBytecode !== Deposit.bytecode;
         const referralHasBeenUpdated = oldReferralBytecode !== ReferralTracker.bytecode;
@@ -60,24 +63,25 @@ const migrationInt = async (deployer, network, accounts) => {
             }
 
             const data = {
-                Deposit: {
-                    address: Deposit.address,
-                    abi: Deposit.abi,
-                    bytecode: Deposit.bytecode
+                address: {
+                    [netId]: {
+                        Deposit: Deposit.address,
+                        ReferralTracker: ReferralTracker.address
+                    }
                 },
-                ReferralTracker: {
-                    address: ReferralTracker.address,
-                    abi: ReferralTracker.abi,
-                    bytecode: ReferralTracker.bytecode
+                abi: {
+                    Deposit: Deposit.abi,
+                    ReferralTracker: ReferralTracker.abi
+                },
+                bytecode: {
+                    Deposit: Deposit.bytecode,
+                    ReferralTracker: ReferralTracker.bytecode
                 }
             };
 
-            const newContracts = {
-                ...contracts,
-                ...data
-            };
+            const newContracts = _.merge(contracts, data)
 
-            await writeFileSync(`./contracts-${network}.json`, JSON.stringify(newContracts));
+            await writeFileSync('./contracts.json', JSON.stringify(newContracts));
         } else {
             console.log('|============ ReferralTracker: no changes to deploy ==============|');
         }

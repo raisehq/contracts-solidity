@@ -3,6 +3,8 @@ const BigNumber = require('bignumber.js');
 const { BN } = require('web3-utils');
 const DaiProxy = require('../build/contracts/DAIProxy.json');
 const DaiFake = require('../build/contracts/DAIFake.json');
+const { readFileSync } = require('fs');
+const axios = require('axios');
 
 const LoanState = (i) => [
   'CREATED', // accepts bids until timelimit initial state
@@ -82,6 +84,33 @@ async function getDai(web3) {
     return new web3.eth.Contract(DaiFake.abi, DaiFake.networks[currentNetworkId].address)
 }
 
+const getS3Contracts = async () => {
+  try {
+      const {data: contracts} = await axios(
+          `https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v4/contracts.json`
+      );
+      console.log('what', contracts)
+      return contracts;
+  } catch (error) {
+      if (error.response.status !== 404) throw error;
+      console.log(`No exist previous contracts.json we continue and create new one.`);
+      return {};
+  }
+}
+
+const getContracts = async () => {
+  try {
+      const contracts = JSON.parse(readFileSync(`./contracts.json`));
+      return contracts;
+  } catch (error) {
+      if (error.code === 'ENOENT') {
+          const contracts = await getS3Contracts();
+          return contracts;
+      }
+      throw error;
+  }
+}
+
 module.exports = {
   waitNBlocks,
   advanceBlock,
@@ -91,5 +120,7 @@ module.exports = {
   latest,
   bigNums,
   getDaiProxy,
-  getDai
+  getDai,
+  getContracts,
+  getS3Contracts
 }

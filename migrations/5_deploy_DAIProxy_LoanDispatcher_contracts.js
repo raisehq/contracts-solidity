@@ -1,22 +1,25 @@
+const _ = require('lodash');
 const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
-const {readFileSync, writeFileSync} = require('fs');
+const {writeFileSync} = require('fs');
+const { getContracts } = require('../scripts/helpers');
 
 const migrationInt = async (deployer, network, accounts) => {
-	const contracts = JSON.parse(readFileSync(`./contracts-${network}.json`));
+	const contracts = await getContracts();
+	const netId = await web3.eth.net.getId();
 	const deployerAddress = accounts[0];
 	const admin = accounts[1];
 
-	const daiAddress = contracts['DAI'].address;
-	const authAddress = contracts['Auth'].address;
+	const daiAddress = _.get(contracts, `address.${netId}.DAI`);
+	const authAddress =_.get(contracts, `address.${netId}.Auth`);
 
-	const oldDaiProxyByteCode = contracts['DAIProxy'] ? contracts['DAIProxy'].bytecode : undefined;
-	const oldLoanDispatcherBytecode = contracts['LoanDispatcher'] ? contracts['LoanDispatcher'].bytecode : undefined;
+	const oldDaiProxyByteCode = _.get(contracts, 'bytecode.DAIProxy');
+	const oldLoanDispatcherBytecode = _.get(contracts, 'bytecode.LoanDispatcher');
 
 	const daiproxyHasBeenUpdated = oldDaiProxyByteCode !== DAIProxy.bytecode;
 	const loandispatcherHasBeenUpdated = oldLoanDispatcherBytecode !== LoanDispatcher.bytecode
 	
-	const data = {};
+	let data = {};
 
 	if (daiproxyHasBeenUpdated) {
 		await deployer.deploy(DAIProxy, authAddress, daiAddress, {
@@ -27,28 +30,44 @@ const migrationInt = async (deployer, network, accounts) => {
 		});
 
         // Update contracts 
-		data.DAIProxy = {
-			address: DAIProxy.address,
-			abi: DAIProxy.abi,
-			bytecode: DAIProxy.bytecode
-		};
-		data.LoanDispatcher = {
-			address: LoanDispatcher.address,
-			abi: LoanDispatcher.abi,
-			bytecode: LoanDispatcher.bytecode
+		data = {
+			address: {
+				[netId]: {
+					DAIProxy: DAIProxy.address,
+					LoanDispatcher: LoanDispatcher.address,
+				}
+			},
+			abi: {
+				DAIProxy: DAIProxy.abi,
+				LoanDispatcher: LoanDispatcher.abi
+			},
+			bytecode: {
+				DAIProxy: DAIProxy.bytecode,
+				LoanDispatcher: LoanDispatcher.bytecode
+			}
 		};
 	}
 	else if (loandispatcherHasBeenUpdated) {
 		console.log('|============ DAIProxy: no changes to deploy ==============|');
-		await deployer.deploy(LoanDispatcher, authAddress, daiAddress, contracts['DAIProxy'].address, {
+
+		const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`)
+		
+		await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxyAddress, {
 			from: deployerAddress
 		});
 		
-        // Update contracts 
-		data.LoanDispatcher = {
-			address: LoanDispatcher.address,
-			abi: LoanDispatcher.abi,
-			bytecode: LoanDispatcher.bytecode
+		data = {
+			address: {
+				[netId]: {
+					LoanDispatcher: LoanDispatcher.address,
+				}
+			},
+			abi: {
+				LoanDispatcher: LoanDispatcher.abi
+			},
+			bytecode: {
+				LoanDispatcher: LoanDispatcher.bytecode
+			}
 		};
 	} else {
 		console.log('|============ DAIProxy && LoanDispatcher: no changes to deploy ==============|');
@@ -61,12 +80,9 @@ const migrationInt = async (deployer, network, accounts) => {
 			await dispatcherDeployed.setAdministrator(admin, {from: deployerAddress});
 		}
 		
-		const newContracts = {
-			...contracts,
-			...data
-		};
+		const newContracts = _.merge(contracts, data);
 		
-		await writeFileSync(`./contracts-${network}.json`, JSON.stringify(newContracts));
+		await writeFileSync('./contracts.json', JSON.stringify(newContracts));
 	}
 };
 
