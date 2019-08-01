@@ -23,13 +23,16 @@ Prepare:
   script:
     - npm i
   artifacts:
-    paths: 
+    paths:
       - node_modules/
   only:
     - integration
 
 Test:
   stage: test
+  artifacts:
+    paths: 
+      - build/
   before_script:
     - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
   script:
@@ -63,7 +66,7 @@ Solhint:
 KovanGoerli:
   stage: deploy
   script:
-    - npm run migration:kovan && npm run migration:goerli
+    - npm run compile && npm run migration:kovan && npm run migration:goerli
   artifacts:
     paths: 
       - contracts.json
