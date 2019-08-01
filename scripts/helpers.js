@@ -111,7 +111,7 @@ const getContracts = async () => {
 }
 
 const contractIsUpdated = (contracts, netId, name, artifacts) => {
-  return !_.hasIn(contracts, `address.${netId}.${name}`) || artifacts[name].bytecode !== _.get(contracts, `bytecode.${name}`);
+  return !_.hasIn(contracts, `address.${netId}.${name}`) || artifacts['bytecode'] !== _.get(contracts, `bytecode.${name}`);
 }
 
 module.exports = {
