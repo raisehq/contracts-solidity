@@ -2,7 +2,7 @@ const _ = require('lodash');
 const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
 const {writeFileSync} = require('fs');
-const { getContracts } = require('../scripts/helpers');
+const { getContracts, contractIsUpdated } = require('../scripts/helpers');
 
 const migrationInt = async (deployer, network, accounts) => {
 	const contracts = await getContracts();
@@ -13,11 +13,8 @@ const migrationInt = async (deployer, network, accounts) => {
 	const daiAddress = _.get(contracts, `address.${netId}.DAI`);
 	const authAddress =_.get(contracts, `address.${netId}.Auth`);
 
-	const oldDaiProxyByteCode = _.get(contracts, 'bytecode.DAIProxy');
-	const oldLoanDispatcherBytecode = _.get(contracts, 'bytecode.LoanDispatcher');
-
-	const daiproxyHasBeenUpdated = oldDaiProxyByteCode !== DAIProxy.bytecode;
-	const loandispatcherHasBeenUpdated = oldLoanDispatcherBytecode !== LoanDispatcher.bytecode
+	const daiproxyHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'DAIProxy', DAIProxy);
+	const loandispatcherHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'LoanDispatcher' ,LoanDispatcher)
 	
 	let data = {};
 

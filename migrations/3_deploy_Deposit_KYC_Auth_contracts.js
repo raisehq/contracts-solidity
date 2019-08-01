@@ -4,7 +4,7 @@ const KYC = artifacts.require('KYCRegistry');
 const Auth = artifacts.require('Authorization');
 const devAccounts = require('../int.accounts.json');
 const {writeFileSync} = require('fs');
-const { getContracts } = require('../scripts/helpers');
+const { getContracts, contractIsUpdated } = require('../scripts/helpers');
 
 const migrationInt = async (deployer, network, accounts) => {
     try {
@@ -16,17 +16,15 @@ const migrationInt = async (deployer, network, accounts) => {
         console.log('contracts', contracts.address)
         console.log('HERO TOKEN ADD', heroTokenAddress)
         // Contracts deployment if updated logic::
-        const oldKycBytecode = _.get(contracts, `bytecode.KYC`);
         const oldDepositBytecode = _.get(contracts, `bytecode.Deposit`);
-        const oldAuthBytecode = _.get(contracts, `bytecode.Auth`);
 
-        const kycHasBeenUpdated = oldKycBytecode !== KYC.bytecode;
-        const depositHasBeenUpdated = oldDepositBytecode !== Deposit.bytecode;
-        const authHasBeenUpdated = oldAuthBytecode !== Auth.bytecode;
+        const kycHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'KYC', KYC);
+        const depositHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Deposit', Deposit);
+        const authHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Auth', Auth);
 
         let data = {};
 
-        if (kycHasBeenUpdated) { // deploy all contracts that depend on kyc contract if kyc changed
+        if (kycHasBeenUpdated() || (!KYC.bytecode || !Deposit.bytecode || !Auth.bytecode)) { // deploy all contracts that depend on kyc contract if kyc changed
             await deployer.deploy(KYC, {
                 from: deployerAddress
             });
@@ -56,7 +54,7 @@ const migrationInt = async (deployer, network, accounts) => {
                     Deposit: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
                 }
             };
-        } else if (depositHasBeenUpdated) { // deploy all contracts that depend on deposit contract if deposit changed
+        } else if (depositHasBeenUpdated()) { // deploy all contracts that depend on deposit contract if deposit changed
             console.log('|============ KYC: no changes to deploy ==============|');
             const kycAdd = _.get(contracts, `address.${netId}.KYC`)
             await deployer.deploy(Deposit, heroTokenAddress, kycAdd, {
@@ -82,7 +80,7 @@ const migrationInt = async (deployer, network, accounts) => {
                     Deposit: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
                 }
             };
-        } else if (authHasBeenUpdated) { // deploy auth if changed
+        } else if (authHasBeenUpdated()) { // deploy auth if changed
             await deployer.deploy(Auth, contracts['KYC'].address, contracts['Deposit'].address, {
                 from: deployerAddress
             });
@@ -105,8 +103,8 @@ const migrationInt = async (deployer, network, accounts) => {
             console.log('|============ KYC && Deposit && Auth: no changes to deploy ==============|');
         }
 
-        if (kycHasBeenUpdated || depositHasBeenUpdated || authHasBeenUpdated) {
-            if (depositHasBeenUpdated) {
+        if (kycHasBeenUpdated() || depositHasBeenUpdated() || authHasBeenUpdated() ) {
+            if (depositHasBeenUpdated()) {
                 const depositDeployed = await Deposit.deployed();
                 await depositDeployed.setAdministrator(admin, {from: deployerAddress});
             }

@@ -14,7 +14,6 @@ variables:
 cache:
   paths:
     - node_modules/
-    - build/
     - contracts.json 
 
 Prepare:
@@ -46,7 +45,6 @@ Deploy:
   artifacts:
     paths: 
       - contracts.json
-      - build/
   only:
     - integration
       
@@ -56,7 +54,6 @@ Publish:
   artifacts:
     paths: 
       - contracts.json
-      - build/
   before_script:
     - pip install awscli  
   script:

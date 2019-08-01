@@ -111,6 +111,10 @@ const getContracts = async () => {
   }
 }
 
+const contractIsUpdated = (contracts, netId, name, artifacts) => {
+  return !_.hasIn(contracts, `address.${netId}.${name}`) || artifacts[name].bytecode !== _.get(contracts, `bytecode.${name}`);
+}
+
 module.exports = {
   waitNBlocks,
   advanceBlock,
@@ -122,5 +126,6 @@ module.exports = {
   getDaiProxy,
   getDai,
   getContracts,
-  getS3Contracts
+  getS3Contracts,
+  contractIsUpdated
 }

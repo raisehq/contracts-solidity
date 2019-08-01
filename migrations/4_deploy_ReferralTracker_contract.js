@@ -3,7 +3,7 @@ const Deposit = artifacts.require('DepositRegistry');
 const ReferralTracker = artifacts.require('ReferralTracker');
 const HeroToken = artifacts.require('HeroOrigenToken');
 const {writeFileSync} = require('fs');
-const { getContracts } = require('../scripts/helpers');
+const { getContracts, contractIsUpdated } = require('../scripts/helpers');
 
 const migrationInt = async (deployer, network, accounts) => {
     try {
@@ -14,12 +14,8 @@ const migrationInt = async (deployer, network, accounts) => {
 
         const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
 
-        // Contracts deployment if updated logic::
-        const oldDepositBytecode = _.get(contracts, 'bytecode.Deposit');
-        const oldReferralBytecode = _.get(contracts, 'bytecode.ReferralTracker');
-
-        const depositHasBeenUpdated = oldDepositBytecode !== Deposit.bytecode;
-        const referralHasBeenUpdated = oldReferralBytecode !== ReferralTracker.bytecode;
+        const depositHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Deposit', Deposit);
+        const referralHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'ReferraTracker', ReferralTracker);
         
         if (referralHasBeenUpdated || depositHasBeenUpdated) {
             await deployer.deploy(ReferralTracker, Deposit.address, heroTokenAddress, {

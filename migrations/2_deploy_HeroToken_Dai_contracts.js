@@ -4,13 +4,13 @@ const DAI = artifacts.require('DAIFake');
 const devAccounts = require('../int.accounts.json');
 const DAIabi = require('../abis/DAI-abi.json');
 const Heroabi = require('../abis/Hero-abi.json');
-const { getContracts } =  require('../scripts/helpers');
+const { getContracts, contractIsUpdated } =  require('../scripts/helpers');
 const { writeFileSync } = require('fs');
 
 
 const getContractTokens = async (contracts, deployerAddress) => {
     try {
-        const netId = web3.eth.net.getId();
+        const netId = await web3.eth.net.getId();
         // Check if the contract.json has the address of HeroToken and DAI
         const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
         const daiAddress = _.get(contracts, `address.${netId}.DAI`);
@@ -37,38 +37,21 @@ const getContractTokens = async (contracts, deployerAddress) => {
 const migrationInt = async (deployer, network, accounts) => {
     try {
         const deployerAddress = accounts[0];
-        
+        const netId = await web3.eth.net.getId(); 
         let HeroTokenAddress = '';
         let DAIAddress = '';
         let contracts = await getContracts();
         console.log('contracts', contracts.address)
 
-        const oldHeroTokenBytecode = _.get(contracts, `bytecode.HeroToken`, undefined);
-        const oldDAIBytecode = _.get(contracts, 'bytecode.DAI', undefined);
-
-        const daiHasBeenUpdated = DAI.bytecode !== oldDAIBytecode;
-        const herotokenHasBeenUpdated = HeroToken.bytecode !== oldHeroTokenBytecode;
+        const daiHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'DAI', DAI)
+        const herotokenHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'HeroToken', HeroToken)
         
-        if (network !== 'development') {
-            const { heroTokenAddress, daiAddress } = await getContractTokens(contracts, deployerAddress);
-            
-            HeroTokenAddress = heroTokenAddress;
-            DAIAddress = daiAddress
-            
-            if (!heroTokenAddress || !daiAddress) { // deploy in kovan only if they are not deployed already
-                await deployer.deploy(HeroToken, {
-                    from: deployerAddress,
-                    overwrite: false
-                });
-                await deployer.deploy(DAI, {
-                    from: deployerAddress,
-                    overwrite: false
-                });
-                
-                HeroTokenAddress = HeroToken.address;
-                DAIAddress = DAI.address;
-            }
-        } else { // Deploy a new HeroToken and DAI because in local we do not have them
+        const { heroTokenAddress, daiAddress } = await getContractTokens(contracts, deployerAddress);
+        
+        HeroTokenAddress = heroTokenAddress;
+        DAIAddress = daiAddress
+        
+        if (!heroTokenAddress || !daiAddress) { // deploy in kovan only if they are not deployed already
             await deployer.deploy(HeroToken, {
                 from: deployerAddress,
                 overwrite: false
@@ -81,8 +64,7 @@ const migrationInt = async (deployer, network, accounts) => {
             HeroTokenAddress = HeroToken.address;
             DAIAddress = DAI.address;
         }
-
-        if (herotokenHasBeenUpdated || daiHasBeenUpdated) {
+        if (herotokenHasBeenUpdated() || daiHasBeenUpdated()) {
             const currentNetId = await web3.eth.net.getId()
             const IntAccounts = [...new Set([...accounts, ...devAccounts])]; //unique accounts not repeated
             if (IntAccounts.length > 0) {
@@ -90,25 +72,30 @@ const migrationInt = async (deployer, network, accounts) => {
             }
             const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
                     
-            if (herotokenHasBeenUpdated) {
+            if (herotokenHasBeenUpdated()) {
                 const heroDeployed = await HeroToken.at(HeroTokenAddress);
                 for (let i = 0; i < IntAccounts.length; i++) {
+                    console.log('- Sending to', IntAccounts[i])
                     await heroDeployed.mint(IntAccounts[i], tokens, {
                         from: deployerAddress,
                         gas: 800000
                     });
+                    console.log('- Sent!')
                 }
             }
-            if (daiHasBeenUpdated) {
+            if (daiHasBeenUpdated()) {
                 const daiDeployed = await DAI.at(DAIAddress);
                 for (let i = 0; i < IntAccounts.length; i++) {
+                    console.log('- Sending to', IntAccounts[i])
                     await daiDeployed.mint(IntAccounts[i], tokens, {
                         from: deployerAddress,
                         gas: 800000
                     });
+                    console.log('- Sent!')
                 }
             }
 
+            console.log('Writting Raise artifacts...')
             const data = {
                 address: {
                     [currentNetId]: {
