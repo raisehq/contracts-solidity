@@ -13,16 +13,17 @@ const migrationInt = async (deployer, network, accounts) => {
         const netId = await web3.eth.net.getId();
 
         const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
+        const depositAddress = _.get(contracts, `address.${netId}.Deposit`);
 
         const depositHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Deposit', Deposit);
         const referralHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'ReferraTracker', ReferralTracker);
         
         if (referralHasBeenUpdated || depositHasBeenUpdated) {
-            await deployer.deploy(ReferralTracker, Deposit.address, heroTokenAddress, {
+            await deployer.deploy(ReferralTracker, depositAddress, heroTokenAddress, {
                 from: deployerAddress
             });
 
-            const depositDeployed = await Deposit.deployed();
+            const depositDeployed = await Deposit.at(depositAddress);
             const referralContract = await ReferralTracker.deployed();
     
             await depositDeployed.setReferralTracker(referralContract.address, {
