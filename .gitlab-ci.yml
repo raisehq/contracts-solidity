@@ -45,6 +45,7 @@ Deploy:
   artifacts:
     paths: 
       - contracts.json
+      - build/
   only:
     - integration
       
