@@ -1,27 +1,30 @@
+const _ = require('lodash');
 const Deposit = artifacts.require('DepositRegistry');
 const KYC = artifacts.require('KYCRegistry');
 const Auth = artifacts.require('Authorization');
 const devAccounts = require('../int.accounts.json');
-const {readFileSync, writeFileSync} = require('fs');
+const {writeFileSync} = require('fs');
+const { getContracts } = require('../scripts/helpers');
 
 const migrationInt = async (deployer, network, accounts) => {
     try {
-        const contracts = JSON.parse(readFileSync(`./contracts-${network}.json`));
+        const contracts = await getContracts();
         const deployerAddress = accounts[0];
         const admin = accounts[1];
-
-        const heroTokenAddress = contracts['HeroToken'].address;
-
+        const netId = await web3.eth.net.getId()
+        const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
+        console.log('contracts', contracts.address)
+        console.log('HERO TOKEN ADD', heroTokenAddress)
         // Contracts deployment if updated logic::
-        const oldKycBytecode = contracts['KYC'] ? contracts['KYC'].bytecode : undefined;
-        const oldDepositBytecode = contracts['Deposit'] ? contracts['Deposit'].bytecode : undefined;
-        const oldAuthBytecode = contracts['Auth'] ? contracts['Auth'].bytecode : undefined;
+        const oldKycBytecode = _.get(contracts, `bytecode.KYC`);
+        const oldDepositBytecode = _.get(contracts, `bytecode.Deposit`);
+        const oldAuthBytecode = _.get(contracts, `bytecode.Auth`);
 
         const kycHasBeenUpdated = oldKycBytecode !== KYC.bytecode;
         const depositHasBeenUpdated = oldDepositBytecode !== Deposit.bytecode;
         const authHasBeenUpdated = oldAuthBytecode !== Auth.bytecode;
 
-        const data = {};
+        let data = {};
 
         if (kycHasBeenUpdated) { // deploy all contracts that depend on kyc contract if kyc changed
             await deployer.deploy(KYC, {
@@ -34,41 +37,50 @@ const migrationInt = async (deployer, network, accounts) => {
                 from: deployerAddress
             });
 
-            // Update contracts 
-            data.KYC = {
-                address: KYC.address,
-                abi: KYC.abi,
-                bytecode: KYC.bytecode
-            };
-            data.Deposit = {
-                address: Deposit.address,
-                abi: Deposit.abi,
-                bytecode: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
-            };
-            data.Auth = {
-                address: Auth.address,
-                abi: Auth.abi,
-                bytecode: Auth.bytecode
+            data = {
+                address: {
+                    [netId] : {
+                        KYC: KYC.address,
+                        Deposit: Deposit.address,
+                        Auth: Auth.address
+                    }
+                },
+                abi: {
+                    KYC: KYC.abi,
+                    Auth: Auth.abi,
+                    Deposit: Deposit.abi
+                },
+                bytecode: {
+                    KYC: KYC.bytecode,
+                    Auth: Auth.bytecode,
+                    Deposit: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
+                }
             };
         } else if (depositHasBeenUpdated) { // deploy all contracts that depend on deposit contract if deposit changed
             console.log('|============ KYC: no changes to deploy ==============|');
-            await deployer.deploy(Deposit, heroTokenAddress, contracts['KYC'].address, {
+            const kycAdd = _.get(contracts, `address.${netId}.KYC`)
+            await deployer.deploy(Deposit, heroTokenAddress, kycAdd, {
                 from: deployerAddress
             });
-            await deployer.deploy(Auth, contracts['KYC'].address, Deposit.address, {
+            await deployer.deploy(Auth, kycAdd, Deposit.address, {
                 from: deployerAddress
             });
 
-            // Update contracts 
-            data.Deposit = {
-                address: Deposit.address,
-                abi: Deposit.abi,
-                bytecode: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
-            };
-            data.Auth = {
-                address: Auth.address,
-                abi: Auth.abi,
-                bytecode: Auth.bytecode
+            data = {
+                address: {
+                    [netId] : {
+                        Deposit: Deposit.address,
+                        Auth: Auth.address
+                    }
+                },
+                abi: {
+                    Auth: Auth.abi,
+                    Deposit: Deposit.abi
+                },
+                bytecode: {
+                    Auth: Auth.bytecode,
+                    Deposit: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
+                }
             };
         } else if (authHasBeenUpdated) { // deploy auth if changed
             await deployer.deploy(Auth, contracts['KYC'].address, contracts['Deposit'].address, {
@@ -76,10 +88,18 @@ const migrationInt = async (deployer, network, accounts) => {
             });
 
             // Update contracts 
-            data.Auth = {
-                address: Auth.address,
-                abi: Auth.abi,
-                bytecode: Auth.bytecode
+            data = {
+                address: {
+                    [netId] : {
+                        Auth: Auth.address
+                    }
+                },
+                abi: {
+                    Auth: Auth.abi,
+                },
+                bytecode: {
+                    Auth: Auth.bytecode
+                }
             };
         } else {
             console.log('|============ KYC && Deposit && Auth: no changes to deploy ==============|');
@@ -117,12 +137,9 @@ const migrationInt = async (deployer, network, accounts) => {
                 }
             }
 
-            const newContracts = {
-                ...contracts,
-                ...data
-            };
+            const newContracts = _.merge(contracts, data);
 
-            await writeFileSync(`./contracts-${network}.json`, JSON.stringify(newContracts));
+            await writeFileSync('./contracts.json', JSON.stringify(newContracts));
         }
     } catch (err) {
         console.error('ERROR MINT AND SEND ', err);

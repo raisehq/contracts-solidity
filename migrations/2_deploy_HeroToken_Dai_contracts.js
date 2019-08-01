@@ -1,50 +1,29 @@
+const _ = require('lodash');
 const HeroToken = artifacts.require('HeroOrigenToken');
 const DAI = artifacts.require('DAIFake');
 const devAccounts = require('../int.accounts.json');
-const {writeFileSync, readFileSync} = require('fs');
-const axios = require('axios');
 const DAIabi = require('../abis/DAI-abi.json');
 const Heroabi = require('../abis/Hero-abi.json');
+const { getContracts } =  require('../scripts/helpers');
+const { writeFileSync } = require('fs');
 
-const getS3Contracts = async (network) => {
-    try {
-        const {data: contracts} = await axios(
-            `https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v3/contracts-${network}.json`
-        );
-        return contracts;
-    } catch (error) {
-        if (error.response.status !== 404) throw error;
-        console.log(`No exist previous contracts-${network}.json we continue and create new one.`);
-        return {};
-    }
-}
-
-const getContracts = async (network) => {
-    try {
-        const contracts = JSON.parse(readFileSync(`./contracts-${network}.json`));
-        return contracts;
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            const contracts = await getS3Contracts(network);
-            return contracts;
-        }
-        throw error;
-    }
-}
 
 const getContractTokens = async (contracts, deployerAddress) => {
     try {
+        const netId = web3.eth.net.getId();
         // Check if the contract.json has the address of HeroToken and DAI
-        if (contracts['HeroToken'] && contracts['HeroToken'].address) {
+        const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
+        const daiAddress = _.get(contracts, `address.${netId}.DAI`);
+        if (heroTokenAddress && daiAddress) {
             // Check if deployer is owner of already deployed contracts.
-            const HeroInstance = await HeroToken.at(contracts['HeroToken'].address);
+            const HeroInstance = await HeroToken.at(heroTokenAddress);
             const owner = await HeroInstance.owner();
 
             // This will happen only when deployed bia gitlab ci
             if (owner === deployerAddress) {
                 return {
-                    heroTokenAddress: contracts['HeroToken'].address,
-                    daiAddress: contracts['DAI'].address
+                    heroTokenAddress,
+                    daiAddress
                 };
             }
         }
@@ -61,10 +40,11 @@ const migrationInt = async (deployer, network, accounts) => {
         
         let HeroTokenAddress = '';
         let DAIAddress = '';
-        let contracts = await getContracts(network);
+        let contracts = await getContracts();
+        console.log('contracts', contracts.address)
 
-        const oldHeroTokenBytecode = contracts['HeroToken'] ? contracts['HeroToken'].bytecode : undefined;
-        const oldDAIBytecode = contracts['DAI'] ? contracts['DAI'].bytecode : undefined;
+        const oldHeroTokenBytecode = _.get(contracts, `bytecode.HeroToken`, undefined);
+        const oldDAIBytecode = _.get(contracts, 'bytecode.DAI', undefined);
 
         const daiHasBeenUpdated = DAI.bytecode !== oldDAIBytecode;
         const herotokenHasBeenUpdated = HeroToken.bytecode !== oldHeroTokenBytecode;
@@ -103,6 +83,7 @@ const migrationInt = async (deployer, network, accounts) => {
         }
 
         if (herotokenHasBeenUpdated || daiHasBeenUpdated) {
+            const currentNetId = await web3.eth.net.getId()
             const IntAccounts = [...new Set([...accounts, ...devAccounts])]; //unique accounts not repeated
             if (IntAccounts.length > 0) {
                 console.log(`> Sending tokens to ${IntAccounts.length} accounts`, '\n');
@@ -129,24 +110,25 @@ const migrationInt = async (deployer, network, accounts) => {
             }
 
             const data = {
-                HeroToken: {
-                    address: HeroTokenAddress,
-                    abi: HeroToken.abi,
-                    bytecode: HeroToken.bytecode
+                address: {
+                    [currentNetId]: {
+                        HeroToken: HeroTokenAddress,
+                        DAI: DAIAddress
+                    }
                 },
-                DAI: {
-                    address: DAIAddress,
-                    abi: DAI.abi,
-                    bytecode: DAI.bytecode
+                abi: {
+                    HeroToken: HeroToken.abi,
+                    DAI: DAI.abi,
+                },
+                bytecode: {
+                    HeroToken: HeroToken.bytecode,
+                    DAI: DAI.bytecode
                 }
             };
             
-            const newContracts = {
-                ...contracts,
-                ...data
-            };
+           const newContracts = _.merge(contracts, data);
 
-            await writeFileSync(`./contracts-${network}.json`, JSON.stringify(newContracts));
+            await writeFileSync(`./contracts.json`, JSON.stringify(newContracts, null, 2));
         }
     } catch (err) {
         throw err;
@@ -155,28 +137,26 @@ const migrationInt = async (deployer, network, accounts) => {
 
 const mainnetMigrationInit = async (deployer, network, accounts) => {
     try {
+        const constracts = await getContracts();
         const heroTokenAddress = '0x02585e4a14da274d02df09b222d4606b10a4e940'; // hardcoded address of hero token contract on mainnet,
         const daiAddress = '0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359'; // hardcoded addres of dai token contract on mainnet;
-
-        const contracts = await getContracts(network);
-
+        
         const data = {
-            HeroToken: {
-                address: heroTokenAddress,
-                abi: Heroabi
+            address: {
+                '1': {
+                   HeroToken: heroTokenAddress,
+                   DAI: daiAddress,
+                }
             },
-            DAI: {
-                address: daiAddress,
-                abi: DAIabi
+            abi: {
+                HeroToken: Heroabi,
+                DAI: DAIabi
             }
         };
 
-        const newContracts = {
-            ...contracts,
-            ...data
-        };
+        const newContracts = _.merge(contracts, data);
 
-        await writeFileSync(`./contracts-${network}.json`, JSON.stringify(newContracts));
+        await writeFileSync(`./contracts.json`, JSON.stringify(newContracts, null, 2));
     } catch (error) {
         throw error;
     }
