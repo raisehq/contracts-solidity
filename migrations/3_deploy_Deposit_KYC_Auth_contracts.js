@@ -13,8 +13,6 @@ const migrationInt = async (deployer, network, accounts) => {
         const admin = accounts[1];
         const netId = await web3.eth.net.getId()
         const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
-        console.log('contracts', contracts.address)
-        console.log('HERO TOKEN ADD', heroTokenAddress)
         // Contracts deployment if updated logic::
         const oldDepositBytecode = _.get(contracts, `bytecode.Deposit`);
 

@@ -32,16 +32,35 @@ Test:
   stage: test
   before_script:
     - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
+  script:
+    - npm run compile && npm test 
+  only:
+    - integration
+    - master
+Coverage:
+  stage: test
+  before_script:
+    - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
   artifacts:
     paths: 
       - coverage/
   script:
-    - npm run compile && npm test && npm run solhint && SOLIDITY_COVERAGE=true bash scripts/test.sh
+    - npm run compile && SOLIDITY_COVERAGE=true bash scripts/test.sh
   only:
     - integration
     - master
 
-Deploy:
+Solhint:
+  stage: test
+  before_script:
+    - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
+  script:
+    - npm run compile && npm run solhint
+  only:
+    - integration
+    - master
+
+KovanGoerli:
   stage: deploy
   script:
     - npm run migration:kovan && npm run migration:goerli
@@ -52,7 +71,7 @@ Deploy:
   only:
     - integration
       
-PublishContracts:
+Contracts:
   image: "python:latest"  
   stage: publish
   artifacts:
@@ -65,7 +84,7 @@ PublishContracts:
   only:
     - integration
 
-PublishArtifacts:
+Artifacts:
   image: "python:latest"  
   stage: publish
   artifacts:
@@ -78,7 +97,7 @@ PublishArtifacts:
   only:
     - integration
 
-PublishCoverage:
+Coverage:
   image: "python:latest"  
   stage: publish
   artifacts:

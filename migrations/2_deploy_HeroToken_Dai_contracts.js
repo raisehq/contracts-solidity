@@ -41,7 +41,6 @@ const migrationInt = async (deployer, network, accounts) => {
         let HeroTokenAddress = '';
         let DAIAddress = '';
         let contracts = await getContracts();
-        console.log('contracts', contracts.address)
 
         const daiHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'DAI', DAI)
         const herotokenHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'HeroToken', HeroToken)

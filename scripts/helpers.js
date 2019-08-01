@@ -89,7 +89,6 @@ const getS3Contracts = async () => {
       const {data: contracts} = await axios(
           `https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v4/contracts.json`
       );
-      console.log('what', contracts)
       return contracts;
   } catch (error) {
       if (error.response.status !== 404) throw error;
