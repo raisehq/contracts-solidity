@@ -83,8 +83,8 @@ module.exports = {
     },
     goerli: {
       //gas: 4465030,
-      gas: 8000000,
-      gasPrice: 10000000000,
+      gas: 7400000,
+      gasPrice: 1000000000,
       provider: function() {
         return new HDWalletProvider(privateKeys, infuraApi('goerli'), 0, 2);
       },
@@ -92,7 +92,7 @@ module.exports = {
       network_id: '5', // Görli network id
     },
     kovan_ledger: {
-      gas: 8000000,
+      gas: 7400000,
       gasPrice: 100000000,
       network_id: '42', // rinkeby,
       skipDryRun: true,
@@ -105,7 +105,7 @@ module.exports = {
       }
     },
     rinkeby_ledger: {
-      gas: 8000000,
+      gas: 7400000,
       gasPrice: 100000000,
       network_id: '4', // rinkeby
       provider: function() {
@@ -117,7 +117,7 @@ module.exports = {
       },
     },
     mainnet_ledger: {
-      gas: 8000000,
+      gas: 7400000,
       gasPrice: 100000000,
       network_id: '1', // mainnet
       provider: function() {
