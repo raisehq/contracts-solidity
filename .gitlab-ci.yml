@@ -96,7 +96,7 @@ Artifacts:
   before_script:
     - pip install awscli  
   script:
-    -  aws s3 cp build/contracts/* s3://${BUCKET_NAME}/artifacts/
+    -  aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts
   only:
     - integration
 
@@ -109,6 +109,6 @@ Coverage:
   before_script:
     - pip install awscli  
   script:
-    - aws s3 cp -r coverage s3://${BUCKET_NAME}/
+    - aws s3 sync coverage s3://${BUCKET_NAME}/coverage
   only:
     - integration
