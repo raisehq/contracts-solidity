@@ -29,6 +29,7 @@ contract LoanContract is LoanContractInterface {
     uint256 public termEndTimestamp;
 
     uint256 public auctionBalance;
+    uint256 public loanWithdrawnAmount;
     uint256 public borrowerDebt; // Amount borrower need to repay == auctionBalance + interests
     uint256 public maxInterestRate;
     uint256 internal interestRate;
@@ -168,6 +169,8 @@ contract LoanContract is LoanContractInterface {
 
         termEndTimestamp = _termEndTimestamp;
 
+        loanWithdrawnAmount = 0;
+
         setState(LoanState.CREATED);
         emit LoanCreated(
             address(this),
@@ -255,6 +258,8 @@ contract LoanContract is LoanContractInterface {
 
         lenderPosition[msg.sender].withdrawn = true;
 
+        loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
+
         DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount);
 
         emit FundsUnlockedWithdrawn(
@@ -263,7 +268,7 @@ contract LoanContract is LoanContractInterface {
             lenderPosition[msg.sender].bidAmount
         );
 
-        if (DAIToken.balanceOf(address(this)) == 0) {
+        if (loanWithdrawnAmount == auctionBalance) {
             setState(LoanState.CLOSED);
             emit FullyFundsUnlockedWithdrawn(address(this));
         }
@@ -278,11 +283,13 @@ contract LoanContract is LoanContractInterface {
 
         lenderPosition[msg.sender].withdrawn = true;
 
+        loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
+
         emit RefundWithdrawn(address(this), msg.sender, lenderPosition[msg.sender].bidAmount);
 
         DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount);
 
-        if (DAIToken.balanceOf(address(this)) == 0) {
+        if (loanWithdrawnAmount == auctionBalance) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
@@ -295,9 +302,10 @@ contract LoanContract is LoanContractInterface {
         lenderPosition[msg.sender].withdrawn = true;
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
 
+        loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
         DAIToken.transfer(msg.sender, amount);
 
-        if (DAIToken.balanceOf(address(this)) == 0) {
+        if (loanWithdrawnAmount == borrowerDebt) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
