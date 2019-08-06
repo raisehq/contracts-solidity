@@ -4,12 +4,17 @@ const ReferralTracker = artifacts.require('ReferralTracker');
 const HeroToken = artifacts.require('HeroOrigenToken');
 const {writeFileSync} = require('fs');
 const { getContracts, contractIsUpdated } = require('../scripts/helpers');
+const Web3 = require('web3');
+
+const loadWeb3One = () => {
+    web3 = new Web3(web3.currentProvider);
+}
 
 const migrationInt = async (deployer, network, accounts) => {
     try {
         const contracts = await getContracts();
         const deployerAddress = accounts[0];
-        const admin = accounts[1];
+        const admin = network === 'mainnet' ? process.env.ADMIN_ADDRESS : accounts[1];
         const netId = await web3.eth.net.getId();
 
         const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
@@ -91,7 +96,10 @@ const migrationInt = async (deployer, network, accounts) => {
 
 module.exports = async (deployer, network, accounts) => {
     try {
-        await migrationInt(deployer, network, accounts);
+        loadWeb3One();
+        deployer.then(async () => {
+            await migrationInt(deployer, network, accounts);
+        });
     } catch (err) {
         // Prettier error output
         console.error(err);

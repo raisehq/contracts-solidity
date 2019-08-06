@@ -7,7 +7,6 @@ const Heroabi = require('../abis/Hero-abi.json');
 const { getContracts, contractIsUpdated } =  require('../scripts/helpers');
 const { writeFileSync } = require('fs');
 
-
 const getContractTokens = async (contracts, deployerAddress) => {
     try {
         const netId = await web3.eth.net.getId();
@@ -123,7 +122,7 @@ const migrationInt = async (deployer, network, accounts) => {
 
 const mainnetMigrationInit = async (deployer, network, accounts) => {
     try {
-        const constracts = await getContracts();
+        const contracts = await getContracts();
         const heroTokenAddress = '0x02585e4a14da274d02df09b222d4606b10a4e940'; // hardcoded address of hero token contract on mainnet,
         const daiAddress = '0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359'; // hardcoded addres of dai token contract on mainnet;
         
@@ -154,7 +153,9 @@ module.exports = async (deployer, network, accounts) => {
         if (network !== 'mainnet') {
             await migrationInt(deployer, network, accounts);
         } else {
-            await mainnetMigrationInit(deployer, network, accounts);
+            deployer.then(async () => {
+                await mainnetMigrationInit(deployer, network, accounts);
+            });
         }
     } catch (err) {
       // Prettier error output

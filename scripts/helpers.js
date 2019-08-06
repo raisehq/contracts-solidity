@@ -6,6 +6,7 @@ const DaiFake = require('../build/contracts/DAIFake.json');
 const { readFileSync } = require('fs');
 const axios = require('axios');
 
+
 const LoanState = (i) => [
   'CREATED', // accepts bids until timelimit initial state
   'FAILED_TO_FUND', // not fully funded in timelimit
@@ -126,5 +127,5 @@ module.exports = {
   getDai,
   getContracts,
   getS3Contracts,
-  contractIsUpdated
+  contractIsUpdated,
 }

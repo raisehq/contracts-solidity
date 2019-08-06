@@ -1,6 +1,6 @@
 require("@babel/polyfill");
 const fs = require('fs');
-const LedgerProvider = require('@deconet/truffle-ledger-provider');
+const LedgerProvider = require('truffle-ledger-provider');
 
 /**
  * Use this file to configure your truffle project. It's seeded with some
@@ -27,7 +27,7 @@ const LedgerProvider = require('@deconet/truffle-ledger-provider');
 //
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
-const infuraApi = (network) => `https://${network}.infura.io/v3/b707e018ae6f427384b54ad4df490a78`;
+const infuraApi = (network) => `https://${network}.infura.io/v3/0d42e812ddca4057bbfe91db1e18ce49`;
 const HDWalletProvider = require('truffle-hdwallet-provider');
 const ownerKey =
   process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
@@ -35,10 +35,10 @@ const adminKey =
   process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
 const privateKeys = [ownerKey, adminKey]
 const ledgerDefaultConfig = {
-  path: "44'/60'/0'/0", // ledger default derivation path
+  path: "44'/60'/0'/0/0", // ledger default derivation path
   askConfirm: false,
   accountsLength: 1,
-  accountsOffset: 1
+  accountsOffset: 0
 }
 module.exports = {
   /**
@@ -116,16 +116,16 @@ module.exports = {
         return new LedgerProvider(ledgerOptions, infuraApi('rinkeby'));
       },
     },
-    mainnet_ledger: {
+    mainnet: {
       gas: 7400000,
-      gasPrice: 100000000,
+      gasPrice: 6000000000,
       network_id: '1', // mainnet
       provider: function() {
         const ledgerOptions = {
           ...ledgerDefaultConfig,
           networkId: 1, // mainnet
         };
-        return new LedgerProvider(ledgerOptions, infuraApi('mainnet'));
+        return new LedgerProvider(ledgerOptions, infuraApi('mainnet'), true);
       },
     }
   },
