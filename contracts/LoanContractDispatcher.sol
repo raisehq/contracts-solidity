@@ -40,6 +40,11 @@ contract LoanContractDispatcher is Ownable {
         address indexed administrator
     );
 
+    event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
+    event MaxAmountUpdated(uint256 maxAmount, address loanDispatcher);
+    event MinInterestRateUpdated(uint256 minInterestRate, address loanDispatcher);
+    event MaxInterestRateUpdated(uint256 maxInterestRate, address loanDispatcher);
+
     constructor(address authAddress, address _DAITokenAddress, address _DAIProxyAddress) public {
         auth = Authorization(authAddress);
         DAITokenAddress = _DAITokenAddress;
@@ -62,6 +67,7 @@ contract LoanContractDispatcher is Ownable {
             "Minimum amount needs to be lesser or equal than maximum amount"
         );
         minAmount = requestedMinAmount;
+        emit MinAmountUpdated(minAmount, address(this));
     }
 
     function setMaxAmount(uint256 requestedMaxAmount) public onlyAdmin {
@@ -70,6 +76,7 @@ contract LoanContractDispatcher is Ownable {
             "Maximum amount needs to be greater or equal than minimum amount"
         );
         maxAmount = requestedMaxAmount;
+        emit MaxAmountUpdated(maxAmount, address(this));
     }
 
     function setMinInterestRate(uint256 requestedMinInterestRate) public onlyAdmin {
@@ -78,6 +85,7 @@ contract LoanContractDispatcher is Ownable {
             "Minimum interest needs to be lesser or equal than maximum interest"
         );
         minInterestRate = requestedMinInterestRate;
+        emit MinInterestRateUpdated(minInterestRate, address(this));
     }
 
     function setMaxInterestRate(uint256 requestedMaxInterestRate) public onlyAdmin {
@@ -86,6 +94,7 @@ contract LoanContractDispatcher is Ownable {
             "Maximum interest needs to be greater or equal than minimum interest"
         );
         maxInterestRate = requestedMaxInterestRate;
+        emit MaxInterestRateUpdated(maxInterestRate, address(this));
     }
 
     function deploy(
