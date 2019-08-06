@@ -8,7 +8,7 @@ const migrationInt = async (deployer, network, accounts) => {
 	const contracts = await getContracts();
 	const netId = await web3.eth.net.getId();
 	const deployerAddress = accounts[0];
-	const admin = network === 'mainnet' ? process.env.ADMIN_ADDRESS : accounts[1];s[1];
+	const admin = network === 'mainnet' ? process.env.ADMIN_ADDRESS : accounts[1];
 
 
 	const daiAddress = _.get(contracts, `address.${netId}.DAI`);
