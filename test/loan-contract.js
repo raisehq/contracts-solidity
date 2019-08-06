@@ -20,6 +20,7 @@ contract('LoanContract', (accounts) => {
     const lender = accounts[1];
     const borrower = accounts[2];
     const admin = accounts[3];
+    const bob = accounts[4];
 
     describe('Unit tests for LoanContract', () => {
         let loanAmount;
@@ -32,6 +33,8 @@ contract('LoanContract', (accounts) => {
                 DAIToken = await HeroFakeTokenContract.new({from: owner});
                 await DAIToken.transferAmountToAddress(lender, 150, {from: owner});
                 await DAIToken.transferAmountToAddress(borrower, 200, {from: owner});
+                await DAIToken.transferAmountToAddress(bob, 1, {from: owner});
+
                 DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
             
                 currentBlock = await web3.eth.getBlock('latest');
@@ -1130,5 +1133,74 @@ contract('LoanContract', (accounts) => {
                 }
             });
         });
+        describe('Tests for when withdrawn even if DAI is transfered [Community found]', () => {
+            beforeEach(async () => { 
+                try { 
+                    DAIToken = await HeroFakeTokenContract.new({from: owner});
+
+                    await DAIToken.transferAmountToAddress(lender, 150, {from: owner}); 
+                    await DAIToken.transferAmountToAddress(borrower, 200, {from: owner}); 
+                    //let´s give bob some DAI so he can fool around with a LoanContract 
+                    await DAIToken.transferAmountToAddress(bob, 1, {from: owner});
+
+                    DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+
+                    currentBlock = await web3.eth.getBlock('latest');
+
+                    // Set Loan variables 
+                    minAmount = 80; 
+                    maxAmount = 100; 
+                    maxInterestRate = 3000; 
+                    auctionBlockLength = (60 * 60) / averageMiningBlockTime; // 1 hour in seconds 
+                    termEndTimestamp = currentBlock.timestamp + 2 * 60 * 60; // 2 hours in seconds 
+                    Loan = await LoanContract.new( 
+                        auctionBlockLength, 
+                        termEndTimestamp, 
+                        minAmount, 
+                        maxAmount, 
+                        maxInterestRate, 
+                        borrower, 
+                        DAIToken.address, 
+                        DAIProxy.address, 
+                        admin 
+                    ); 
+                } catch (error) { 
+                    throw error; 
+                } 
+            });
+            it('Expects to get closed if an abritrary amount of DAI is sent to loan contract when withdrawn', async () => { 
+                const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+
+                await DAIToken.approve(DAIProxy.address, 100, {from: lender}); 
+                await DAIProxy.fund(Loan.address, 100, {from: lender});
+
+                // Retrieve current state == ACTIVE 
+                const stateAfterFund = await Loan.currentState({from: owner}); 
+                expect(Number(stateAfterFund)).to.equal(2);
+
+                await Loan.withdrawLoan({from: borrower}); 
+                const borrowerBalance = await DAIToken.balanceOf(borrower);
+
+                expect(Number(borrowerBalance)).to.equal(Number(borrowerBalancePrior) + 100); 
+                // State should still be ACTIVE 
+                const endState = await Loan.currentState({from: owner}); 
+                expect(Number(endState)).to.equal(2);
+
+                const amountToRepay = Number(await Loan.borrowerDebt()); 
+                await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower}); 
+                await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+                const stateAfterDeadline = await Loan.currentState(); 
+                expect(Number(stateAfterDeadline)).to.equal(4);
+
+                //if bobs send an arbitrary amount of dai to the contract it will never go to "CLOSED" state 
+                await DAIToken.transfer(Loan.address, 1, {from: bob});
+
+                await Loan.withdrawRepayment({from: lender});
+
+                //will fail because state is still REPAID although all repayments where withdrawn 
+                expect(Number(await Loan.currentState())).to.equal(5); 
+            }); 
+        })
     });
 });
