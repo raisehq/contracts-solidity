@@ -26,7 +26,7 @@ const migrationInt = async (deployer, network, accounts) => {
 
         let data = {};
 
-        if (kycHasBeenUpdated() || (!KYC.bytecode || !Deposit.bytecode || !Auth.bytecode)) { // deploy all contracts that depend on kyc contract if kyc changed
+        if (kycHasBeenUpdated()) { // deploy all contracts that depend on kyc contract if kyc changed
             await deployer.deploy(KYC, {
                 from: deployerAddress
             });
@@ -111,7 +111,7 @@ const migrationInt = async (deployer, network, accounts) => {
                 await depositDeployed.setAdministrator(admin, {from: deployerAddress});
             }
 
-            if (kycHasBeenUpdated) {
+            if (kycHasBeenUpdated()) {
                 const kycDeployed = await KYC.deployed();
                 await kycDeployed.setAdministrator(admin, {from: deployerAddress});
                 
