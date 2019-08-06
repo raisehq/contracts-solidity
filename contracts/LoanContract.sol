@@ -99,6 +99,7 @@ contract LoanContract is LoanContractInterface {
     );
     event FundsUnlockedWithdrawn(address loanAddress, address indexed lender, uint256 amount);
     event FullyFundsUnlockedWithdrawn(address loanAddress);
+    event LoanFundsUnlocked(uint256 auctionBalance);
 
     modifier onlyFrozen() {
         require(currentState == LoanState.FROZEN, "Loan status is not FROZEN");
@@ -249,6 +250,7 @@ contract LoanContract is LoanContractInterface {
 
     function unlockFundsWithdrawal() public onlyAdmin {
         setState(LoanState.FROZEN);
+        emit LoanFundsUnlocked(auctionBalance);
     }
 
     function withdrawFundsUnlocked() public onlyFrozen {
