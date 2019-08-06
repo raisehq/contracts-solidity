@@ -23,7 +23,7 @@ const migrationInt = async (deployer, network, accounts) => {
         const depositBytecode = _.get(contracts, `bytecode.Deposit`);
 
         const depositHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Deposit', Deposit);
-        const referralHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'ReferraTracker', ReferralTracker);
+        const referralHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'ReferralTracker', ReferralTracker);
         
         if (referralHasBeenUpdated || depositHasBeenUpdated) {
             await deployer.deploy(ReferralTracker, depositAddress, heroTokenAddress, {
