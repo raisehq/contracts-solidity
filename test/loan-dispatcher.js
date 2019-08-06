@@ -69,7 +69,7 @@ contract('LoanContractDispatcher', (accounts) => {
             });
             it('Expects to not be able set administrator as not owner', async() => {
                 try {
-                    await LoanDispatcher.setAdministrator(admin, {from: owner});
+                    await LoanDispatcher.setAdministrator(admin, {from: lender});
                 } catch (error) {
                     expect(error).to.not.equal(undefined);
                 }
@@ -81,21 +81,21 @@ contract('LoanContractDispatcher', (accounts) => {
                     expect(error).to.not.equal(undefined);
                 }
             });
-            it('Expects to not be able to change fixed max amount', async() => {
+            it('Expects to not be able to change fixed max amount if not owner', async() => {
                 try {
-                    await LoanDispatcher.setMaxAmount(2000, {from: owner});
+                    await LoanDispatcher.setMaxAmount('3000000000000000000000000', {from: owner});
                 } catch (error) {
                     expect(error).to.not.equal(undefined);
                 }
             });
-            it('Expects to not be able to change fixed min interest', async() => {
+            it('Expects to not be able to change fixed min interest if not owner', async() => {
                 try {
                     await LoanDispatcher.setMinInterestRate(2000, {from: owner});
                 } catch (error) {
                     expect(error).to.not.equal(undefined);
                 }
             });
-            it('Expects to not be able to change fixed max interest', async() => {
+            it('Expects to not be able to change fixed max interest if not owner', async() => {
                 try {
                     await LoanDispatcher.setMaxInterestRate(2000, {from: owner});
                 } catch (error) {
@@ -115,9 +115,9 @@ contract('LoanContractDispatcher', (accounts) => {
             it('Expects to change fixed max amount if admin', async() => {
                 try {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
-                    await LoanDispatcher.setMaxAmount(2000, {from: admin});
-                    const fixedMaxAmount = Number(await LoanDispatcher.maxAmount());
-                    expect(fixedMaxAmount).to.equal(2000);
+                    await LoanDispatcher.setMaxAmount('3000000000000000000000000', {from: admin});
+                    const fixedMaxAmount = await LoanDispatcher.maxAmount();
+                    expect(fixedMaxAmount.toString()).to.equal('3000000000000000000000000');
                 } catch (error) {
                     expect(error).to.equal(undefined);
                 }
@@ -163,8 +163,8 @@ contract('LoanContractDispatcher', (accounts) => {
             it('Expects to change fixed min interest if greater than max interest', async() => {
                 try {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
-                    await LoanDispatcher.setMaxInterestRate(2000, {from: admin});
                     await LoanDispatcher.setMinInterestRate(3000, {from: admin});
+                    await LoanDispatcher.setMaxInterestRate(2000, {from: admin});
                 } catch (error) {
                     expect(error).to.not.equal(undefined);
                 }
@@ -189,8 +189,8 @@ contract('LoanContractDispatcher', (accounts) => {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
 
                     const auctionBlockLength = 20;
-                    const minAmount = 100;
-                    const maxAmount = 30000;
+                    const minAmount = 1000;
+                    const maxAmount = '2500000000000';
                     const maxInterestRate = 2000;
                     const termEndTimestamp = 1000;
 
@@ -211,8 +211,8 @@ contract('LoanContractDispatcher', (accounts) => {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
 
                     const auctionBlockLength = 20;
-                    const minAmount = 1000;
-                    const maxAmount = 3000000000000;
+                    const minAmount = '1000000000000000000000';
+                    const maxAmount = '3500000000000000000000000';
                     const maxInterestRate = 2000;
                     const termEndTimestamp = 1000;
 
@@ -233,8 +233,8 @@ contract('LoanContractDispatcher', (accounts) => {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
 
                     const auctionBlockLength = 20;
-                    const minAmount = 1000;
-                    const maxAmount = 30000;
+                    const minAmount = '1000000000000000000000';
+                    const maxAmount = '2500000000000000000000000';
                     const maxInterestRate = 20000;
                     const termEndTimestamp = 1000;
 
@@ -255,8 +255,8 @@ contract('LoanContractDispatcher', (accounts) => {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
                     
                     const auctionBlockLength = 20;
-                    const minAmount = 1000;
-                    const maxAmount = 30000;
+                    const minAmount = '1000000000000000000000';
+                    const maxAmount = '2500000000000000000000000';
                     const maxInterestRate = 1500;
                     const termEndTimestamp = 1000;
 
@@ -278,8 +278,8 @@ contract('LoanContractDispatcher', (accounts) => {
             it('Expects not to deploy loan contract when admin is not set', async () => {
                 try {
                     const auctionBlockLength = 20;
-                    const minAmount = 1000;
-                    const maxAmount = 30000;
+                    const minAmount = '1000000000000000000000';
+                    const maxAmount = '2500000000000000000000000';
                     const maxInterestRate = 1500;
                     const termEndTimestamp = 1000;
 
