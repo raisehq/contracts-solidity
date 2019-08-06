@@ -25,7 +25,7 @@ const migrationInt = async (deployer, network, accounts) => {
         const depositHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Deposit', Deposit);
         const referralHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'ReferralTracker', ReferralTracker);
         
-        if (referralHasBeenUpdated || depositHasBeenUpdated) {
+        if (referralHasBeenUpdated() || depositHasBeenUpdated()) {
             await deployer.deploy(ReferralTracker, depositAddress, heroTokenAddress, {
                 from: deployerAddress
             });
@@ -39,7 +39,7 @@ const migrationInt = async (deployer, network, accounts) => {
             });
             
 
-            if (referralHasBeenUpdated) {
+            if (referralHasBeenUpdated()) {
                 // set administrator
                 await referralContract.setAdministrator(admin, {from: deployerAddress});
 

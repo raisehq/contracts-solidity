@@ -14,7 +14,6 @@ variables:
 cache:
   paths:
     - node_modules/
-    - contracts.json 
 
 Prepare:
   stage: prepare
