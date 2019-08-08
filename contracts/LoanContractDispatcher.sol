@@ -50,7 +50,7 @@ contract LoanContractDispatcher is Ownable {
         DAITokenAddress = _DAITokenAddress;
         DAIProxyAddress = _DAIProxyAddress;
 
-        minAmount = 1000000000000000000000; // Minimum 1000 DAI
+        minAmount = 1000000000000000000; // Minimum 1 DAI
         maxAmount = 2500000000000000000000000; // Maximum 2.5 Million DAI
 
         minInterestRate = 0;

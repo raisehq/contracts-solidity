@@ -6,7 +6,7 @@ This repo contains the set of smart contracts that provide the foundations for t
 
 Contracts are currently only available on the Kovan testnet. The latest addresses are available here: 
 
-http://blockchain-definitions.s3-website-eu-west-1.amazonaws.com/v1/contracts.json
+http://blockchain-definitions.s3-website-eu-west-1.amazonaws.com/v4/contracts.json
 
 The Kovan migration script will also deploy fake DAI and HERO tokens to support testing. 
 
