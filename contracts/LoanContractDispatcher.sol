@@ -54,7 +54,7 @@ contract LoanContractDispatcher is Ownable {
         maxAmount = 2500000000000000000000000; // Maximum 2.5 Million DAI
 
         minInterestRate = 0;
-        maxInterestRate = 3000;
+        maxInterestRate = 24000;
     }
 
     function setAdministrator(address admin) public onlyOwner {
