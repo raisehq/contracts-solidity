@@ -44,7 +44,7 @@
     "ledger-wallet-provider": "^2.0.1-beta.4",
     "openzeppelin-solidity": "^2.3.0",
     "solidity-coverage": "git+https://github.com/sc-forks/solidity-coverage.git#d71c962f8636f53494f32bcbc05db2a36d05f8f8",
-    "truffle": "^5.0.30",
+    "truffle": "5.0.30",
     "truffle-assertions": "^0.9.1",
     "truffle-hdwallet-provider": "^1.0.13",
     "truffle-ledger-provider": "^1.0.1",

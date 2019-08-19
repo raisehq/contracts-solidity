@@ -1,9 +1,9 @@
 pragma solidity 0.5.10;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./DAIProxyInterface.sol";
-import "./LoanContractInterface.sol";
+import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
+import './DAIProxyInterface.sol';
+import './LoanContractInterface.sol';
 
 contract LoanContract is LoanContractInterface {
     using SafeMath for uint256;
@@ -34,7 +34,6 @@ contract LoanContract is LoanContractInterface {
 
     bool public loanWithdrawn;
     bool public minimumReached;
-    bool public auctionEnded;
 
     struct Position {
         uint256 bidAmount;
@@ -102,45 +101,45 @@ contract LoanContract is LoanContractInterface {
     event OperatorWithdrawn(uint256 amount, address administrator);
 
     modifier onlyFrozen() {
-        require(currentState == LoanState.FROZEN, "Loan status is not FROZEN");
+        require(currentState == LoanState.FROZEN, 'Loan status is not FROZEN');
         _;
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == administrator, "Caller is not an administrator");
+        require(msg.sender == administrator, 'Caller is not an administrator');
         _;
     }
 
     modifier onlyCreated() {
-        require(currentState == LoanState.CREATED, "Loan status is not CREATED");
+        require(currentState == LoanState.CREATED, 'Loan status is not CREATED');
         _;
     }
 
     modifier onlyActive() {
         updateStateMachine();
-        require(currentState == LoanState.ACTIVE, "Loan status is not ACTIVE");
+        require(currentState == LoanState.ACTIVE, 'Loan status is not ACTIVE');
         _;
     }
 
     modifier onlyRepaid() {
         updateStateMachine();
-        require(currentState == LoanState.REPAID, "Loan status is not REPAID");
+        require(currentState == LoanState.REPAID, 'Loan status is not REPAID');
         _;
     }
 
     modifier onlyFailedToFund() {
         updateStateMachine();
-        require(currentState == LoanState.FAILED_TO_FUND, "Loan status is not FAILED_TO_FUND");
+        require(currentState == LoanState.FAILED_TO_FUND, 'Loan status is not FAILED_TO_FUND');
         _;
     }
 
     modifier onlyProxy() {
-        require(msg.sender == address(proxy), "Caller is not the proxy");
+        require(msg.sender == address(proxy), 'Caller is not the proxy');
         _;
     }
 
     modifier onlyOriginator() {
-        require(msg.sender == originator, "Caller is not the originator");
+        require(msg.sender == originator, 'Caller is not the originator');
         _;
     }
 
@@ -217,7 +216,7 @@ contract LoanContract is LoanContractInterface {
                 emit FailedToFund(address(this), lender, amount);
                 return false;
             } else {
-                require(setSuccessfulAuction(), "error while transitioning to successful auction");
+                require(setSuccessfulAuction(), 'error while transitioning to successful auction');
                 emit FailedToFund(address(this), lender, amount);
                 return false;
             }
@@ -239,7 +238,7 @@ contract LoanContract is LoanContractInterface {
         }
 
         if (auctionBalance == maxAmount) {
-            require(setSuccessfulAuction(), "error while transitioning to successful auction");
+            require(setSuccessfulAuction(), 'error while transitioning to successful auction');
             emit FullyFunded(
                 address(this),
                 borrowerDebt,
@@ -257,16 +256,18 @@ contract LoanContract is LoanContractInterface {
     }
 
     function withdrawFees() public onlyAdmin returns (bool) {
-        require(operatorBalance > 0, "no funds to withdraw");
+        require(operatorBalance > 0, 'no funds to withdraw');
+        uint256 allFees = operatorBalance;
         operatorBalance = 0;
-        require(DAIToken.transfer(msg.sender, operatorBalance), "transfer failed");
+        require(DAIToken.transfer(msg.sender, allFees), 'transfer failed');
+        emit OperatorWithdrawn(allFees, msg.sender);
         return true;
     }
 
     function withdrawFundsUnlocked() public onlyFrozen {
-        require(!loanWithdrawn, "Loan already withdrawn");
-        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
-        require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposit");
+        require(!loanWithdrawn, 'Loan already withdrawn');
+        require(!lenderPosition[msg.sender].withdrawn, 'Lender already withdrawn');
+        require(lenderPosition[msg.sender].bidAmount > 0, 'Account did not deposit');
 
         lenderPosition[msg.sender].withdrawn = true;
 
@@ -287,8 +288,8 @@ contract LoanContract is LoanContractInterface {
     }
 
     function withdrawRefund() public onlyFailedToFund {
-        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
-        require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposited.");
+        require(!lenderPosition[msg.sender].withdrawn, 'Lender already withdrawn');
+        require(lenderPosition[msg.sender].bidAmount > 0, 'Account did not deposited.');
 
         lenderPosition[msg.sender].withdrawn = true;
 
@@ -305,8 +306,8 @@ contract LoanContract is LoanContractInterface {
     }
 
     function withdrawRepayment() public onlyRepaid {
-        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
-        require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
+        require(!lenderPosition[msg.sender].withdrawn, 'Lender already withdrawn');
+        require(lenderPosition[msg.sender].bidAmount != 0, 'Account did not deposited');
         uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
         lenderPosition[msg.sender].withdrawn = true;
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
@@ -321,7 +322,7 @@ contract LoanContract is LoanContractInterface {
     }
 
     function withdrawLoan() public onlyActive onlyOriginator {
-        require(!loanWithdrawn, "Already withdrawn");
+        require(!loanWithdrawn, 'Already withdrawn');
 
         if (isDefaulted()) {
             setState(LoanState.DEFAULTED);
@@ -340,10 +341,10 @@ contract LoanContract is LoanContractInterface {
         onlyProxy
         returns (bool)
     {
-        require(from == originator, "from address is not the originator");
-        require(amount == borrowerDebt, "Incorrect sum repaid");
-        require(borrowerDebt != 0, "Borrower does not have any debt.");
-        require(borrowerDebt == amount, "Repayment amount is not the same");
+        require(from == originator, 'from address is not the originator');
+        require(amount == borrowerDebt, 'Incorrect sum repaid');
+        require(borrowerDebt != 0, 'Borrower does not have any debt.');
+        require(borrowerDebt == amount, 'Repayment amount is not the same');
 
         if (isDefaulted()) {
             setState(LoanState.DEFAULTED);
@@ -377,7 +378,7 @@ contract LoanContract is LoanContractInterface {
             if (!minimumReached) {
                 setState(LoanState.FAILED_TO_FUND);
             } else {
-                require(setSuccessfulAuction(), "error while transitioning to successful auction");
+                require(setSuccessfulAuction(), 'error while transitioning to successful auction');
             }
         }
         if (isDefaulted() && currentState == LoanState.ACTIVE) {

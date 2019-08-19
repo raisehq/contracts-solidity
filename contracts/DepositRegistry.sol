@@ -1,9 +1,9 @@
 pragma solidity 0.5.10;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./ReferralTracker.sol";
-import "./KYCRegistry.sol";
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import './ReferralTracker.sol';
+import './KYCRegistry.sol';
 
 contract DepositRegistry is Ownable {
     struct Deposit {
@@ -19,7 +19,7 @@ contract DepositRegistry is Ownable {
     ReferralTracker public ref;
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "caller is not the admin");
+        require(msg.sender == admin, 'caller is not the admin');
         _;
     }
 
@@ -41,10 +41,10 @@ contract DepositRegistry is Ownable {
     }
 
     function depositFor(address from) public {
-        require(deposits[from].deposited == false, "already deposited");
+        require(deposits[from].deposited == false, 'already deposited');
         require(
             token.allowance(from, address(this)) >= DEPOSIT_AMNT,
-            "address not approved amount"
+            'address not approved amount'
         );
 
         deposits[from].deposited = true;
@@ -54,14 +54,14 @@ contract DepositRegistry is Ownable {
     }
 
     function depositForWithReferral(address from, address referrer) public {
-        require(from != referrer, "can not refer to itself");
-        require(deposits[referrer].deposited, "referrer has not deposited");
-        require(deposits[from].deposited == false, "alredy deposited");
+        require(from != referrer, 'can not refer to itself');
+        require(deposits[referrer].deposited, 'referrer has not deposited');
+        require(deposits[from].deposited == false, 'alredy deposited');
         require(
             token.allowance(from, address(this)) >= DEPOSIT_AMNT,
-            "address not approved amount"
+            'address not approved amount'
         );
-        require(msg.sender == from, "cannot deposit with a referral from another address");
+        require(msg.sender == from, 'cannot deposit with a referral from another address');
 
         deposits[from].deposited = true;
 
@@ -73,10 +73,10 @@ contract DepositRegistry is Ownable {
     }
 
     function withdraw(address to) public {
-        require(deposits[msg.sender].deposited, "address not deposited");
+        require(deposits[msg.sender].deposited, 'address not deposited');
         require(
             deposits[msg.sender].unlockedForWithdrawal || kyc.isConfirmed(msg.sender),
-            "cannot withdraw without KYC or unlocked"
+            'cannot withdraw without KYC or unlocked'
         );
 
         delete deposits[msg.sender];
@@ -85,7 +85,7 @@ contract DepositRegistry is Ownable {
     }
 
     function unlockAddressForWithdrawal(address user) public onlyAdmin {
-        require(deposits[user].deposited, "address has not deposited");
+        require(deposits[user].deposited, 'address has not deposited');
         deposits[user].unlockedForWithdrawal = true;
         emit AddressUnlockedForWithdrawal(address(this), user);
     }

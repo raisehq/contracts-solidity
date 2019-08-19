@@ -1,13 +1,13 @@
 pragma solidity 0.5.10;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
 contract KYCRegistry is Ownable {
     mapping(address => bool) public KYCConfirmed;
     address public admin;
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "caller is not the admin");
+        require(msg.sender == admin, 'caller is not the admin');
         _;
     }
 
@@ -23,13 +23,13 @@ contract KYCRegistry is Ownable {
     }
 
     function removeAddressFromKYC(address addr) public onlyAdmin {
-        require(KYCConfirmed[addr], "Address not KYCed");
+        require(KYCConfirmed[addr], 'Address not KYCed');
         KYCConfirmed[addr] = false;
         emit RemovedFromKYC(addr);
     }
 
     function addAddressToKYC(address addr) public onlyAdmin {
-        require(!KYCConfirmed[addr], "Address already KYCed");
+        require(!KYCConfirmed[addr], 'Address already KYCed');
         KYCConfirmed[addr] = true;
         emit AddedToKYC(addr);
     }

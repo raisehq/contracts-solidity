@@ -19,7 +19,7 @@ const { waitNBlocks } = require('./helpers');
 
 const HeroAmount = '200000000000000000000';
 
-contract.only('Integration', (accounts) => {
+contract('Integration', (accounts) => {
     let DAIProxy;
     let DAIToken;
     let HeroToken;
@@ -122,23 +122,24 @@ contract.only('Integration', (accounts) => {
             // create loan instance from Loan.address
             Loan = await LoanContract.at(loanAddress);
         });
-        it.only('Expects the flow to work correctly for one lender to fully fund a loan and for the borrower to repay', async () => {
+        it('Expects the flow to work correctly for one lender to fully fund a loan and for the borrower to repay', async () => {
             try {
-                const operatorFee = await Loan.operatorFee();
-                console.log(operatorFee.div( new BN("2", 10) ))
+                const operatorFeeWei = await Loan.operatorFee();
+                const operatorFee = web3.utils.fromWei(operatorFeeWei);
                 // lender funds loan
-                const principalAmount = await Loan.maxAmount() 
-                const fundingAmount = principalAmount.sub((principalAmount.mul(operatorFee.div(web3.utils.toWei('100')))));
-                console.log(web3.utils.fromWei(principalAmount), web3.utils.fromWei(fundingAmount));
-                await DAIToken.approve(DAIProxy.address, principalAmount, { from: lender });
+                const principalAmount = await Loan.maxAmount();
+                const desiredOperatorFee = Number(web3.utils.fromWei(principalAmount)) * operatorFee / 100;
+                const desiredOperatorFeeWei = web3.utils.toWei(new BN(desiredOperatorFee.toString(), 10));
+                const fundingAmount = web3.utils.toWei(new BN((Number(web3.utils.fromWei(principalAmount)) - desiredOperatorFee).toString(), 10), 'ether')
+                await DAIToken.approve(DAIProxy.address, principalAmount, {from: lender});
                 const fundTx = await DAIProxy.fund(Loan.address, principalAmount, {from: lender});
-                const totalDebt = Number(await Loan.borrowerDebt());
+                const totalDebt = await Loan.borrowerDebt();
                 
                 // Due we need to watch the LoanContract.sol events, need to change tx scope to point LoanContract.sol
                 const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
                 truffleAssert.eventEmitted(loanTxScope, 'Funded', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && principalAmount.eq(ev.amount));
                 truffleAssert.eventEmitted(loanTxScope, 'MinimumFundingReached', (ev) => ev.loanAddress == Loan.address && principalAmount.eq(ev.currentBalance));
-                truffleAssert.eventEmitted(loanTxScope, 'FullyFunded', (ev) => ev.loanAddress == Loan.address && ev.balanceToRepay == totalDebt && fundingAmount.eq(ev.auctionBalance));
+                truffleAssert.eventEmitted(loanTxScope, 'FullyFunded', (ev) => ev.loanAddress == Loan.address && totalDebt.eq(ev.balanceToRepay) && fundingAmount.eq(ev.auctionBalance));
 
                 // check if loan is funded
                 const loanFundedAmount = await Loan.auctionBalance();
@@ -156,40 +157,54 @@ contract.only('Integration', (accounts) => {
                 const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
                 
                 // borrower repays loan
-                const interestAmount = totalDebt - principalAmount;
+                const interestAmount = totalDebt
                 await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
-                await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
+                await DAIToken.approve(DAIProxy.address, interestAmount, { from: borrower });
                 
-                const repayTx = await DAIProxy.repay(Loan.address, totalDebt, {from: borrower});
+                const repayTx = await DAIProxy.repay(Loan.address, interestAmount, {from: borrower});
                 
                 // Check repay event
                 const repayLoanTxScope = await truffleAssert.createTransactionResult(Loan, repayTx.tx);
                 truffleAssert.eventEmitted(repayLoanTxScope, 'LoanRepaid');
 
-                const stateAfterRepay = Number(await Loan.currentState())
+                const stateAfterRepay = await Loan.currentState();
 
                 // lender takes out money
                 const txWithdraw = await Loan.withdrawRepayment({from: lender});
                 const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
                 const lenderWithdrawed = await Loan.getLenderWithdrawn(lender);
-                const endState = Number(await Loan.currentState());
+                const endState = await Loan.currentState();
 
                 // Check repay event
                 truffleAssert.eventEmitted(txWithdraw, 'RepaymentWithdrawn');
                 truffleAssert.eventEmitted(txWithdraw, 'FullyRefunded');
 
+                
+                // Check operator fee
+                const currentOperatorFeeWei = await Loan.operatorBalance();
+                const priorOperatorBalance = await DAIToken.balanceOf(admin);
+                // Withdraw operator fee
+                const withdrawFeeTx = await Loan.withdrawFees({from: admin});        
+                const afterOperatorBalanceContract = await Loan.operatorBalance();
+                const afterOperatorBalance = await DAIToken.balanceOf(admin);
+                // Check repay event
+                truffleAssert.eventEmitted(withdrawFeeTx, 'OperatorWithdrawn');
+
                 // assertions
                 expect(lenderKYC).to.equal(true);
                 expect(borrowerKYC).to.equal(true);
                 expect(lenderHasDeposited).to.equal(true);
-                expect(fundedLoanState).to.equal(BN('2'));
-                expect(loanFundedAmount).to.equal(fundingAmount);
-                expect(amountFundedByLender).to.equal(principalAmount);
-                expect(borrowerWithdrawAmount).to.equal(fundingAmount);
-                expect(stateAfterRepay).to.equal(4);
-                expect(lenderBalanceAfterRepayment).to.equal(totalDebt);
+                assert(fundedLoanState.eq(new BN('2', 10)));
+                assert(loanFundedAmount.eq(fundingAmount));
+                assert(amountFundedByLender.eq(principalAmount));
+                assert(borrowerWithdrawAmount.eq(fundingAmount));
+                expect(stateAfterRepay.eq(new BN('4', 10)));
+                assert(lenderBalanceAfterRepayment.eq(totalDebt));
                 expect(lenderWithdrawed).to.equal(true);
-                expect(endState).to.equal(5);
+                assert(endState.eq(new BN('5', 10)));
+                assert(desiredOperatorFeeWei.eq(currentOperatorFeeWei));
+                assert(afterOperatorBalance.eq(priorOperatorBalance.add(currentOperatorFeeWei)))
+                
             } catch (error) {
                 console.error(error)
                 throw error;
