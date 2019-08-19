@@ -4,6 +4,7 @@ chai.use(chaiAsPromised);
 const truffleAssert = require('truffle-assertions');
 const { expect } = chai;
 const web3 = global.web3;
+const BN = web3.utils.BN;
 const DAIProxyContract = artifacts.require('DAIProxy');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 const LoanContract = artifacts.require('LoanContract');
@@ -18,7 +19,7 @@ const { waitNBlocks } = require('./helpers');
 
 const HeroAmount = '200000000000000000000';
 
-contract('Integration', (accounts) => {
+contract.only('Integration', (accounts) => {
     let DAIProxy;
     let DAIToken;
     let HeroToken;
@@ -90,7 +91,7 @@ contract('Integration', (accounts) => {
             LoanDispatcher = await LoanContractDispatcherContract.new(Auth.address, DAIToken.address, DAIProxy.address, {from:owner});
             await LoanDispatcher.setAdministrator(admin, {from:owner});
             // Setup DAI amounts
-            const daiBalance = 100;
+            const daiBalance = web3.utils.toWei('100');
             await DAIToken.transferAmountToAddress(lender, daiBalance, {from: owner});
             await DAIToken.transferAmountToAddress(lender2, daiBalance, {from: owner});
             await DAIToken.transferAmountToAddress(lender3, daiBalance, {from: owner});
@@ -99,12 +100,12 @@ contract('Integration', (accounts) => {
             const currentBlock = await web3.eth.getBlock('latest');
             const auctionLengthBlock = (60 * 60) / averageMiningBlockTime; // 1 hour in blocktime
             const loanRepaymentTime = currentBlock.timestamp + (2 * 60 * 60); // 2 hours in seconds
-            const loanMinAmount = 90;
-            const loanMaxAmount = 100;
+            const loanMinAmount = web3.utils.toWei('90');
+            const loanMaxAmount = web3.utils.toWei('100');
             const maxInterestRate = 5000;
 
-            await LoanDispatcher.setMinAmount(10, {from: admin});
-            await LoanDispatcher.setMaxInterestRate(5000, {from: admin});
+            await LoanDispatcher.setMinAmount(loanMinAmount, {from: admin});
+            await LoanDispatcher.setMaxInterestRate(maxInterestRate, {from: admin});
 
             await LoanDispatcher.deploy(
                 auctionLengthBlock,
@@ -121,70 +122,78 @@ contract('Integration', (accounts) => {
             // create loan instance from Loan.address
             Loan = await LoanContract.at(loanAddress);
         });
-        it('Expects the flow to work correctly for one lender to fully fund a loan and for the borrower to repay', async () => {
-            // lender funds loan
-            const fundingAmount = Number(await Loan.maxAmount()); 
-            await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
-            const fundTx = await DAIProxy.fund(Loan.address, fundingAmount, {from: lender});
+        it.only('Expects the flow to work correctly for one lender to fully fund a loan and for the borrower to repay', async () => {
+            try {
+                const operatorFee = await Loan.operatorFee();
+                console.log(operatorFee.div( new BN("2", 10) ))
+                // lender funds loan
+                const principalAmount = await Loan.maxAmount() 
+                const fundingAmount = principalAmount.sub((principalAmount.mul(operatorFee.div(web3.utils.toWei('100')))));
+                console.log(web3.utils.fromWei(principalAmount), web3.utils.fromWei(fundingAmount));
+                await DAIToken.approve(DAIProxy.address, principalAmount, { from: lender });
+                const fundTx = await DAIProxy.fund(Loan.address, principalAmount, {from: lender});
+                const totalDebt = Number(await Loan.borrowerDebt());
+                
+                // Due we need to watch the LoanContract.sol events, need to change tx scope to point LoanContract.sol
+                const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
+                truffleAssert.eventEmitted(loanTxScope, 'Funded', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && principalAmount.eq(ev.amount));
+                truffleAssert.eventEmitted(loanTxScope, 'MinimumFundingReached', (ev) => ev.loanAddress == Loan.address && principalAmount.eq(ev.currentBalance));
+                truffleAssert.eventEmitted(loanTxScope, 'FullyFunded', (ev) => ev.loanAddress == Loan.address && ev.balanceToRepay == totalDebt && fundingAmount.eq(ev.auctionBalance));
 
-            const totalDebt = Number(await Loan.borrowerDebt());
-            
-            // Due we need to watch the LoanContract.sol events, need to change tx scope to point LoanContract.sol
-            const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
-            truffleAssert.eventEmitted(loanTxScope, 'Funded', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && ev.amount == fundingAmount);
-            truffleAssert.eventEmitted(loanTxScope, 'MinimumFundingReached', (ev) => ev.loanAddress == Loan.address && ev.currentBalance == fundingAmount);
-            truffleAssert.eventEmitted(loanTxScope, 'FullyFunded', (ev) => ev.loanAddress == Loan.address && ev.balanceToRepay == totalDebt && ev.auctionBalance == fundingAmount);
+                // check if loan is funded
+                const loanFundedAmount = await Loan.auctionBalance();
+                const amountFundedByLender = await Loan.getLenderBidAmount(lender);
+                const fundedLoanState = await Loan.currentState();
 
-            // check if loan is funded
-            const loanFundedAmount = await Loan.auctionBalance();
-            const amountFundedByLender = await Loan.getLenderBidAmount(lender);
-            const fundedLoanState = Number(await Loan.currentState());
+                // console.log('state before withdraw::::>>>> ', Number(await Loan.currentState()))
+                // console.log('is loan expired:::::: ', (await Loan.isAuctionExpired()) )
+                // console.log('is loan defaulted:::::: ', (await Loan.isDefaulted()) )
 
-            // console.log('state before withdraw::::>>>> ', Number(await Loan.currentState()))
-            // console.log('is loan expired:::::: ', (await Loan.isAuctionExpired()) )
-            // console.log('is loan defaulted:::::: ', (await Loan.isDefaulted()) )
+                // borrower takes money from loan
+                await Loan.withdrawLoan({from: borrower}); 
+                
+                // check borrower received amount
+                const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
+                
+                // borrower repays loan
+                const interestAmount = totalDebt - principalAmount;
+                await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
+                await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
+                
+                const repayTx = await DAIProxy.repay(Loan.address, totalDebt, {from: borrower});
+                
+                // Check repay event
+                const repayLoanTxScope = await truffleAssert.createTransactionResult(Loan, repayTx.tx);
+                truffleAssert.eventEmitted(repayLoanTxScope, 'LoanRepaid');
 
-            // borrower takes money from loan
-            await Loan.withdrawLoan({from: borrower}); 
-            
-            // check borrower received amount
-            const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
-            
-            // borrower repays loan
-            const interestAmount = totalDebt - fundingAmount;
-            await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
-            await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
-            
-            const repayTx = await DAIProxy.repay(Loan.address, totalDebt, {from: borrower});
-            
-            // Check repay event
-            const repayLoanTxScope = await truffleAssert.createTransactionResult(Loan, repayTx.tx);
-            truffleAssert.eventEmitted(repayLoanTxScope, 'LoanRepaid');
+                const stateAfterRepay = Number(await Loan.currentState())
 
-            const stateAfterRepay = Number(await Loan.currentState())
+                // lender takes out money
+                const txWithdraw = await Loan.withdrawRepayment({from: lender});
+                const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
+                const lenderWithdrawed = await Loan.getLenderWithdrawn(lender);
+                const endState = Number(await Loan.currentState());
 
-            // lender takes out money
-            const txWithdraw = await Loan.withdrawRepayment({from: lender});
-            const lenderBalanceAfterRepayment = await DAIToken.balanceOf(lender);
-            const lenderWithdrawed = await Loan.getLenderWithdrawn(lender);
-            const endState = Number(await Loan.currentState());
+                // Check repay event
+                truffleAssert.eventEmitted(txWithdraw, 'RepaymentWithdrawn');
+                truffleAssert.eventEmitted(txWithdraw, 'FullyRefunded');
 
-            // Check repay event
-            truffleAssert.eventEmitted(txWithdraw, 'RepaymentWithdrawn');
-            truffleAssert.eventEmitted(txWithdraw, 'FullyRefunded');
-
-            // assertions
-            expect(lenderKYC).to.equal(true);
-            expect(borrowerKYC).to.equal(true);
-            expect(lenderHasDeposited).to.equal(true);
-            expect(fundedLoanState).to.equal(2);
-            expect(Number(loanFundedAmount)).to.equal(fundingAmount);
-            expect(Number(amountFundedByLender)).to.equal(fundingAmount);
-            expect(Number(borrowerWithdrawAmount)).to.equal(fundingAmount);
-            expect(stateAfterRepay).to.equal(4);
-            expect(Number(lenderBalanceAfterRepayment)).to.equal(totalDebt);
-            expect(lenderWithdrawed).to.equal(true);
-            expect(endState).to.equal(5);
+                // assertions
+                expect(lenderKYC).to.equal(true);
+                expect(borrowerKYC).to.equal(true);
+                expect(lenderHasDeposited).to.equal(true);
+                expect(fundedLoanState).to.equal(BN('2'));
+                expect(loanFundedAmount).to.equal(fundingAmount);
+                expect(amountFundedByLender).to.equal(principalAmount);
+                expect(borrowerWithdrawAmount).to.equal(fundingAmount);
+                expect(stateAfterRepay).to.equal(4);
+                expect(lenderBalanceAfterRepayment).to.equal(totalDebt);
+                expect(lenderWithdrawed).to.equal(true);
+                expect(endState).to.equal(5);
+            } catch (error) {
+                console.error(error)
+                throw error;
+            }
         });
         it('Expects to work for 3 diff lenders with overflow and borrower repays in time', async () => {
             // wait for time / blocks to pass

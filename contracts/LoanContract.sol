@@ -5,10 +5,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./DAIProxyInterface.sol";
 import "./LoanContractInterface.sol";
 
-// TODO:
-// 1. Add ETH emergency withdraw or reject ETH in payable function, if users sends ETH directly to this contract will be locked forever.
-// - Millions of USD value have been stuck and is easy to add without any security issue, this smart contract does not handle ETH per se.
-// 2. Add minimum possible loan amount in 18 decimal format. Like 1 DAI in Wei, so is possible to do divisions.
 contract LoanContract is LoanContractInterface {
     using SafeMath for uint256;
     ERC20 DAIToken;
@@ -33,6 +29,8 @@ contract LoanContract is LoanContractInterface {
     uint256 public borrowerDebt; // Amount borrower need to repay == auctionBalance + interests
     uint256 public maxInterestRate;
     uint256 internal interestRate;
+    uint256 public operatorFee;
+    uint256 public operatorBalance;
 
     bool public loanWithdrawn;
     bool public minimumReached;
@@ -94,12 +92,14 @@ contract LoanContract is LoanContractInterface {
         address loanAddress,
         uint256 balanceToRepay,
         uint256 auctionBalance,
+        uint256 operatorBalance,
         uint256 interest,
         uint256 fundedBlock
     );
     event FundsUnlockedWithdrawn(address loanAddress, address indexed lender, uint256 amount);
     event FullyFundsUnlockedWithdrawn(address loanAddress);
     event LoanFundsUnlocked(uint256 auctionBalance);
+    event OperatorWithdrawn(uint256 amount, address administrator);
 
     modifier onlyFrozen() {
         require(currentState == LoanState.FROZEN, "Loan status is not FROZEN");
@@ -153,7 +153,8 @@ contract LoanContract is LoanContractInterface {
         address _originator,
         address DAITokenAddress,
         address proxyAddress,
-        address _administrator
+        address _administrator,
+        uint256 _operatorFee
     ) public {
         DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
@@ -172,6 +173,8 @@ contract LoanContract is LoanContractInterface {
 
         loanWithdrawnAmount = 0;
 
+        operatorFee = _operatorFee;
+
         setState(LoanState.CREATED);
         emit LoanCreated(
             address(this),
@@ -183,6 +186,21 @@ contract LoanContract is LoanContractInterface {
             auctionEndBlock,
             administrator
         );
+    }
+
+    function setSuccessfulAuction() internal onlyCreated returns (bool) {
+        setState(LoanState.ACTIVE);
+        operatorBalance = auctionBalance.mul(operatorFee).div(100000000000000000000);
+        auctionBalance = auctionBalance - operatorBalance;
+        emit AuctionSuccessful(
+            address(this),
+            borrowerDebt,
+            auctionBalance,
+            operatorBalance,
+            getInterestRate(),
+            lastFundedBlock
+        );
+        return true;
     }
 
     // Notes:
@@ -199,16 +217,8 @@ contract LoanContract is LoanContractInterface {
                 emit FailedToFund(address(this), lender, amount);
                 return false;
             } else {
-                setState(LoanState.ACTIVE);
+                require(setSuccessfulAuction(), "error while transitioning to successful auction");
                 emit FailedToFund(address(this), lender, amount);
-                uint256 interest = getInterestRate();
-                emit AuctionSuccessful(
-                    address(this),
-                    borrowerDebt,
-                    auctionBalance,
-                    interest,
-                    lastFundedBlock
-                );
                 return false;
             }
         }
@@ -229,15 +239,8 @@ contract LoanContract is LoanContractInterface {
         }
 
         if (auctionBalance == maxAmount) {
-            setState(LoanState.ACTIVE);
+            require(setSuccessfulAuction(), "error while transitioning to successful auction");
             emit FullyFunded(
-                address(this),
-                borrowerDebt,
-                auctionBalance,
-                interest,
-                lastFundedBlock
-            );
-            emit AuctionSuccessful(
                 address(this),
                 borrowerDebt,
                 auctionBalance,
@@ -251,6 +254,13 @@ contract LoanContract is LoanContractInterface {
     function unlockFundsWithdrawal() public onlyAdmin {
         setState(LoanState.FROZEN);
         emit LoanFundsUnlocked(auctionBalance);
+    }
+
+    function withdrawFees() public onlyAdmin returns (bool) {
+        require(operatorBalance > 0, "no funds to withdraw");
+        operatorBalance = 0;
+        require(DAIToken.transfer(msg.sender, operatorBalance), "transfer failed");
+        return true;
     }
 
     function withdrawFundsUnlocked() public onlyFrozen {
@@ -276,9 +286,6 @@ contract LoanContract is LoanContractInterface {
         }
     }
 
-    //put these in proxy???
-    // Seems this function bypass KYC? A user that we detect that did fraudulent KYC procedure
-    // after the auction can be removed from KYC registry, but the fraud users could still refund from this method.
     function withdrawRefund() public onlyFailedToFund {
         require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposited.");
@@ -370,15 +377,7 @@ contract LoanContract is LoanContractInterface {
             if (!minimumReached) {
                 setState(LoanState.FAILED_TO_FUND);
             } else {
-                setState(LoanState.ACTIVE);
-                uint256 interest = getInterestRate();
-                emit AuctionSuccessful(
-                    address(this),
-                    borrowerDebt,
-                    auctionBalance,
-                    interest,
-                    lastFundedBlock
-                );
+                require(setSuccessfulAuction(), "error while transitioning to successful auction");
             }
         }
         if (isDefaulted() && currentState == LoanState.ACTIVE) {

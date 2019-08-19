@@ -20,6 +20,7 @@ const migrationInt = async (deployer, network, accounts) => {
         // Contracts deployment if updated logic::
         const oldDepositBytecode = _.get(contracts, `bytecode.Deposit`);
 
+        console.log(contractIsUpdated(contracts, netId, 'KYC', KYC), KYC.bytecode, "================ contracts.json =============" ,  contracts.bytecode.KYC);
         const kycHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'KYC', KYC);
         const depositHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Deposit', Deposit);
         const authHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Auth', Auth);

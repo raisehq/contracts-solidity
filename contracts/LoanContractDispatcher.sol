@@ -10,6 +10,7 @@ contract LoanContractDispatcher is Ownable {
 
     address public administrator;
 
+    uint256 public operatorFee;
     uint256 public minAmount;
     uint256 public maxAmount;
 
@@ -44,6 +45,7 @@ contract LoanContractDispatcher is Ownable {
     event MaxAmountUpdated(uint256 maxAmount, address loanDispatcher);
     event MinInterestRateUpdated(uint256 minInterestRate, address loanDispatcher);
     event MaxInterestRateUpdated(uint256 maxInterestRate, address loanDispatcher);
+    event OperatorFeeUpdated(uint256 operatorFee, address loanDispatcher, address administrator);
 
     constructor(address authAddress, address _DAITokenAddress, address _DAIProxyAddress) public {
         auth = Authorization(authAddress);
@@ -55,10 +57,17 @@ contract LoanContractDispatcher is Ownable {
 
         minInterestRate = 0;
         maxInterestRate = 24000;
+
+        operatorFee = 1000000000000000000; // 1 % operator fee, expressed in wei
     }
 
     function setAdministrator(address admin) public onlyOwner {
         administrator = admin;
+    }
+
+    function setOperatorFee(uint256 newFee) public onlyAdmin {
+        operatorFee = newFee;
+        emit OperatorFeeUpdated(operatorFee, address(this), msg.sender);
     }
 
     function setMinAmount(uint256 requestedMinAmount) public onlyAdmin {
@@ -131,7 +140,8 @@ contract LoanContractDispatcher is Ownable {
             msg.sender,
             DAITokenAddress,
             DAIProxyAddress,
-            administrator
+            administrator,
+            operatorFee
         );
         isLoanContract[address(loanContract)] = true;
 
