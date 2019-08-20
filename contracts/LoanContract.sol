@@ -257,8 +257,8 @@ contract LoanContract is LoanContractInterface {
     }
 
     function withdrawFees() public onlyAdmin returns (bool) {
-        require(operatorBalance > 0, 'no funds to withdraw');
         require(loanWithdrawn == true, 'borrower didnt withdraw');
+        require(operatorBalance > 0, 'no funds to withdraw');
         uint256 allFees = operatorBalance;
         operatorBalance = 0;
         require(DAIToken.transfer(msg.sender, allFees), 'transfer failed');

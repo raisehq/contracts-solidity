@@ -46,7 +46,7 @@ async function increaseToTime(target) {
 
   if (target.lt(now)) throw Error(`Cannot increase current time (${now}) to a moment in the past (${target})`);
   const diff = target.sub(now);
-  return increase(diff);
+  return increaseTime(diff);
 }
 
 // Convenience constants for commonly-used or difficult to remember bignum values

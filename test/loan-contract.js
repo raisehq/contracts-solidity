@@ -1230,5 +1230,67 @@ contract('LoanContract', (accounts) => {
                 expect(await Loan.currentState()).to.eq.BN(5); 
             }); 
         })
+
+        describe('Method withdrawFees', () => {
+            beforeEach(async () => {
+                auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
+                termEndTimestamp = currentBlock.timestamp + 2 ;
+                Loan = await LoanContract.new(
+                    auctionBlockLength,
+                    termEndTimestamp,
+                    minAmount,
+                    maxAmount,
+                    maxInterestRate,
+                    borrower,
+                    DAIToken.address, 
+                    DAIProxy.address,
+                    admin,
+                    operatorPercentFee
+                );
+            });
+            it('Expect operators to withdraw the loan operator fee if borrower has withdraw', async () => {
+                const adminBalancePrior = await DAIToken.balanceOf(admin);
+                const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+                await DAIToken.approve(DAIProxy.address, maxAmount, { from: lender });
+                await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+                await Loan.withdrawLoan({from: borrower});
+                await Loan.withdrawFees({from: admin});
+                const adminBalanceAfter = await DAIToken.balanceOf(admin)
+                expect(adminBalanceAfter).to.eq.BN(adminBalancePrior.add(expectedFee));
+            })
+            it('Expect operators to NOT withdraw the loan operator fee if borrower did NOT withdraw', async () => {
+                const adminBalancePrior = await DAIToken.balanceOf(admin);
+                const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+                await DAIToken.approve(DAIProxy.address, maxAmount, { from: lender });
+                await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+                await truffleAssert.fails(
+                    Loan.withdrawFees({from: admin}),
+                    truffleAssert.ErrorType.REVERT,
+                    'borrower didnt withdraw'
+                );
+
+                const adminBalanceAfter = await DAIToken.balanceOf(admin)
+                expect(adminBalanceAfter).to.eq.BN(adminBalancePrior);
+            })
+            it('Expect operators to NOT withdraw the loan operator fee if already done', async () => {
+                const adminBalancePrior = await DAIToken.balanceOf(admin);
+                const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+                await DAIToken.approve(DAIProxy.address, maxAmount, { from: lender });
+                await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+                await Loan.withdrawLoan({from: borrower});
+                await Loan.withdrawFees({from: admin});
+                const adminBalanceAfter = await DAIToken.balanceOf(admin)
+                expect(adminBalanceAfter).to.eq.BN(adminBalancePrior.add(expectedFee));
+
+                await truffleAssert.fails(
+                    Loan.withdrawFees({from: admin}),
+                    truffleAssert.ErrorType.REVERT,
+                    "no funds to withdraw"
+                );
+                const adminBalanceAfterError = await DAIToken.balanceOf(admin)
+                expect(adminBalanceAfterError).to.eq.BN(adminBalanceAfter);
+            })
+        })
     });
 });
