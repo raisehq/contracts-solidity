@@ -62,10 +62,10 @@ Solhint:
     - integration
     - master
 
-KovanGoerli:
+Kovan:
   stage: deploy
   script:
-    - npm run compile && npm run migration:kovan:reset && npm run migration:goerli:reset
+    - npm run compile && npm run migration:kovan:reset
   artifacts:
     paths: 
       - contracts.json
