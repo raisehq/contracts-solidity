@@ -62,7 +62,8 @@ contract LoanContract is LoanContractInterface {
         uint256 maxInterestRate,
         uint256 auctionStartBlock,
         uint256 auctionEndBlock,
-        address indexed administrator
+        address indexed administrator,
+        uint256 operatorFee
     );
 
     event MinimumFundingReached(address loanAddress, uint256 currentBalance, uint256 interest);
@@ -183,7 +184,8 @@ contract LoanContract is LoanContractInterface {
             maxInterestRate,
             auctionStartBlock,
             auctionEndBlock,
-            administrator
+            administrator,
+            operatorFee
         );
     }
 
