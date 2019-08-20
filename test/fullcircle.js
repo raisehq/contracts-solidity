@@ -1,10 +1,13 @@
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
-chai.use(chaiAsPromised);
-const truffleAssert = require('truffle-assertions');
-const { expect } = chai;
+const bnChai = require('bn-chai');
 const web3 = global.web3;
 const BN = web3.utils.BN;
+chai.use(chaiAsPromised);
+chai.use(bnChai(BN));
+const truffleAssert = require('truffle-assertions');
+const { expect } = chai;
+const { fromWei, toWei } = web3.utils;
 const DAIProxyContract = artifacts.require('DAIProxy');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 const LoanContract = artifacts.require('LoanContract');
@@ -16,6 +19,9 @@ const LoanContractDispatcherContract = artifacts.require('LoanContractDispatcher
 
 // mine blocks so it passes "time"
 const { waitNBlocks } = require('./helpers');
+
+const calculatePendingDebt = (netLoan, totalDebt) => totalDebt.sub(netLoan);
+const calculateNetLoan = (principal, loanPercentFee) => principal.sub(principal.mul(loanPercentFee).div(toWei(new BN('100', 10))));
 
 const HeroAmount = '200000000000000000000';
 
@@ -37,7 +43,7 @@ contract('Integration', (accounts) => {
 
     const averageMiningBlockTime = 15;
     
-    describe('Test the full flow with the actual contracts', () => {
+    describe.only('Test the full flow with the actual contracts', () => {
         let lenderKYC;
         let lender2KYC;
         let lender3KYC;
@@ -45,6 +51,9 @@ contract('Integration', (accounts) => {
         let lenderHasDeposited;
         let lender2HasDeposited;
         let lender3HasDeposited;
+        let loanMaxAmount;
+        let loanMinAmount;
+        let operatorPercentFee;
         let Loan;
         beforeEach(async () => {
             DAIToken = await HeroFakeTokenContract.new({from: owner});
@@ -100,8 +109,8 @@ contract('Integration', (accounts) => {
             const currentBlock = await web3.eth.getBlock('latest');
             const auctionLengthBlock = (60 * 60) / averageMiningBlockTime; // 1 hour in blocktime
             const loanRepaymentTime = currentBlock.timestamp + (2 * 60 * 60); // 2 hours in seconds
-            const loanMinAmount = web3.utils.toWei('90');
-            const loanMaxAmount = web3.utils.toWei('100');
+            loanMinAmount = web3.utils.toWei(new BN('90', 10));
+            loanMaxAmount = web3.utils.toWei(new BN('100', 10));
             const maxInterestRate = 5000;
 
             await LoanDispatcher.setMinAmount(loanMinAmount, {from: admin});
@@ -121,6 +130,7 @@ contract('Integration', (accounts) => {
             
             // create loan instance from Loan.address
             Loan = await LoanContract.at(loanAddress);
+            operatorPercentFee = await Loan.operatorFee();
         });
         it('Expects the flow to work correctly for one lender to fully fund a loan and for the borrower to repay', async () => {
             try {
@@ -146,10 +156,6 @@ contract('Integration', (accounts) => {
                 const amountFundedByLender = await Loan.getLenderBidAmount(lender);
                 const fundedLoanState = await Loan.currentState();
 
-                // console.log('state before withdraw::::>>>> ', Number(await Loan.currentState()))
-                // console.log('is loan expired:::::: ', (await Loan.isAuctionExpired()) )
-                // console.log('is loan defaulted:::::: ', (await Loan.isDefaulted()) )
-
                 // borrower takes money from loan
                 await Loan.withdrawLoan({from: borrower}); 
                 
@@ -157,11 +163,11 @@ contract('Integration', (accounts) => {
                 const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
                 
                 // borrower repays loan
-                const interestAmount = totalDebt
+                const interestAmount = calculatePendingDebt(borrowerWithdrawAmount, totalDebt);
                 await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
-                await DAIToken.approve(DAIProxy.address, interestAmount, { from: borrower });
-                
-                const repayTx = await DAIProxy.repay(Loan.address, interestAmount, {from: borrower});
+                await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
+
+                const repayTx = await DAIProxy.repay(Loan.address, totalDebt, {from: borrower});
                 
                 // Check repay event
                 const repayLoanTxScope = await truffleAssert.createTransactionResult(Loan, repayTx.tx);
@@ -215,15 +221,15 @@ contract('Integration', (accounts) => {
             await waitNBlocks(100);
             
             // lenders funds loan
-            const fundingAmount = 50;
-            const fundingAmount2 = 40;
-            const fundingAmount3 = 100;
+            const fundingAmount = web3.utils.toWei('50');
+            const fundingAmount2 = web3.utils.toWei('40');
+            const fundingAmount3 = web3.utils.toWei('100');
             await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
             await DAIToken.approve(DAIProxy.address, fundingAmount2, { from: lender2 });
             await DAIToken.approve(DAIProxy.address, fundingAmount3, { from: lender3 });
             await DAIProxy.fund(Loan.address, fundingAmount, {from: lender});
             await DAIProxy.fund(Loan.address, fundingAmount2, {from: lender2});
-            await DAIProxy.fund(Loan.address, fundingAmount3, {from: lender3});
+            const txFunded = await DAIProxy.fund(Loan.address, fundingAmount3, {from: lender3});
             
             // check if loan is funded
             const loanFundedAmount = await Loan.auctionBalance();
@@ -242,16 +248,14 @@ contract('Integration', (accounts) => {
 
             // borrower takes money from loan
             await Loan.withdrawLoan({from: borrower}); 
-            
             // borrower current debt with interests
-            const totalDebt = Number(await Loan.borrowerDebt());
-            const totalFunded = Number(await Loan.auctionBalance());
+            const totalDebt = await Loan.borrowerDebt();
 
             // check borrower received amount
             const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
 
             // borrower repays
-            const interestAmount = totalDebt - totalFunded;
+            const interestAmount = calculatePendingDebt(borrowerWithdrawAmount, totalDebt);
             await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
             await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
             const repayTx = await DAIProxy.repay(Loan.address, totalDebt, {from: borrower});
@@ -281,27 +285,27 @@ contract('Integration', (accounts) => {
             expect(lenderHasDeposited).to.equal(true);
             expect(lender2HasDeposited).to.equal(true);
             expect(lender3HasDeposited).to.equal(true);
-            expect(Number(loanFundedAmount)).to.equal(100);
-            expect(Number(amountFundedByLender)).to.equal(50);
-            expect(Number(amountFundedByLender2)).to.equal(40);
-            expect(Number(amountFundedByLender3)).to.equal(10);
-            expect(Number(lenderBalance)).to.equal(50);
-            expect(Number(lender2Balance)).to.equal(60);
-            expect(Number(lender3Balance)).to.equal(90);
-            expect(Number(borrowerWithdrawAmount)).to.equal(100);
-            expect(Number(lenderBalanceAfterRepayment)).to.equal(Number(lenderBidAmountWithInterest) + Number(lenderOneBeforeRepay));
-            expect(Number(lender2BalanceAfterRepayment)).to.equal(Number(lender2AmountWithInterest) + Number(lenderTwoBeforeRepay));
-            expect(Number(lender3BalanceAfterRepayment)).to.equal(Number(lender3AmountWithInterest) + Number(lenderThreeBeforeRepay));
+            expect(Number(fromWei(loanFundedAmount))).to.equal(Number(fromWei(calculateNetLoan(loanMaxAmount, operatorPercentFee))));
+            expect(Number(fromWei(amountFundedByLender))).to.equal(50);
+            expect(Number(fromWei(amountFundedByLender2))).to.equal(40);
+            expect(Number(fromWei(amountFundedByLender3))).to.equal(10);
+            expect(Number(fromWei(lenderBalance))).to.equal(50);
+            expect(Number(fromWei(lender2Balance))).to.equal(60);
+            expect(Number(fromWei(lender3Balance))).to.equal(90);
+            expect(Number(fromWei(borrowerWithdrawAmount))).to.equal(Number(fromWei(calculateNetLoan(loanMaxAmount, operatorPercentFee))));
+            expect(lenderBalanceAfterRepayment).to.equal(lenderBidAmountWithInterest.add(lenderOneBeforeRepay));
+            expect(lender2BalanceAfterRepayment).to.equal(lender2AmountWithInterest.add(lenderTwoBeforeRepay));
+            expect(lender3BalanceAfterRepayment).to.equal(lender3AmountWithInterest.add(lenderThreeBeforeRepay));
             expect(lendedOneWithdrawn).to.equal(true);
             expect(lenderTwoWithdrawn).to.equal(true);
             expect(lenderThreeWithdrawn).to.equal(true);
         });
         it('Expects to work for 2 diff lenders with one of them doing 2 lendings and borrower repays in time', async () => {
             // lenders funds loan
-            const fundingAmount = 50;
-            const fundingAmount2 = 40;
-            const fundingAmount3 = 50;
-            await DAIToken.approve(DAIProxy.address, fundingAmount + fundingAmount3, { from: lender });
+            const fundingAmount = web3.utils.toWei(new BN('50', 10));
+            const fundingAmount2 = web3.utils.toWei(new BN('40', 10));
+            const fundingAmount3 = web3.utils.toWei(new BN('50', 10));
+            await DAIToken.approve(DAIProxy.address, fundingAmount.add(fundingAmount3), { from: lender });
             await DAIToken.approve(DAIProxy.address, fundingAmount2, { from: lender2 });
             await DAIProxy.fund(Loan.address, fundingAmount, {from: lender});
             await DAIProxy.fund(Loan.address, fundingAmount2, {from: lender2});
@@ -328,9 +332,8 @@ contract('Integration', (accounts) => {
             const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
 
             // borrower repays
-            const totalDebt = Number(await Loan.borrowerDebt());
-            const totalFunded = Number(await Loan.auctionBalance());
-            const interestAmount = totalDebt - totalFunded;
+            const totalDebt = await Loan.borrowerDebt();
+            const interestAmount = calculatePendingDebt(borrowerWithdrawAmount, totalDebt);
             await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
             await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
             const repayTx = await DAIProxy.repay(Loan.address, totalDebt, {from: borrower});
@@ -368,11 +371,11 @@ contract('Integration', (accounts) => {
         });
         it('Expects the flow to work correctly for one lender to minimum fund a loan and for the borrower to withdraw after auction is expired and for the borrower to repay', async () => {
             // lender funds loan
-            const fundingAmount = Number(await Loan.minAmount()); 
+            const fundingAmount = await Loan.minAmount(); 
             await DAIToken.approve(DAIProxy.address, fundingAmount, { from: lender });
             const fundTx = await DAIProxy.fund(Loan.address, fundingAmount, {from: lender});
-            const lenderBalancePostFunding = Number(await DAIToken.balanceOf(lender));
-            const totalDebt = Number(await Loan.borrowerDebt());
+            const lenderBalancePostFunding = await DAIToken.balanceOf(lender);
+            const totalDebt = await Loan.borrowerDebt();
             
             // Due we need to watch the LoanContract.sol events, need to change tx scope to point LoanContract.sol
             const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
@@ -388,10 +391,6 @@ contract('Integration', (accounts) => {
             const amountFundedByLender = await Loan.getLenderBidAmount(lender);
             const fundedLoanStateBeforeExpiry = Number(await Loan.currentState());
 
-            // console.log('state before withdraw::::>>>> ', Number(await Loan.currentState()))
-            // console.log('is loan expired:::::: ', (await Loan.isAuctionExpired()) )
-            // console.log('is loan defaulted:::::: ', (await Loan.isDefaulted()) )
-
             // borrower takes money from loan
             const withTx = await Loan.withdrawLoan({from: borrower}); 
             const fundedLoanState = Number(await Loan.currentState());
@@ -402,7 +401,7 @@ contract('Integration', (accounts) => {
             const borrowerWithdrawAmount = await DAIToken.balanceOf(borrower);
             
             // borrower repays loan
-            const interestAmount = totalDebt - fundingAmount;
+            const interestAmount = calculatePendingDebt(borrowerWithdrawAmount, totalDebt);
             await DAIToken.transferAmountToAddress(borrower, interestAmount, {from: owner});
             await DAIToken.approve(DAIProxy.address, totalDebt, { from: borrower });
             

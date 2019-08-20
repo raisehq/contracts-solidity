@@ -26,7 +26,7 @@ contract LoanContract is LoanContractInterface {
 
     uint256 public auctionBalance;
     uint256 public loanWithdrawnAmount;
-    uint256 public borrowerDebt; // Amount borrower need to repay == auctionBalance + interests
+    uint256 public borrowerDebt; // Amount borrower need to repay == principal + interests
     uint256 public maxInterestRate;
     uint256 internal interestRate;
     uint256 public operatorFee;
@@ -189,6 +189,7 @@ contract LoanContract is LoanContractInterface {
 
     function setSuccessfulAuction() internal onlyCreated returns (bool) {
         setState(LoanState.ACTIVE);
+        borrowerDebt = calculateValueWithInterest(auctionBalance);
         operatorBalance = auctionBalance.mul(operatorFee).div(100000000000000000000);
         auctionBalance = auctionBalance - operatorBalance;
         emit AuctionSuccessful(
@@ -221,13 +222,11 @@ contract LoanContract is LoanContractInterface {
                 return false;
             }
         }
-
+        uint256 interest = getInterestRate();
         lenderPosition[lender].bidAmount = lenderPosition[lender].bidAmount.add(amount);
         auctionBalance = auctionBalance.add(amount);
 
         lastFundedBlock = block.number;
-        uint256 interest = getInterestRate();
-        borrowerDebt = calculateValueWithInterest(auctionBalance);
 
         if (auctionBalance >= minAmount && !minimumReached) {
             minimumReached = true;
