@@ -275,7 +275,10 @@ contract LoanContract is LoanContractInterface {
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
 
-        require(DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount), 'error while transfer');
+        require(
+            DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount),
+            'error while transfer'
+        );
 
         emit FundsUnlockedWithdrawn(
             address(this),
@@ -299,7 +302,10 @@ contract LoanContract is LoanContractInterface {
 
         emit RefundWithdrawn(address(this), msg.sender, lenderPosition[msg.sender].bidAmount);
 
-        require(DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount), 'error while transfer');
+        require(
+            DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount),
+            'error while transfer'
+        );
 
         if (loanWithdrawnAmount == auctionBalance) {
             setState(LoanState.CLOSED);

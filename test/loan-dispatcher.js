@@ -1,9 +1,12 @@
 const chai = require('chai');
+const bnChai = require('bn-chai');
 const chaiAsPromised = require('chai-as-promised');
+const web3 = global.web3;
+const { BN } = web3.utils;
 chai.use(chaiAsPromised);
+chai.use(bnChai(BN));
 const truffleAssert = require('truffle-assertions');
 const { expect } = chai;
-const web3 = global.web3;
 const DAIProxyContract = artifacts.require('DAIProxy');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 const LoanContract = artifacts.require('LoanContract');
@@ -57,7 +60,7 @@ contract('LoanContractDispatcher', (accounts) => {
                 throw error;
             }
         });
-        describe('Min Max setters', () => {
+        describe('Setters', () => {
             beforeEach(async () => {
                 // initialize loan contract dispatcher
                 LoanDispatcher = await LoanContractDispatcherContract.new(Auth.address, DAIToken.address, DAIProxy.address, {from:owner});
@@ -176,6 +179,17 @@ contract('LoanContractDispatcher', (accounts) => {
                     await LoanDispatcher.setMaxInterestRate(2000, {from: admin});
                 } catch (error) {
                     expect(error).to.not.equal(undefined);
+                }
+            });
+            it('Expects to change operator fee', async() => {
+                try {
+                    const desiredOperatorFee = web3.utils.toWei(new BN(5));
+                    await LoanDispatcher.setAdministrator(admin, {from: owner});
+                    await LoanDispatcher.setOperatorFee(desiredOperatorFee, {from: admin});
+                    const currentOperatorFee = await LoanDispatcher.operatorFee() ;
+                    expect(currentOperatorFee).to.eq.BN(currentOperatorFee)
+                } catch (error) {
+                    throw error;
                 }
             });
         });

@@ -1,5 +1,5 @@
 const { promisify } = require('util');
-const BN = web3.utils.BN;
+const { toWei, fromWei, BN } = web3.utils;
 
 async function  waitNBlocks(n) {
     await Promise.all(
@@ -56,11 +56,16 @@ const bigNums = {
   maxUint: '115792089237316195423570985008687907853269984665640564039457584007913129639935'
 };
 
+const calculatePendingDebt = (netLoan, totalDebt) => totalDebt.sub(netLoan);
+const calculateNetLoan = (principal, loanPercentFee) => principal.sub(principal.mul(loanPercentFee).div(toWei(new BN('100', 10))));
+
 
 module.exports = {
   waitNBlocks,
   advanceBlock,
   increaseTime,
   increaseToTime,
-  bigNums
+  bigNums,
+  calculatePendingDebt,
+  calculateNetLoan
 }

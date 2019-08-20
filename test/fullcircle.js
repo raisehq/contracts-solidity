@@ -18,10 +18,9 @@ const KYCContract = artifacts.require('KYCRegistry');
 const LoanContractDispatcherContract = artifacts.require('LoanContractDispatcher');
 
 // mine blocks so it passes "time"
-const { waitNBlocks } = require('./helpers');
+const { waitNBlocks, calculateNetLoan, calculatePendingDebt } = require('./helpers');
 
-const calculatePendingDebt = (netLoan, totalDebt) => totalDebt.sub(netLoan);
-const calculateNetLoan = (principal, loanPercentFee) => principal.sub(principal.mul(loanPercentFee).div(toWei(new BN('100', 10))));
+
 
 const HeroAmount = '200000000000000000000';
 
@@ -43,7 +42,7 @@ contract('Integration', (accounts) => {
 
     const averageMiningBlockTime = 15;
     
-    describe.only('Test the full flow with the actual contracts', () => {
+    describe('Test the full flow with the actual contracts', () => {
         let lenderKYC;
         let lender2KYC;
         let lender3KYC;

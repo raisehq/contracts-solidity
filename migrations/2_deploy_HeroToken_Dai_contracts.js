@@ -65,15 +65,11 @@ const migrationInt = async (deployer, network, accounts) => {
         if (herotokenHasBeenUpdated() || daiHasBeenUpdated()) {
             const currentNetId = await web3.eth.net.getId()
             const IntAccounts = [...new Set([...accounts, ...devAccounts])]; //unique accounts not repeated
-            if (IntAccounts.length > 0) {
-                console.log(`> Sending tokens to ${IntAccounts.length} accounts`, '\n');
-            }
             const tokens = web3.utils.toWei('10000000', 'ether'); // 10 million tokens each user
                     
             if (herotokenHasBeenUpdated()) {
                 const heroDeployed = await HeroToken.at(HeroTokenAddress);
                 for (let i = 0; i < IntAccounts.length; i++) {
-                    console.log('- Sending to', IntAccounts[i])
                     await heroDeployed.mint(IntAccounts[i], tokens, {
                         from: deployerAddress,
                         gas: 800000
@@ -84,7 +80,6 @@ const migrationInt = async (deployer, network, accounts) => {
             if (daiHasBeenUpdated()) {
                 const daiDeployed = await DAI.at(DAIAddress);
                 for (let i = 0; i < IntAccounts.length; i++) {
-                    console.log('- Sending to', IntAccounts[i])
                     await daiDeployed.mint(IntAccounts[i], tokens, {
                         from: deployerAddress,
                         gas: 800000
