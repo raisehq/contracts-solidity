@@ -258,6 +258,7 @@ contract LoanContract is LoanContractInterface {
 
     function withdrawFees() public onlyAdmin returns (bool) {
         require(operatorBalance > 0, 'no funds to withdraw');
+        require(loanWithdrawn == true, 'borrower didnt withdraw');
         uint256 allFees = operatorBalance;
         operatorBalance = 0;
         require(DAIToken.transfer(msg.sender, allFees), 'transfer failed');
@@ -274,7 +275,7 @@ contract LoanContract is LoanContractInterface {
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
 
-        DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount);
+        require(DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount), 'error while transfer');
 
         emit FundsUnlockedWithdrawn(
             address(this),
@@ -282,7 +283,7 @@ contract LoanContract is LoanContractInterface {
             lenderPosition[msg.sender].bidAmount
         );
 
-        if (loanWithdrawnAmount == auctionBalance) {
+        if (loanWithdrawnAmount == auctionBalance.add(operatorBalance)) {
             setState(LoanState.CLOSED);
             emit FullyFundsUnlockedWithdrawn(address(this));
         }
@@ -298,7 +299,7 @@ contract LoanContract is LoanContractInterface {
 
         emit RefundWithdrawn(address(this), msg.sender, lenderPosition[msg.sender].bidAmount);
 
-        DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount);
+        require(DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount), 'error while transfer');
 
         if (loanWithdrawnAmount == auctionBalance) {
             setState(LoanState.CLOSED);
@@ -314,7 +315,7 @@ contract LoanContract is LoanContractInterface {
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
-        DAIToken.transfer(msg.sender, amount);
+        require(DAIToken.transfer(msg.sender, amount), 'error while transfer');
 
         if (loanWithdrawnAmount == borrowerDebt) {
             setState(LoanState.CLOSED);
@@ -333,7 +334,7 @@ contract LoanContract is LoanContractInterface {
 
         loanWithdrawn = true;
         emit LoanFundsWithdrawn(address(this), msg.sender, auctionBalance);
-        DAIToken.transfer(msg.sender, auctionBalance);
+        require(DAIToken.transfer(msg.sender, auctionBalance), 'error while transfer');
     }
 
     function onRepaymentReceived(address from, uint256 amount)
