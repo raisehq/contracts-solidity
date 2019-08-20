@@ -1,7 +1,7 @@
 pragma solidity 0.5.10;
 
-import './Authorization.sol';
-import './LoanContract.sol';
+import "./Authorization.sol";
+import "./LoanContract.sol";
 
 contract LoanContractDispatcher is Ownable {
     Authorization auth;
@@ -20,12 +20,12 @@ contract LoanContractDispatcher is Ownable {
     mapping(address => bool) public isLoanContract;
 
     modifier onlyKYC {
-        require(auth.isKYCConfirmed(msg.sender), 'user does not have KYC');
+        require(auth.isKYCConfirmed(msg.sender), "user does not have KYC");
         _;
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == administrator, 'Caller is not an administrator');
+        require(msg.sender == administrator, "Caller is not an administrator");
         _;
     }
 
@@ -73,7 +73,7 @@ contract LoanContractDispatcher is Ownable {
     function setMinAmount(uint256 requestedMinAmount) public onlyAdmin {
         require(
             requestedMinAmount <= maxAmount,
-            'Minimum amount needs to be lesser or equal than maximum amount'
+            "Minimum amount needs to be lesser or equal than maximum amount"
         );
         minAmount = requestedMinAmount;
         emit MinAmountUpdated(minAmount, address(this));
@@ -82,7 +82,7 @@ contract LoanContractDispatcher is Ownable {
     function setMaxAmount(uint256 requestedMaxAmount) public onlyAdmin {
         require(
             requestedMaxAmount >= minAmount,
-            'Maximum amount needs to be greater or equal than minimum amount'
+            "Maximum amount needs to be greater or equal than minimum amount"
         );
         maxAmount = requestedMaxAmount;
         emit MaxAmountUpdated(maxAmount, address(this));
@@ -91,7 +91,7 @@ contract LoanContractDispatcher is Ownable {
     function setMinInterestRate(uint256 requestedMinInterestRate) public onlyAdmin {
         require(
             requestedMinInterestRate <= maxInterestRate,
-            'Minimum interest needs to be lesser or equal than maximum interest'
+            "Minimum interest needs to be lesser or equal than maximum interest"
         );
         minInterestRate = requestedMinInterestRate;
         emit MinInterestRateUpdated(minInterestRate, address(this));
@@ -100,7 +100,7 @@ contract LoanContractDispatcher is Ownable {
     function setMaxInterestRate(uint256 requestedMaxInterestRate) public onlyAdmin {
         require(
             requestedMaxInterestRate >= minInterestRate,
-            'Maximum interest needs to be greater or equal than minimum interest'
+            "Maximum interest needs to be greater or equal than minimum interest"
         );
         maxInterestRate = requestedMaxInterestRate;
         emit MaxInterestRateUpdated(maxInterestRate, address(this));
@@ -113,22 +113,22 @@ contract LoanContractDispatcher is Ownable {
         uint256 loanMaxInterestRate,
         uint256 termEndTimestamp
     ) public onlyKYC returns (address) {
-        require(administrator != address(0), 'There is no administrator set');
+        require(administrator != address(0), "There is no administrator set");
         require(
             loanMinAmount >= minAmount &&
                 loanMinAmount <= maxAmount &&
                 loanMinAmount <= loanMaxAmount,
-            'minimum amount not correct'
+            "minimum amount not correct"
         );
         require(
             loanMaxAmount >= minAmount &&
                 loanMaxAmount <= maxAmount &&
                 loanMaxAmount >= loanMinAmount,
-            'maximum amount not correct'
+            "maximum amount not correct"
         );
         require(
             loanMaxInterestRate >= minInterestRate && loanMaxInterestRate <= maxInterestRate,
-            'maximum interest rate not correct'
+            "maximum interest rate not correct"
         );
 
         LoanContract loanContract = new LoanContract(

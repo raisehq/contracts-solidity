@@ -1,9 +1,9 @@
 pragma solidity 0.5.10;
 
-import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
-import './Authorization.sol';
-import './LoanContractInterface.sol';
-import './DAIProxyInterface.sol';
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "./Authorization.sol";
+import "./LoanContractInterface.sol";
+import "./DAIProxyInterface.sol";
 
 contract DAIProxy is DAIProxyInterface {
     ERC20 DAIToken;
@@ -49,19 +49,19 @@ contract DAIProxy is DAIProxyInterface {
     }
 
     function transfer(address loanAddress, uint256 amount) internal {
-        require(DAIToken.allowance(msg.sender, address(this)) >= amount, 'funding not approved');
+        require(DAIToken.allowance(msg.sender, address(this)) >= amount, "funding not approved");
         uint256 balance = DAIToken.balanceOf(msg.sender);
-        require(balance >= amount, 'Not enough funds');
+        require(balance >= amount, "Not enough funds");
         DAIToken.transferFrom(msg.sender, loanAddress, amount);
     }
 
     modifier onlyKYCanFund {
-        require(auth.isKYCConfirmed(msg.sender), 'user does not have KYC');
+        require(auth.isKYCConfirmed(msg.sender), "user does not have KYC");
         _;
     }
 
     modifier onlyHasDepositCanFund {
-        require(auth.hasDeposited(msg.sender), 'user does not have a deposit');
+        require(auth.hasDeposited(msg.sender), "user does not have a deposit");
         _;
     }
 }

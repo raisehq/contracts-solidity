@@ -1,9 +1,9 @@
 pragma solidity 0.5.10;
 
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
-import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
-import 'openzeppelin-solidity/contracts/math/SafeMath.sol';
-import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
 contract ReferralTracker is Ownable, Pausable {
     using SafeMath for uint256;
@@ -34,12 +34,12 @@ contract ReferralTracker is Ownable, Pausable {
     }
 
     modifier onlyRegistry() {
-        require(msg.sender == registryAddress, 'the caller is not the registry');
+        require(msg.sender == registryAddress, "the caller is not the registry");
         _;
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, 'the caller is not the admin');
+        require(msg.sender == admin, "the caller is not the admin");
         _;
     }
 
@@ -54,7 +54,7 @@ contract ReferralTracker is Ownable, Pausable {
 
     function removeFunds(address to) public onlyAdmin {
         uint256 amount = token.balanceOf(address(this));
-        require(amount > 0, 'ReferralTracker has no funds to withdraw');
+        require(amount > 0, "ReferralTracker has no funds to withdraw");
         token.transfer(to, amount);
         emit FundsRemoved(address(this), msg.sender, amount);
     }
@@ -66,11 +66,11 @@ contract ReferralTracker is Ownable, Pausable {
     }
 
     function withdraw(address to) public whenNotPaused {
-        require(unclaimedReferrals[msg.sender] > 0, 'no referrals to claim');
+        require(unclaimedReferrals[msg.sender] > 0, "no referrals to claim");
         uint256 trackerBalance = token.balanceOf(address(this));
         uint256 amount = REFERRAL_BONUS * unclaimedReferrals[msg.sender];
 
-        require(trackerBalance >= amount, 'Not enough funds');
+        require(trackerBalance >= amount, "Not enough funds");
         delete unclaimedReferrals[msg.sender];
 
         token.transfer(to, amount);
