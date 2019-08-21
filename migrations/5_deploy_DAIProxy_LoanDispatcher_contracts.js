@@ -1,6 +1,7 @@
 const _ = require('lodash');
 const DAIProxy = artifacts.require('DAIProxy');
 const LoanDispatcher = artifacts.require('LoanContractDispatcher');
+const LoanContract = artifacts.require('LoanContract');
 const {writeFileSync} = require('fs');
 const { getContracts, contractIsUpdated } = require('../scripts/helpers');
 
@@ -17,8 +18,6 @@ const migrationInt = async (deployer, network, accounts) => {
 	const daiproxyHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'DAIProxy', DAIProxy);
 	const loandispatcherHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'LoanDispatcher' ,LoanDispatcher)
 	
-	let data = {};
-
 	if (daiproxyHasBeenUpdated) {
 		await deployer.deploy(DAIProxy, authAddress, daiAddress, {
 			from: deployerAddress
@@ -37,7 +36,8 @@ const migrationInt = async (deployer, network, accounts) => {
 			},
 			abi: {
 				DAIProxy: DAIProxy.abi,
-				LoanDispatcher: LoanDispatcher.abi
+				LoanDispatcher: LoanDispatcher.abi,
+				LoanContract: LoanContract.abi
 			},
 			bytecode: {
 				DAIProxy: DAIProxy.bytecode,
@@ -61,7 +61,8 @@ const migrationInt = async (deployer, network, accounts) => {
 				}
 			},
 			abi: {
-				LoanDispatcher: LoanDispatcher.abi
+				LoanDispatcher: LoanDispatcher.abi,
+				LoanContract: LoanContract.abi
 			},
 			bytecode: {
 				LoanDispatcher: LoanDispatcher.bytecode

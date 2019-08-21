@@ -38,7 +38,8 @@ contract LoanContractDispatcher is Ownable {
         uint256 maxAmount,
         uint256 maxInterestRate,
         uint256 termEndTimestamp,
-        address indexed administrator
+        address indexed administrator,
+        uint256 operatorFee
     );
 
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
@@ -154,7 +155,8 @@ contract LoanContractDispatcher is Ownable {
             loanMaxAmount,
             loanMaxInterestRate,
             termEndTimestamp,
-            administrator
+            administrator,
+            operatorFee
         );
 
         return address(loanContract);
