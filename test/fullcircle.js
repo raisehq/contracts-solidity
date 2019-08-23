@@ -18,7 +18,7 @@ const KYCContract = artifacts.require('KYCRegistry');
 const LoanContractDispatcherContract = artifacts.require('LoanContractDispatcher');
 
 // mine blocks so it passes "time"
-const { waitNBlocks, calculateNetLoan, calculatePendingDebt } = require('./helpers');
+const { waitNBlocks, calculateNetLoan, calculatePendingDebt, increaseTime, increaseToTime } = require('./helpers');
 
 
 
@@ -53,6 +53,7 @@ contract('Integration', (accounts) => {
         let loanMaxAmount;
         let loanMinAmount;
         let operatorPercentFee;
+        let auctionLength;
         let Loan;
         const daiBalance = web3.utils.toWei(new BN(100, 10));
         beforeEach(async () => {
@@ -107,24 +108,23 @@ contract('Integration', (accounts) => {
 
             // borrower creates loan
             const currentBlock = await web3.eth.getBlock('latest');
-            const auctionLengthBlock = (60 * 60) / averageMiningBlockTime; // 1 hour in blocktime
-            const loanRepaymentTime = currentBlock.timestamp + (2 * 60 * 60); // 2 hours in seconds
+            const loanRepaymentTime = 2 * 60 * 60; // 2 hours in seconds
             loanMinAmount = web3.utils.toWei(new BN(90, 10));
             loanMaxAmount = web3.utils.toWei(new BN(100, 10));
             const maxInterestRate = 5000;
-
+            auctionLength = 60 * 60;
             await LoanDispatcher.setMinAmount(loanMinAmount, {from: admin});
             await LoanDispatcher.setMaxInterestRate(maxInterestRate, {from: admin});
-
+            await LoanDispatcher.setMinTermLength(1, {from: admin})
+            await LoanDispatcher.setMinAuctionLength(1, {from: admin})
             await LoanDispatcher.deploy(
-                auctionLengthBlock,
                 loanMinAmount,
                 loanMaxAmount,
                 maxInterestRate,
                 loanRepaymentTime,
+                auctionLength,
                 {from: borrower}
             );
-
             const loanEventHistory = await LoanDispatcher.getPastEvents('LoanContractCreated'); // {fromBlock: 0, toBlock: "latest"} put this to get all
             const loanAddress = loanEventHistory[0].returnValues.contractAddress;
             
@@ -381,10 +381,9 @@ contract('Integration', (accounts) => {
             const loanTxScope = await truffleAssert.createTransactionResult(Loan, fundTx.tx);
             truffleAssert.eventEmitted(loanTxScope, 'Funded', (ev) => ev.loanAddress == Loan.address && ev.lender == lender && ev.amount.eq(fundingAmount));
             truffleAssert.eventEmitted(loanTxScope, 'MinimumFundingReached', (ev) => ev.loanAddress == Loan.address && ev.currentBalance.eq(loanMinAmount));
-
+            
             // await for auction to expire
-            const auctionLengthBlock = (60 * 60) / averageMiningBlockTime;
-            await waitNBlocks(auctionLengthBlock + 2);
+            await increaseTime(auctionLength+10)
             
             // check if loan is funded
             const amountFundedByLender = await Loan.getLenderBidAmount(lender);
@@ -396,7 +395,6 @@ contract('Integration', (accounts) => {
             const loanFundedAmount = await Loan.auctionBalance();
 
             const totalDebt = await Loan.borrowerDebt();
-            console.log('TEST', fromWei(totalDebt), fromWei(await Loan.auctionBalance()));
             truffleAssert.eventEmitted(withTx, 'AuctionSuccessful', (ev) => ev.loanAddress == Loan.address && ev.balanceToRepay.eq(totalDebt) && ev.auctionBalance.eq(calculateNetLoan(fundingAmount, operatorPercentFee)));
 
             // check borrower received amount

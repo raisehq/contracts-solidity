@@ -13,6 +13,8 @@ contract LoanContractDispatcher is Ownable {
     uint256 public operatorFee;
     uint256 public minAmount;
     uint256 public maxAmount;
+    uint256 public minTermLength;
+    uint256 public minAuctionLength;
 
     uint256 public minInterestRate;
     uint256 public maxInterestRate;
@@ -33,13 +35,13 @@ contract LoanContractDispatcher is Ownable {
         address loanDispatcher,
         address contractAddress,
         address indexed originator,
-        uint256 auctionBlockLength,
         uint256 minAmount,
         uint256 maxAmount,
         uint256 maxInterestRate,
         uint256 termEndTimestamp,
         address indexed administrator,
-        uint256 operatorFee
+        uint256 operatorFee,
+        uint256 auctionLength
     );
 
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
@@ -60,6 +62,8 @@ contract LoanContractDispatcher is Ownable {
         maxInterestRate = 24000;
 
         operatorFee = 1000000000000000000; // 1 % operator fee, expressed in wei
+        minTermLength = 2592000;
+        minAuctionLength = 2592000;
     }
 
     function setAdministrator(address admin) public onlyOwner {
@@ -107,12 +111,20 @@ contract LoanContractDispatcher is Ownable {
         emit MaxInterestRateUpdated(maxInterestRate, address(this));
     }
 
+    function setMinTermLength(uint256 requestedMinTermLength) public onlyAdmin {
+        minTermLength = requestedMinTermLength;
+    }
+
+    function setMinAuctionLength(uint256 requestedMinAuctionLength) public onlyAdmin {
+        minAuctionLength = requestedMinAuctionLength;
+    }
+
     function deploy(
-        uint256 auctionBlockLength,
         uint256 loanMinAmount,
         uint256 loanMaxAmount,
         uint256 loanMaxInterestRate,
-        uint256 termEndTimestamp
+        uint256 termLength,
+        uint256 auctionLength
     ) public onlyKYC returns (address) {
         require(administrator != address(0), "There is no administrator set");
         require(
@@ -131,10 +143,11 @@ contract LoanContractDispatcher is Ownable {
             loanMaxInterestRate >= minInterestRate && loanMaxInterestRate <= maxInterestRate,
             "maximum interest rate not correct"
         );
+        require(termLength >= minTermLength, "Term length is to small");
+        require(auctionLength >= minAuctionLength, "Auction length is to small");
 
         LoanContract loanContract = new LoanContract(
-            auctionBlockLength,
-            termEndTimestamp,
+            termLength,
             loanMinAmount,
             loanMaxAmount,
             loanMaxInterestRate,
@@ -142,7 +155,8 @@ contract LoanContractDispatcher is Ownable {
             DAITokenAddress,
             DAIProxyAddress,
             administrator,
-            operatorFee
+            operatorFee,
+            auctionLength
         );
         isLoanContract[address(loanContract)] = true;
 
@@ -150,13 +164,13 @@ contract LoanContractDispatcher is Ownable {
             address(this),
             address(loanContract),
             msg.sender,
-            block.number + auctionBlockLength,
             loanMinAmount,
             loanMaxAmount,
             loanMaxInterestRate,
-            termEndTimestamp,
+            termLength,
             administrator,
-            operatorFee
+            operatorFee,
+            auctionLength
         );
 
         return address(loanContract);

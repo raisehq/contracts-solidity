@@ -45,7 +45,6 @@ async function  increaseTime(web3, duration) {
     if (!BN.isBN(duration)) {
       duration = new BN(duration);
     }
-  
     if (duration.isNeg()) throw Error(`Cannot increase time by a negative amount (${duration})`);
   
     await promisify(web3.currentProvider.send.bind(web3.currentProvider))({
@@ -54,7 +53,7 @@ async function  increaseTime(web3, duration) {
       params: [duration.toNumber()],
     });
   
-    await waitNBlocks(web3, 1);
+    await advanceBlock(web3, 1);
 }
 
 async function increaseToTime(web3, target) {

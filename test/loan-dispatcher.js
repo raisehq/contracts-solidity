@@ -145,6 +145,26 @@ contract('LoanContractDispatcher', (accounts) => {
                     expect(error).to.equal(undefined);
                 }
             });
+            it('Expects to change fixed min term length if admin', async() => {
+                try {
+                    await LoanDispatcher.setAdministrator(admin, {from: owner});
+                    await LoanDispatcher.setMinTermLength(2000, {from: admin});
+                    const fixedMaxInterest = Number(await LoanDispatcher.minTermLength());
+                    expect(fixedMaxInterest).to.equal(2000);
+                } catch (error) {
+                    expect(error).to.equal(undefined);
+                }
+            });
+            it('Expects to change fixed min auction length if admin', async() => {
+                try {
+                    await LoanDispatcher.setAdministrator(admin, {from: owner});
+                    await LoanDispatcher.setMinAuctionLength(2000, {from: admin});
+                    const fixedMaxInterest = Number(await LoanDispatcher.minAuctionLength());
+                    expect(fixedMaxInterest).to.equal(2000);
+                } catch (error) {
+                    expect(error).to.equal(undefined);
+                }
+            });
             it('Expects to not change fixed min amount if greater than max amount', async() => {
                 try {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
@@ -202,18 +222,17 @@ contract('LoanContractDispatcher', (accounts) => {
                 try {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
 
-                    const auctionBlockLength = 20;
                     const minAmount = 1000;
                     const maxAmount = '2500000000000';
                     const maxInterestRate = 2000;
-                    const termEndTimestamp = 1000;
-
+                    const termLength = 2592000;
+                    const auctionLength = 2592000;
                     await LoanDispatcher.deploy(
-                        auctionBlockLength,
                         minAmount,
                         maxAmount,
                         maxInterestRate,
-                        termEndTimestamp,
+                        termLength,
+                        auctionLength,
                         {from: borrower}
                     );
                 } catch (error) {
@@ -224,18 +243,17 @@ contract('LoanContractDispatcher', (accounts) => {
                 try {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
 
-                    const auctionBlockLength = 20;
                     const minAmount = '1000000000000000000000';
                     const maxAmount = '3500000000000000000000000';
                     const maxInterestRate = 2000;
-                    const termEndTimestamp = 1000;
-
+                    const termLength = 2592000;
+                    const auctionLength = 2592000;
                     await LoanDispatcher.deploy(
-                        auctionBlockLength,
                         minAmount,
                         maxAmount,
                         maxInterestRate,
-                        termEndTimestamp,
+                        termLength,
+                        auctionLength,
                         {from: borrower}
                     );
                 } catch (error) {
@@ -246,18 +264,59 @@ contract('LoanContractDispatcher', (accounts) => {
                 try {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
 
-                    const auctionBlockLength = 20;
                     const minAmount = '1000000000000000000000';
                     const maxAmount = '2500000000000000000000000';
                     const maxInterestRate = 20000;
-                    const termEndTimestamp = 1000;
-
+                    const termLength = 2592000;
+                    const auctionLength = 2592000;
                     await LoanDispatcher.deploy(
-                        auctionBlockLength,
                         minAmount,
                         maxAmount,
                         maxInterestRate,
-                        termEndTimestamp,
+                        termLength,
+                        auctionLength,
+                        {from: borrower}
+                    );
+                } catch (error) {
+                    expect(error).to.not.equal(undefined);
+                }
+            });
+            it('Expects not to deploy loan when termLength does not comply with limits', async () => {
+                try {
+                    await LoanDispatcher.setAdministrator(admin, {from: owner});
+
+                    const minAmount = '1000000000000000000000';
+                    const maxAmount = '2500000000000000000000000';
+                    const maxInterestRate = 20000;
+                    const termLength = 20;
+                    const auctionLength = 2592000;
+                    await LoanDispatcher.deploy(
+                        minAmount,
+                        maxAmount,
+                        maxInterestRate,
+                        termLength,
+                        auctionLength,
+                        {from: borrower}
+                    );
+                } catch (error) {
+                    expect(error).to.not.equal(undefined);
+                }
+            });
+            it('Expects not to deploy loan when auctionLength does not comply with limits', async () => {
+                try {
+                    await LoanDispatcher.setAdministrator(admin, {from: owner});
+
+                    const minAmount = '1000000000000000000000';
+                    const maxAmount = '2500000000000000000000000';
+                    const maxInterestRate = 20000;
+                    const termLength = 2592000;
+                    const auctionLength = 20;
+                    await LoanDispatcher.deploy(
+                        minAmount,
+                        maxAmount,
+                        maxInterestRate,
+                        termLength,
+                        auctionLength,
                         {from: borrower}
                     );
                 } catch (error) {
@@ -268,18 +327,17 @@ contract('LoanContractDispatcher', (accounts) => {
                 try {
                     await LoanDispatcher.setAdministrator(admin, {from: owner});
                     
-                    const auctionBlockLength = 20;
                     const minAmount = '1000000000000000000000';
                     const maxAmount = '2500000000000000000000000';
                     const maxInterestRate = 1500;
-                    const termEndTimestamp = 1000;
-
+                    const termLength = 2592000;
+                    const auctionLength = 2592000;
                     await LoanDispatcher.deploy(
-                        auctionBlockLength,
                         minAmount,
                         maxAmount,
                         maxInterestRate,
-                        termEndTimestamp,
+                        termLength,
+                        auctionLength,
                         {from: borrower}
                     );
                     const loanEventHistory = await LoanDispatcher.getPastEvents('LoanContractCreated'); // {fromBlock: 0, toBlock: "latest"} put this to get all
@@ -291,18 +349,17 @@ contract('LoanContractDispatcher', (accounts) => {
             });
             it('Expects not to deploy loan contract when admin is not set', async () => {
                 try {
-                    const auctionBlockLength = 20;
                     const minAmount = '1000000000000000000000';
                     const maxAmount = '2500000000000000000000000';
                     const maxInterestRate = 1500;
-                    const termEndTimestamp = 1000;
-
+                    const termLength = 2592000;
+                    const auctionLength = 2592000;
                     await LoanDispatcher.deploy(
-                        auctionBlockLength,
                         minAmount,
                         maxAmount,
                         maxInterestRate,
-                        termEndTimestamp,
+                        termLength,
+                        auctionLength,
                         {from: borrower}
                     );
                 } catch (error) {

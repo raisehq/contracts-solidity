@@ -15,14 +15,14 @@ contract LoanContract is LoanContractInterface {
     uint256 public minAmount;
     uint256 public maxAmount;
 
-    uint256 public auctionStartBlock;
-    uint256 public auctionEndBlock;
+    uint256 public auctionEndTimestamp;
+    uint256 public auctionStartTimestamp;
+    uint256 public auctionLength;
 
-    uint256 public lastFundedBlock;
-
-    uint256 public auctionBlockLength;
+    uint256 public lastFundedTimestamp;
 
     uint256 public termEndTimestamp;
+    uint256 public termLength;
 
     uint256 public auctionBalance;
     uint256 public loanWithdrawnAmount;
@@ -60,8 +60,8 @@ contract LoanContract is LoanContractInterface {
         uint256 minAmount,
         uint256 maxAmount,
         uint256 maxInterestRate,
-        uint256 auctionStartBlock,
-        uint256 auctionEndBlock,
+        uint256 auctionStartTimestamp,
+        uint256 auctionEndTimestamp,
         address indexed administrator,
         uint256 operatorFee
     );
@@ -72,14 +72,14 @@ contract LoanContract is LoanContractInterface {
         uint256 balanceToRepay,
         uint256 auctionBalance,
         uint256 interest,
-        uint256 fundedBlock
+        uint256 fundedTimestamp
     );
     event Funded(
         address loanAddress,
         address indexed lender,
         uint256 amount,
         uint256 interest,
-        uint256 fundedBlock
+        uint256 fundedTimestamp
     );
     event LoanRepaid(address loanAddress, uint256 indexed timestampRepaid);
     event RepaymentWithdrawn(address loanAddress, address indexed to, uint256 amount);
@@ -94,7 +94,7 @@ contract LoanContract is LoanContractInterface {
         uint256 auctionBalance,
         uint256 operatorBalance,
         uint256 interest,
-        uint256 fundedBlock
+        uint256 fundedTimestamp
     );
     event FundsUnlockedWithdrawn(address loanAddress, address indexed lender, uint256 amount);
     event FullyFundsUnlockedWithdrawn(address loanAddress);
@@ -145,8 +145,7 @@ contract LoanContract is LoanContractInterface {
     }
 
     constructor(
-        uint256 _auctionBlockLength,
-        uint256 _termEndTimestamp,
+        uint256 _termLength,
         uint256 _minAmount,
         uint256 _maxAmount,
         uint256 _maxInterestRate,
@@ -154,7 +153,8 @@ contract LoanContract is LoanContractInterface {
         address DAITokenAddress,
         address proxyAddress,
         address _administrator,
-        uint256 _operatorFee
+        uint256 _operatorFee,
+        uint256 _auctionLength
     ) public {
         DAIToken = ERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
@@ -165,11 +165,11 @@ contract LoanContract is LoanContractInterface {
         minAmount = _minAmount;
         maxAmount = _maxAmount;
 
-        auctionBlockLength = _auctionBlockLength;
-        auctionStartBlock = block.number;
-        auctionEndBlock = auctionStartBlock.add(auctionBlockLength);
+        auctionLength = _auctionLength;
+        auctionStartTimestamp = block.timestamp;
+        auctionEndTimestamp = auctionStartTimestamp + auctionLength;
 
-        termEndTimestamp = _termEndTimestamp;
+        termLength = _termLength;
 
         loanWithdrawnAmount = 0;
 
@@ -182,8 +182,8 @@ contract LoanContract is LoanContractInterface {
             minAmount,
             maxAmount,
             maxInterestRate,
-            auctionStartBlock,
-            auctionEndBlock,
+            auctionStartTimestamp,
+            auctionEndTimestamp,
             administrator,
             operatorFee
         );
@@ -194,13 +194,20 @@ contract LoanContract is LoanContractInterface {
         borrowerDebt = calculateValueWithInterest(auctionBalance);
         operatorBalance = auctionBalance.mul(operatorFee).div(100000000000000000000);
         auctionBalance = auctionBalance - operatorBalance;
+
+        if (block.timestamp < auctionEndTimestamp) {
+            termEndTimestamp = block.timestamp.add(termLength);
+        } else {
+            termEndTimestamp = auctionEndTimestamp.add(termLength);
+        }
+
         emit AuctionSuccessful(
             address(this),
             borrowerDebt,
             auctionBalance,
             operatorBalance,
             getInterestRate(),
-            lastFundedBlock
+            lastFundedTimestamp
         );
         return true;
     }
@@ -228,14 +235,14 @@ contract LoanContract is LoanContractInterface {
         lenderPosition[lender].bidAmount = lenderPosition[lender].bidAmount.add(amount);
         auctionBalance = auctionBalance.add(amount);
 
-        lastFundedBlock = block.number;
+        lastFundedTimestamp = block.timestamp;
 
         if (auctionBalance >= minAmount && !minimumReached) {
             minimumReached = true;
-            emit Funded(address(this), lender, amount, interest, lastFundedBlock);
+            emit Funded(address(this), lender, amount, interest, lastFundedTimestamp);
             emit MinimumFundingReached(address(this), auctionBalance, interest);
         } else {
-            emit Funded(address(this), lender, amount, interest, lastFundedBlock);
+            emit Funded(address(this), lender, amount, interest, lastFundedTimestamp);
         }
 
         if (auctionBalance == maxAmount) {
@@ -245,7 +252,7 @@ contract LoanContract is LoanContractInterface {
                 borrowerDebt,
                 auctionBalance,
                 interest,
-                lastFundedBlock
+                lastFundedTimestamp
             );
         }
         return true;
@@ -366,11 +373,11 @@ contract LoanContract is LoanContractInterface {
     }
 
     function isAuctionExpired() public view returns (bool) {
-        return block.number > auctionEndBlock;
+        return block.timestamp > auctionEndTimestamp;
     }
 
     function isDefaulted() public view returns (bool) {
-        if (block.timestamp <= termEndTimestamp) {
+        if (block.timestamp <= auctionEndTimestamp || block.timestamp <= termEndTimestamp) {
             return false;
         }
 
@@ -403,13 +410,13 @@ contract LoanContract is LoanContractInterface {
     function getInterestRate() public view returns (uint256) {
         if (currentState == LoanState.CREATED) {
             return
-                maxInterestRate.mul(block.number.sub(auctionStartBlock)).div(
-                    auctionEndBlock.sub(auctionStartBlock)
+                maxInterestRate.mul(block.timestamp.sub(auctionStartTimestamp)).div(
+                    auctionEndTimestamp.sub(auctionStartTimestamp)
                 );
         } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
             return
-                maxInterestRate.mul(lastFundedBlock.sub(auctionStartBlock)).div(
-                    auctionEndBlock.sub(auctionStartBlock)
+                maxInterestRate.mul(lastFundedTimestamp.sub(auctionStartTimestamp)).div(
+                    auctionEndTimestamp.sub(auctionStartTimestamp)
                 );
         } else {
             return 0;
