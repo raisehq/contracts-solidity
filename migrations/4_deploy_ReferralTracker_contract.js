@@ -73,17 +73,19 @@ const migrationInt = async (deployer, network, accounts) => {
                         ReferralTracker: ReferralTracker.address
                     }
                 },
-                abi: {
-                    Deposit: depositAbi,
-                    ReferralTracker: ReferralTracker.abi
-                },
                 bytecode: {
                     Deposit: depositBytecode,
                     ReferralTracker: ReferralTracker.bytecode
                 }
             };
-
-            const newContracts = _.merge(contracts, data)
+            const abis = {
+                Deposit: depositAbi,
+                ReferralTracker: ReferralTracker.abi
+            };
+            const newContracts = _.merge(contracts, data);
+            Object.keys(abis).forEach(key => {
+                contracts['abi'][key] = abis[key];
+            });
 
             await writeFileSync('./contracts.json', JSON.stringify(newContracts));
         } else {

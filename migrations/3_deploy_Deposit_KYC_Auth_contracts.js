@@ -25,6 +25,7 @@ const migrationInt = async (deployer, network, accounts) => {
         const authHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'Auth', Auth);
 
         let data = {};
+        let abis = {};
 
         if (kycHasBeenUpdated()) { // deploy all contracts that depend on kyc contract if kyc changed
             await deployer.deploy(KYC, {
@@ -45,16 +46,16 @@ const migrationInt = async (deployer, network, accounts) => {
                         Auth: Auth.address
                     }
                 },
-                abi: {
-                    KYC: KYC.abi,
-                    Auth: Auth.abi,
-                    Deposit: Deposit.abi
-                },
                 bytecode: {
                     KYC: KYC.bytecode,
                     Auth: Auth.bytecode,
                     Deposit: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
                 }
+            };
+            abis = {
+                KYC: KYC.abi,
+                Auth: Auth.abi,
+                Deposit: Deposit.abi
             };
         } else if (depositHasBeenUpdated()) { // deploy all contracts that depend on deposit contract if deposit changed
             console.log('|============ KYC: no changes to deploy ==============|');
@@ -73,14 +74,14 @@ const migrationInt = async (deployer, network, accounts) => {
                         Auth: Auth.address
                     }
                 },
-                abi: {
-                    Auth: Auth.abi,
-                    Deposit: Deposit.abi
-                },
                 bytecode: {
                     Auth: Auth.bytecode,
                     Deposit: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
                 }
+            };
+            abis = {
+                Auth: Auth.abi,
+                Deposit: Deposit.abi
             };
         } else if (authHasBeenUpdated()) { // deploy auth if changed
             await deployer.deploy(Auth, contracts['KYC'].address, contracts['Deposit'].address, {
@@ -94,12 +95,12 @@ const migrationInt = async (deployer, network, accounts) => {
                         Auth: Auth.address
                     }
                 },
-                abi: {
-                    Auth: Auth.abi,
-                },
                 bytecode: {
                     Auth: Auth.bytecode
                 }
+            };
+            abis = {
+                Auth: Auth.abi
             };
         } else {
             console.log('|============ KYC && Deposit && Auth: no changes to deploy ==============|');
@@ -137,7 +138,10 @@ const migrationInt = async (deployer, network, accounts) => {
                 }
             }
 
-            const newContracts = _.merge(contracts, data);
+            let newContracts = _.merge(contracts, data);
+            Object.keys(abis).forEach(key => {
+                contracts['abi'][key] = abis[key];
+            });
 
             await writeFileSync('./contracts.json', JSON.stringify(newContracts));
         }

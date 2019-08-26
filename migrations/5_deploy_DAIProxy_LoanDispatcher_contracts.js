@@ -17,7 +17,8 @@ const migrationInt = async (deployer, network, accounts) => {
 
 	const daiproxyHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'DAIProxy', DAIProxy);
 	const loandispatcherHasBeenUpdated = () => contractIsUpdated(contracts, netId, 'LoanDispatcher' ,LoanDispatcher)
-	
+	let data = {};
+	let abis = {};
 	if (daiproxyHasBeenUpdated) {
 		await deployer.deploy(DAIProxy, authAddress, daiAddress, {
 			from: deployerAddress
@@ -34,15 +35,15 @@ const migrationInt = async (deployer, network, accounts) => {
 					LoanDispatcher: LoanDispatcher.address,
 				}
 			},
-			abi: {
-				DAIProxy: DAIProxy.abi,
-				LoanDispatcher: LoanDispatcher.abi,
-				LoanContract: LoanContract.abi
-			},
 			bytecode: {
 				DAIProxy: DAIProxy.bytecode,
 				LoanDispatcher: LoanDispatcher.bytecode
 			}
+		};
+		abis = {
+			DAIProxy: DAIProxy.abi,
+			LoanDispatcher: LoanDispatcher.abi,
+			LoanContract: LoanContract.abi
 		};
 	}
 	else if (loandispatcherHasBeenUpdated) {
@@ -60,13 +61,13 @@ const migrationInt = async (deployer, network, accounts) => {
 					LoanDispatcher: LoanDispatcher.address,
 				}
 			},
-			abi: {
-				LoanDispatcher: LoanDispatcher.abi,
-				LoanContract: LoanContract.abi
-			},
 			bytecode: {
 				LoanDispatcher: LoanDispatcher.bytecode
 			}
+		};
+		abis = {
+			LoanDispatcher: LoanDispatcher.abi,
+			LoanContract: LoanContract.abi
 		};
 	} else {
 		console.log('|============ DAIProxy && LoanDispatcher: no changes to deploy ==============|');
@@ -80,6 +81,9 @@ const migrationInt = async (deployer, network, accounts) => {
 		}
 		
 		const newContracts = _.merge(contracts, data);
+		Object.keys(abis).forEach(key => {
+			contracts['abi'][key] = abis[key];
+		});
 		
 		await writeFileSync('./contracts.json', JSON.stringify(newContracts));
 	}

@@ -96,18 +96,24 @@ const migrationInt = async (deployer, network, accounts) => {
                         DAI: DAIAddress
                     }
                 },
-                abi: {
-                    HeroToken: HeroToken.abi,
-                    DAI: DAI.abi,
-                },
+                // abi: {
+                //     HeroToken: HeroToken.abi,
+                //     DAI: DAI.abi,
+                // },
                 bytecode: {
                     HeroToken: HeroToken.bytecode,
                     DAI: DAI.bytecode
                 }
             };
+            const abis = {
+                HeroToken: HeroToken.abi,
+                DAI: DAI.abi,
+            }
             
-           const newContracts = _.merge(contracts, data);
-
+            const newContracts = _.merge(contracts, data);
+            Object.keys(abis).forEach(key => {
+                contracts['abi'][key] = abis[key];
+            });
             await writeFileSync(`./contracts.json`, JSON.stringify(newContracts, null, 2));
         }
     } catch (err) {
@@ -124,17 +130,24 @@ const mainnetMigrationInit = async (deployer, network, accounts) => {
         const data = {
             address: {
                 '1': {
-                   HeroToken: heroTokenAddress,
-                   DAI: daiAddress,
+                    HeroToken: heroTokenAddress,
+                    DAI: daiAddress,
                 }
             },
-            abi: {
-                HeroToken: Heroabi,
-                DAI: DAIabi
-            }
+            // abi: {
+            //     HeroToken: Heroabi,
+            //     DAI: DAIabi
+            // }
         };
+        const abis = {
+            HeroToken: HeroToken.abi,
+            DAI: DAI.abi,
+        }
 
         const newContracts = _.merge(contracts, data);
+        Object.keys(abis).forEach(key => {
+            contracts['abi'][key] = abis[key];
+        });
 
         await writeFileSync(`./contracts.json`, JSON.stringify(newContracts, null, 2));
     } catch (error) {
