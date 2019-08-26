@@ -96,10 +96,6 @@ const migrationInt = async (deployer, network, accounts) => {
                         DAI: DAIAddress
                     }
                 },
-                // abi: {
-                //     HeroToken: HeroToken.abi,
-                //     DAI: DAI.abi,
-                // },
                 bytecode: {
                     HeroToken: HeroToken.bytecode,
                     DAI: DAI.bytecode
@@ -133,11 +129,7 @@ const mainnetMigrationInit = async (deployer, network, accounts) => {
                     HeroToken: heroTokenAddress,
                     DAI: daiAddress,
                 }
-            },
-            // abi: {
-            //     HeroToken: Heroabi,
-            //     DAI: DAIabi
-            // }
+            }
         };
         const abis = {
             HeroToken: HeroToken.abi,
