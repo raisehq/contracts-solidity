@@ -48,7 +48,7 @@ contract('LoanContract', (accounts) => {
                 // Set Loan variables
                 minAmount = new BN(80);
                 maxAmount = new BN(100);
-                maxInterestRate = 3000;
+                maxInterestRate = new BN('100000000000000000');
                 auctionLength = 60 * 60; // 1 hour in seconds
                 termLength = 2 * 60 * 60; // 2 hours in seconds
             } catch (error) {
@@ -247,6 +247,71 @@ contract('LoanContract', (accounts) => {
 
             });
 
+        });
+        describe('Method borrower debt calculation', () => {
+            beforeEach(async () => {
+                try {
+                    DAIToken = await HeroFakeTokenContract.new({from: owner});
+                    await DAIToken.transferAmountToAddress(lender, toWei('10000'), {from: owner});
+                    await DAIToken.transferAmountToAddress(borrower, toWei('10000'), {from: owner});
+                    await DAIToken.transferAmountToAddress(bob, toWei('10000'), {from: owner});
+    
+                    DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+                
+                    currentBlock = await web3.eth.getBlock('latest');
+    
+                    // Set Loan variables
+                    maxAmount = new BN(toWei('1000'));
+                    maxInterestRate = new BN(toWei('10'));
+                    auctionLength = 60 * 60; // 1 hour in seconds
+                    termLength = 1 * 30 * 24 * 60 * 60; // 1 month in seconds
+
+                    Loan = await LoanContract.new(
+                        termLength,
+                        maxAmount,
+                        maxAmount,
+                        maxInterestRate,
+                        borrower,
+                        DAIToken.address, 
+                        DAIProxy.address,
+                        admin,
+                        operatorPercentFee,
+                        auctionLength
+                    );
+                } catch (error) {
+                    throw error;
+                }
+            });
+            it('Expects borrower debt to equal MIR * Term month length', async () => {
+                try {
+                    const fundAmount = maxAmount
+                    // LoanContract state should start with CREATED == 0
+                    const firstState = await Loan.currentState();
+                    expect(Number(firstState)).to.equal(0);
+                    
+                    // First, lender fully fund the Loan.
+                    await DAIToken.approve(DAIProxy.address, fundAmount, { from: lender });
+                    await helpers.increaseTime(auctionLength - 100);
+                    await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
+
+                    // LoanContract state  after fully funded should be  ACTIVE == 2
+                    const secondState = await Loan.currentState();
+
+                    expect(secondState).to.eq.BN(2);
+
+                    const borrowerDebt = await Loan.borrowerDebt({from: owner});
+                    const contractInterest = await Loan.getInterestRate();
+                    const totalInterest = contractInterest.mul(new BN(termLength)).div(new BN(2592000));
+                    const desiredBorrowerDebt = fundAmount.add(fundAmount.mul(totalInterest).div(new BN(toWei('100'))))
+
+                    // Check loan interest
+                    expect(borrowerDebt).to.eq.BN(desiredBorrowerDebt)
+
+                } catch (error) {
+                    console.log('the error is:: ', JSON.stringify(error, null, 2))
+                    throw error;
+                }
+            });
         });
         describe('Method getUpdateState', () => {
             beforeEach(async () => {

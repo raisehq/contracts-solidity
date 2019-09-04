@@ -59,7 +59,7 @@ contract LoanContractDispatcher is Ownable {
         maxAmount = 2500000000000000000000000; // Maximum 2.5 Million DAI
 
         minInterestRate = 0;
-        maxInterestRate = 24000;
+        maxInterestRate = 20000000000000000000; // Max default MiR 20% / 240% APR
 
         operatorFee = 1000000000000000000; // 1 % operator fee, expressed in wei
         minTermLength = 2592000;

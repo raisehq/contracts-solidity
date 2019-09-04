@@ -35,6 +35,9 @@ contract LoanContract is LoanContractInterface {
     bool public loanWithdrawn;
     bool public minimumReached;
 
+    uint256 constant MONTH_SECONDS = 2592000;
+    uint256 constant ONE_HUNDRED = 100000000000000000000;
+
     struct Position {
         uint256 bidAmount;
         bool withdrawn;
@@ -192,7 +195,7 @@ contract LoanContract is LoanContractInterface {
     function setSuccessfulAuction() internal onlyCreated returns (bool) {
         setState(LoanState.ACTIVE);
         borrowerDebt = calculateValueWithInterest(auctionBalance);
-        operatorBalance = auctionBalance.mul(operatorFee).div(100000000000000000000);
+        operatorBalance = auctionBalance.mul(operatorFee).div(ONE_HUNDRED);
         auctionBalance = auctionBalance - operatorBalance;
 
         if (block.timestamp < auctionEndTimestamp) {
@@ -404,7 +407,10 @@ contract LoanContract is LoanContractInterface {
     }
 
     function calculateValueWithInterest(uint256 value) public view returns (uint256) {
-        return value.add(value.mul(getInterestRate()).div(10000));
+        return
+            value.add(
+                value.mul(getInterestRate().mul(termLength).div(MONTH_SECONDS)).div(ONE_HUNDRED)
+            );
     }
 
     function getInterestRate() public view returns (uint256) {
