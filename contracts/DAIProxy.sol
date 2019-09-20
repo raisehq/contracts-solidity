@@ -5,20 +5,40 @@ import "./Authorization.sol";
 import "./LoanContractInterface.sol";
 import "./DAIProxyInterface.sol";
 
-contract DAIProxy is DAIProxyInterface {
+contract DAIProxy is DAIProxyInterface, Ownable {
     ERC20 DAIToken;
     Authorization auth;
+    address public administrator;
 
     event LoanFunded(address indexed funder, address indexed loanAddress, uint256 amount);
     event RepaymentReceived(address indexed repayer, address indexed loanAddress, uint256 amount);
+
+    event AuthAddressUpdated(address newAuthAddress, address administrator);
+    event DaiTokenAddressUpdated(address newDaiTokenAddress, address administrator);
+    event AdministratorUpdated(address newAdministrator);
 
     constructor(address authAddress, address DAIAddress) public {
         auth = Authorization(authAddress);
         DAIToken = ERC20(DAIAddress);
     }
 
+    function setAdministrator(address admin) external onlyOwner {
+        administrator = admin;
+        emit AdministratorUpdated(administrator);
+    }
+
+    function setDaiTokenAddress(address daiAddress) external onlyAdmin {
+        DAIToken = ERC20(daiAddress);
+        emit DaiTokenAddressUpdated(daiAddress, administrator);
+    }
+
+    function setAuthAddress(address authAddress) external onlyAdmin {
+        auth = Authorization(authAddress);
+        emit AuthAddressUpdated(authAddress, administrator);
+    }
+
     function fund(address loanAddress, uint256 fundingAmount)
-        public
+        external
         onlyKYCanFund
         onlyHasDepositCanFund
     {
@@ -36,10 +56,9 @@ contract DAIProxy is DAIProxyInterface {
         if (canTransfer == true) {
             transfer(loanAddress, newFundingAmount);
         }
-
     }
 
-    function repay(address loanAddress, uint256 repaymentAmount) public onlyKYCanFund {
+    function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCanFund {
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
         bool canTransfer = loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
 
@@ -62,6 +81,11 @@ contract DAIProxy is DAIProxyInterface {
 
     modifier onlyHasDepositCanFund {
         require(auth.hasDeposited(msg.sender), "user does not have a deposit");
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == administrator, "Caller is not an administrator");
         _;
     }
 }

@@ -50,32 +50,54 @@ contract LoanContractDispatcher is Ownable {
     event MaxInterestRateUpdated(uint256 maxInterestRate, address loanDispatcher);
     event OperatorFeeUpdated(uint256 operatorFee, address loanDispatcher, address administrator);
 
+    event AuthAddressUpdated(address newAuthAddress, address administrator);
+    event DaiTokenAddressUpdated(address newDaiTokenAddress, address administrator);
+    event DaiProxyAddressUpdated(address newDaiProxyAddress, address administrator);
+
+    event AdministratorUpdated(address newAdminAddress);
+
     constructor(address authAddress, address _DAITokenAddress, address _DAIProxyAddress) public {
         auth = Authorization(authAddress);
         DAITokenAddress = _DAITokenAddress;
         DAIProxyAddress = _DAIProxyAddress;
 
-        minAmount = 1000000000000000000; // Minimum 1 DAI
-        maxAmount = 2500000000000000000000000; // Maximum 2.5 Million DAI
+        minAmount = 1e18; //1000000000000000000; // Minimum 1 DAI
+        maxAmount = 2500000e18; //2500000000000000000000000; // Maximum 2.5 Million DAI
 
         minInterestRate = 0;
-        maxInterestRate = 20000000000000000000; // Max default MiR 20% / 240% APR
+        maxInterestRate = 20e18; //20000000000000000000; // Max default MiR 20% / 240% APR
 
-        operatorFee = 1000000000000000000; // 1 % operator fee, expressed in wei
+        operatorFee = 1e18; //1000000000000000000; // 1 % operator fee, expressed in wei
         minTermLength = 2592000;
         minAuctionLength = 2592000;
     }
 
-    function setAdministrator(address admin) public onlyOwner {
-        administrator = admin;
+    function setDaiTokenAddress(address daiAddress) external onlyAdmin {
+        DAITokenAddress = daiAddress;
+        emit DaiTokenAddressUpdated(DAITokenAddress, administrator);
     }
 
-    function setOperatorFee(uint256 newFee) public onlyAdmin {
+    function setAuthAddress(address authAddress) external onlyAdmin {
+        auth = Authorization(authAddress);
+        emit AuthAddressUpdated(authAddress, administrator);
+    }
+
+    function setDaiProxyAddress(address daiProxyAddress) external onlyAdmin {
+        DAIProxyAddress = daiProxyAddress;
+        emit DaiProxyAddressUpdated(DAIProxyAddress, administrator);
+    }
+
+    function setAdministrator(address admin) external onlyOwner {
+        administrator = admin;
+        emit AdministratorUpdated(administrator);
+    }
+
+    function setOperatorFee(uint256 newFee) external onlyAdmin {
         operatorFee = newFee;
         emit OperatorFeeUpdated(operatorFee, address(this), msg.sender);
     }
 
-    function setMinAmount(uint256 requestedMinAmount) public onlyAdmin {
+    function setMinAmount(uint256 requestedMinAmount) external onlyAdmin {
         require(
             requestedMinAmount <= maxAmount,
             "Minimum amount needs to be lesser or equal than maximum amount"
@@ -84,7 +106,7 @@ contract LoanContractDispatcher is Ownable {
         emit MinAmountUpdated(minAmount, address(this));
     }
 
-    function setMaxAmount(uint256 requestedMaxAmount) public onlyAdmin {
+    function setMaxAmount(uint256 requestedMaxAmount) external onlyAdmin {
         require(
             requestedMaxAmount >= minAmount,
             "Maximum amount needs to be greater or equal than minimum amount"
@@ -93,7 +115,7 @@ contract LoanContractDispatcher is Ownable {
         emit MaxAmountUpdated(maxAmount, address(this));
     }
 
-    function setMinInterestRate(uint256 requestedMinInterestRate) public onlyAdmin {
+    function setMinInterestRate(uint256 requestedMinInterestRate) external onlyAdmin {
         require(
             requestedMinInterestRate <= maxInterestRate,
             "Minimum interest needs to be lesser or equal than maximum interest"
@@ -102,7 +124,7 @@ contract LoanContractDispatcher is Ownable {
         emit MinInterestRateUpdated(minInterestRate, address(this));
     }
 
-    function setMaxInterestRate(uint256 requestedMaxInterestRate) public onlyAdmin {
+    function setMaxInterestRate(uint256 requestedMaxInterestRate) external onlyAdmin {
         require(
             requestedMaxInterestRate >= minInterestRate,
             "Maximum interest needs to be greater or equal than minimum interest"
@@ -111,11 +133,11 @@ contract LoanContractDispatcher is Ownable {
         emit MaxInterestRateUpdated(maxInterestRate, address(this));
     }
 
-    function setMinTermLength(uint256 requestedMinTermLength) public onlyAdmin {
+    function setMinTermLength(uint256 requestedMinTermLength) external onlyAdmin {
         minTermLength = requestedMinTermLength;
     }
 
-    function setMinAuctionLength(uint256 requestedMinAuctionLength) public onlyAdmin {
+    function setMinAuctionLength(uint256 requestedMinAuctionLength) external onlyAdmin {
         minAuctionLength = requestedMinAuctionLength;
     }
 
@@ -125,7 +147,7 @@ contract LoanContractDispatcher is Ownable {
         uint256 loanMaxInterestRate,
         uint256 termLength,
         uint256 auctionLength
-    ) public onlyKYC returns (address) {
+    ) external onlyKYC returns (address) {
         require(administrator != address(0), "There is no administrator set");
         require(
             loanMinAmount >= minAmount &&

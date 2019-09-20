@@ -192,33 +192,26 @@ contract LoanContract is LoanContractInterface {
         );
     }
 
-    function setSuccessfulAuction() internal onlyCreated returns (bool) {
-        setState(LoanState.ACTIVE);
-        borrowerDebt = calculateValueWithInterest(auctionBalance);
-        operatorBalance = auctionBalance.mul(operatorFee).div(ONE_HUNDRED);
-        auctionBalance = auctionBalance - operatorBalance;
+    function getMaxAmount() external view returns (uint256) {
+        return maxAmount;
+    }
 
-        if (block.timestamp < auctionEndTimestamp) {
-            termEndTimestamp = block.timestamp.add(termLength);
-        } else {
-            termEndTimestamp = auctionEndTimestamp.add(termLength);
-        }
+    function getAuctionBalance() external view returns (uint256) {
+        return auctionBalance;
+    }
 
-        emit AuctionSuccessful(
-            address(this),
-            borrowerDebt,
-            auctionBalance,
-            operatorBalance,
-            getInterestRate(),
-            lastFundedTimestamp
-        );
-        return true;
+    function getLenderBidAmount(address lender) external view returns (uint256) {
+        return lenderPosition[lender].bidAmount;
+    }
+
+    function getLenderWithdrawn(address lender) external view returns (bool) {
+        return lenderPosition[lender].withdrawn;
     }
 
     // Notes:
     // - This function does not track if real ERC20 balance has changed. Needs to blindly "trust" DaiProxy.
     function onFundingReceived(address lender, uint256 amount)
-        public
+        external
         onlyCreated
         onlyProxy
         returns (bool)
@@ -261,12 +254,12 @@ contract LoanContract is LoanContractInterface {
         return true;
     }
 
-    function unlockFundsWithdrawal() public onlyAdmin {
+    function unlockFundsWithdrawal() external onlyAdmin {
         setState(LoanState.FROZEN);
         emit LoanFundsUnlocked(auctionBalance);
     }
 
-    function withdrawFees() public onlyAdmin returns (bool) {
+    function withdrawFees() external onlyAdmin returns (bool) {
         require(loanWithdrawn == true, "borrower didnt withdraw");
         require(operatorBalance > 0, "no funds to withdraw");
         uint256 allFees = operatorBalance;
@@ -276,7 +269,7 @@ contract LoanContract is LoanContractInterface {
         return true;
     }
 
-    function withdrawFundsUnlocked() public onlyFrozen {
+    function withdrawFundsUnlocked() external onlyFrozen {
         require(!loanWithdrawn, "Loan already withdrawn");
         require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposit");
@@ -302,7 +295,7 @@ contract LoanContract is LoanContractInterface {
         }
     }
 
-    function withdrawRefund() public onlyFailedToFund {
+    function withdrawRefund() external onlyFailedToFund {
         require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposited.");
 
@@ -323,7 +316,7 @@ contract LoanContract is LoanContractInterface {
         }
     }
 
-    function withdrawRepayment() public onlyRepaid {
+    function withdrawRepayment() external onlyRepaid {
         require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
         uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
@@ -339,14 +332,14 @@ contract LoanContract is LoanContractInterface {
         }
     }
 
-    function withdrawLoan() public onlyActive onlyOriginator {
+    function withdrawLoan() external onlyActive onlyOriginator {
         require(!loanWithdrawn, "Already withdrawn");
 
-        if (isDefaulted()) {
-            setState(LoanState.DEFAULTED);
-            emit LoanDefaulted(address(this));
-            return;
-        }
+        // if (isDefaulted()) {
+        //     setState(LoanState.DEFAULTED);
+        //     emit LoanDefaulted(address(this));
+        //     return;
+        // }
 
         loanWithdrawn = true;
         emit LoanFundsWithdrawn(address(this), msg.sender, auctionBalance);
@@ -354,21 +347,21 @@ contract LoanContract is LoanContractInterface {
     }
 
     function onRepaymentReceived(address from, uint256 amount)
-        public
+        external
         onlyActive
         onlyProxy
         returns (bool)
     {
         require(from == originator, "from address is not the originator");
-        require(amount == borrowerDebt, "Incorrect sum repaid");
-        require(borrowerDebt != 0, "Borrower does not have any debt.");
+        // require(amount == borrowerDebt, "Incorrect sum repaid");
+        // require(borrowerDebt != 0, "Borrower does not have any debt.");
         require(borrowerDebt == amount, "Repayment amount is not the same");
 
-        if (isDefaulted()) {
-            setState(LoanState.DEFAULTED);
-            emit LoanDefaulted(address(this));
-            return false;
-        }
+        // if (isDefaulted()) {
+        //     setState(LoanState.DEFAULTED);
+        //     emit LoanDefaulted(address(this));
+        //     return false;
+        // }
 
         setState(LoanState.REPAID);
         emit LoanRepaid(address(this), block.timestamp);
@@ -401,6 +394,7 @@ contract LoanContract is LoanContractInterface {
         }
         if (isDefaulted() && currentState == LoanState.ACTIVE) {
             setState(LoanState.DEFAULTED);
+            emit LoanDefaulted(address(this));
         }
 
         return currentState;
@@ -429,19 +423,26 @@ contract LoanContract is LoanContractInterface {
         }
     }
 
-    function getMaxAmount() public view returns (uint256) {
-        return maxAmount;
-    }
+    function setSuccessfulAuction() internal onlyCreated returns (bool) {
+        setState(LoanState.ACTIVE);
+        borrowerDebt = calculateValueWithInterest(auctionBalance);
+        operatorBalance = auctionBalance.mul(operatorFee).div(ONE_HUNDRED);
+        auctionBalance = auctionBalance - operatorBalance;
 
-    function getAuctionBalance() public view returns (uint256) {
-        return auctionBalance;
-    }
+        if (block.timestamp < auctionEndTimestamp) {
+            termEndTimestamp = block.timestamp.add(termLength);
+        } else {
+            termEndTimestamp = auctionEndTimestamp.add(termLength);
+        }
 
-    function getLenderBidAmount(address lender) public view returns (uint256) {
-        return lenderPosition[lender].bidAmount;
-    }
-
-    function getLenderWithdrawn(address lender) public view returns (bool) {
-        return lenderPosition[lender].withdrawn;
+        emit AuctionSuccessful(
+            address(this),
+            borrowerDebt,
+            auctionBalance,
+            operatorBalance,
+            getInterestRate(),
+            lastFundedTimestamp
+        );
+        return true;
     }
 }
