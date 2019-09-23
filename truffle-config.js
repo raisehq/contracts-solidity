@@ -31,7 +31,7 @@ const infuraApi = (network) => `https://${network}.infura.io/v3/0d42e812ddca4057
 const HDWalletProvider = require('truffle-hdwallet-provider');
 const ownerKey =
   process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
-const adminKey = 
+const adminKey =
   process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
 const privateKeys = [ownerKey, adminKey]
 const ledgerDefaultConfig = {
@@ -65,17 +65,27 @@ module.exports = {
       gasPrice: 1000000000,
       network_id: '*' // Match any network id
     },
+    cypress: {
+      host: 'localhost',
+      port: 8545,
+      gas: 0xfffffffffff, // <-- Use this high gas value
+      gasPrice: 0x01,     // <-- Use this low gas price
+      provider: function () {
+        return new HDWalletProvider("stamp polar cup smart ill agree human episode reform trigger text forget", "http://localhost:8545",0,10);
+      },      // <-- Use this low gas price
+      network_id: '*' // Match any network id
+    },
     coverage: {
       host: "localhost",
       network_id: "*",
       port: 8545,         // <-- If you change this, also set the port option in .solcover.js.
       gas: 0xfffffffffff, // <-- Use this high gas value
-      gasPrice: 0x01      // <-- Use this low gas price
+      gasPrice: 0x01 // <-- Use this low gas price
     },
     kovan: {
       gas: 8000000,
       gasPrice: 1000000000,
-      provider: function() {
+      provider: function () {
         return new HDWalletProvider(privateKeys, infuraApi('kovan'), 0, 2);
       },
       skipDryRun: true,
@@ -85,7 +95,7 @@ module.exports = {
       //gas: 4465030,
       gas: 7400000,
       gasPrice: 1000000000,
-      provider: function() {
+      provider: function () {
         return new HDWalletProvider(privateKeys, infuraApi('goerli'), 0, 2);
       },
       skipDryRun: true,
@@ -96,7 +106,7 @@ module.exports = {
       gasPrice: 100000000,
       network_id: '42', // rinkeby,
       skipDryRun: true,
-      provider: function() {
+      provider: function () {
         const ledgerOptions = {
           ...ledgerDefaultConfig,
           networkId: 42, // kovan
@@ -108,7 +118,7 @@ module.exports = {
       gas: 7400000,
       gasPrice: 100000000,
       network_id: '4', // rinkeby
-      provider: function() {
+      provider: function () {
         const ledgerOptions = {
           ...ledgerDefaultConfig,
           networkId: 4, // rinkeby
@@ -120,7 +130,7 @@ module.exports = {
       gas: 7400000,
       gasPrice: 6000000000,
       network_id: '1', // mainnet
-      provider: function() {
+      provider: function () {
         const ledgerOptions = {
           ...ledgerDefaultConfig,
           networkId: 1, // mainnet
