@@ -16,6 +16,8 @@ const LoanState = (i) => [
   'CLOSED' // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
 ][i]
 
+const MAX_GAS_WEI = new BN('9000000');
+
 async function waitNBlocks(web3, n) {
   await Promise.all(
     [...Array(n).keys()].map(i => {
@@ -123,7 +125,11 @@ const getDeployGas = async (web3, artifact, arguments) => {
   try {
     const web3Latest = getWeb3(web3);
     const ContractWeb3 = new web3Latest.eth.Contract(artifact.abi);
-    const gas = new BN(await ContractWeb3.deploy({ data: artifact.bytecode, arguments }).estimateGas())
+    let gas =
+      (new BN(
+        await ContractWeb3.deploy({ data: artifact.bytecode, arguments }).estimateGas())
+      ).add(new BN('1000000'))
+    gas = gas.gte(MAX_GAS_WEI) ? MAX_GAS_WEI : gas;
     const gasPrice = new BN(await web3Latest.eth.getGasPrice());
     console.log(`Gas estimation for ${artifact.contractName}:`, web3Latest.utils.fromWei(gas.mul(gasPrice).toString()), 'ether')
     return gas;

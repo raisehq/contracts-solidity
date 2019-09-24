@@ -35,11 +35,12 @@ const adminKey =
   process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
 const privateKeys = [ownerKey, adminKey]
 const ledgerDefaultConfig = {
-  path: "44'/60'/0'/0/0", // ledger default derivation path
-  askConfirm: false,
-  accountsLength: 1,
-  accountsOffset: 0
+  //path: "44'/60'/0'/0/0", // ledger default derivation path
+  baseDerivationPath: "44'/60'/0'/0", // ledger default derivation path
 }
+
+const InfuraLedgerProvider = require('./rpc-ledger-provider')
+
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -102,8 +103,8 @@ module.exports = {
       network_id: '5', // Görli network id
     },
     kovan_ledger: {
-      gas: 7400000,
-      gasPrice: 100000000,
+      gas: 9400000,
+      gasPrice: 10000000000,
       network_id: '42', // rinkeby,
       skipDryRun: true,
       provider: function () {
@@ -111,7 +112,7 @@ module.exports = {
           ...ledgerDefaultConfig,
           networkId: 42, // kovan
         };
-        return new LedgerProvider(ledgerOptions, infuraApi('kovan'), true);
+        return InfuraLedgerProvider(ledgerOptions, infuraApi('kovan'));
       }
     },
     rinkeby_ledger: {

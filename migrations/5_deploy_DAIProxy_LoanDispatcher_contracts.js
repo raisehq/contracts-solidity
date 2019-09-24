@@ -4,6 +4,7 @@ const LoanDispatcher = artifacts.require("LoanContractDispatcher");
 const LoanContract = artifacts.require("LoanContract");
 const { writeFileSync } = require("fs");
 const { getContracts, contractIsUpdated, getDeployGas, getMethodGas, getWeb3 } = require("../scripts/helpers");
+const { BN } = require('web3-utils');
 
 const migrationInt = async (deployer, network, accounts) => {
   const web3One = getWeb3(web3);
@@ -12,8 +13,8 @@ const migrationInt = async (deployer, network, accounts) => {
   const deployerAddress = accounts[0];
   const admin = network === "mainnet" ? process.env.ADMIN_ADDRESS : accounts[1];
 
-  const daiAddress = _.get(contracts, `address.1.DAI`);
-  const authAddress = _.get(contracts, `address.1.Auth`);
+  const daiAddress = _.get(contracts, `address.${netId}.DAI`);
+  const authAddress = _.get(contracts, `address.${netId}.Auth`);
 
   const daiproxyHasBeenUpdated = () => contractIsUpdated(contracts, netId, "DAIProxy", DAIProxy);
   const loandispatcherHasBeenUpdated = () =>
@@ -22,6 +23,7 @@ const migrationInt = async (deployer, network, accounts) => {
   let newContracts = _.cloneDeep(contracts);
 
   if (daiproxyHasBeenUpdated()) {
+    console.log("|============ deploying DAIProxy and LoanDispatcher ==============|");
     const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress, daiAddress])
     await deployer.deploy(DAIProxy, authAddress, daiAddress, {
       from: deployerAddress,

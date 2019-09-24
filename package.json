@@ -42,8 +42,11 @@
   "license": "GPL-3.0-only",
   "repository": "https://gitlab.com/herohq/contracts-solidity.git",
   "dependencies": {
+    "@0x/subproviders": "^5.0.4",
     "@babel/polyfill": "^7.4.4",
     "@deconet/truffle-ledger-provider": "git+https://github.com/deconet/truffle-ledger-provider.git#2525cbaabcce6c2489dc2c2183c2043883ba2187",
+    "@ledgerhq/hw-app-eth": "^4.70.0",
+    "@ledgerhq/hw-transport-node-hid": "^4.70.0",
     "@ledgerhq/web3-subprovider": "^4.68.2",
     "axios": "^0.18.0",
     "bignumber.js": "^9.0.0",
