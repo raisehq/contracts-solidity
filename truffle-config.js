@@ -61,8 +61,8 @@ module.exports = {
     development: {
       host: 'localhost',
       port: 8545,
-      gas: 8000000,
-      gasPrice: 1000000000,
+      gas: 9994805,
+      gasPrice: 20000000000,
       network_id: '*' // Match any network id
     },
     cypress: {
@@ -71,7 +71,7 @@ module.exports = {
       gas: 0xfffffffffff, // <-- Use this high gas value
       gasPrice: 0x01,     // <-- Use this low gas price
       provider: function () {
-        return new HDWalletProvider("stamp polar cup smart ill agree human episode reform trigger text forget", "http://localhost:8545",0,10);
+        return new HDWalletProvider("stamp polar cup smart ill agree human episode reform trigger text forget", "http://localhost:8545", 0, 10);
       },      // <-- Use this low gas price
       network_id: '*' // Match any network id
     },
@@ -127,8 +127,8 @@ module.exports = {
       },
     },
     mainnet: {
-      gas: 7400000,
-      gasPrice: 6000000000,
+      gas: 9994805,
+      gasPrice: 20000000000,
       network_id: '1', // mainnet
       provider: function () {
         const ledgerOptions = {

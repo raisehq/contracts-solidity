@@ -5,7 +5,7 @@ const DaiProxy = require('../build/contracts/DAIProxy.json');
 const DaiFake = require('../build/contracts/DAIFake.json');
 const { readFileSync } = require('fs');
 const axios = require('axios');
-
+const Web3 = require('web3')
 
 const LoanState = (i) => [
   'CREATED', // accepts bids until timelimit initial state
@@ -17,15 +17,15 @@ const LoanState = (i) => [
 ][i]
 
 async function waitNBlocks(web3, n) {
-    await Promise.all(
-        [...Array(n).keys()].map(i => {
-            web3.currentProvider.send({
-                jsonrpc: '2.0',
-                method: 'evm_mine',
-                id: i
-                }, ()=> {});
-        })
-    );
+  await Promise.all(
+    [...Array(n).keys()].map(i => {
+      web3.currentProvider.send({
+        jsonrpc: '2.0',
+        method: 'evm_mine',
+        id: i
+      }, () => { });
+    })
+  );
 }
 
 async function latest(web3) {
@@ -41,19 +41,19 @@ function advanceBlock(web3) {
 }
 
 // Increase the timestamp in local blockchain, duration param in seconds
-async function  increaseTime(web3, duration) {
-    if (!BN.isBN(duration)) {
-      duration = new BN(duration);
-    }
-    if (duration.isNeg()) throw Error(`Cannot increase time by a negative amount (${duration})`);
-  
-    await promisify(web3.currentProvider.send.bind(web3.currentProvider))({
-      jsonrpc: '2.0',
-      method: 'evm_increaseTime',
-      params: [duration.toNumber()],
-    });
-  
-    await advanceBlock(web3, 1);
+async function increaseTime(web3, duration) {
+  if (!BN.isBN(duration)) {
+    duration = new BN(duration);
+  }
+  if (duration.isNeg()) throw Error(`Cannot increase time by a negative amount (${duration})`);
+
+  await promisify(web3.currentProvider.send.bind(web3.currentProvider))({
+    jsonrpc: '2.0',
+    method: 'evm_increaseTime',
+    params: [duration.toNumber()],
+  });
+
+  await advanceBlock(web3, 1);
 }
 
 async function increaseToTime(web3, target) {
@@ -75,47 +75,78 @@ const bigNums = {
 };
 
 async function getDaiProxy(web3) {
-    const currentNetworkId = await web3.eth.net.getId();
-    return new web3.eth.Contract(DaiProxy.abi, DaiProxy.networks[currentNetworkId].address)
+  const currentNetworkId = await web3.eth.net.getId();
+  return new web3.eth.Contract(DaiProxy.abi, DaiProxy.networks[currentNetworkId].address)
 }
 
 async function getDai(web3) {
-    const currentNetworkId = await web3.eth.net.getId();
-    return new web3.eth.Contract(DaiFake.abi, DaiFake.networks[currentNetworkId].address)
+  const currentNetworkId = await web3.eth.net.getId();
+  return new web3.eth.Contract(DaiFake.abi, DaiFake.networks[currentNetworkId].address)
 }
 
 const getS3Contracts = async () => {
   try {
-      console.log('GET Contracts.json definition from S3')
-      const {data: contracts} = await axios(
-          `https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v4/contracts.json`
-      );
-      return contracts;
+    console.log('GET Contracts.json definition from S3')
+    const { data: contracts } = await axios(
+      `https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v4/contracts.json`
+    );
+    return contracts;
   } catch (error) {
-      if (error.response.status !== 404) throw error;
-      console.log(`No exist previous contracts.json we continue and create new one.`);
-      return {};
+    console.log('what', error)
+    if (error.response.status !== 404) throw error;
+    console.log(`No exist previous contracts.json we continue and create new one.`);
+    return {};
   }
 }
 
 const getContracts = async () => {
   try {
-      const contracts = JSON.parse(readFileSync(`./contracts.json`));
-      return contracts;
+    const contracts = JSON.parse(readFileSync(`./contracts.json`));
+    return contracts;
   } catch (error) {
-      if (error.code === 'ENOENT') {
-          const contracts = await getS3Contracts();
-          return contracts;
-      }
-      throw error;
+    if (error.code === 'ENOENT') {
+      const contracts = await getS3Contracts();
+      return contracts;
+    }
+    throw error;
   }
 }
 
 const contractIsUpdated = (contracts, netId, name, artifacts) => {
   return !_.hasIn(contracts, `address.${netId}.${name}`) || artifacts['bytecode'] !== _.get(contracts, `bytecode.${name}`);
 }
+const getWeb3 = (web3Intance) => {
+  return new Web3(web3Intance.currentProvider)
+}
+
+const getDeployGas = async (web3, artifact, arguments) => {
+  try {
+    const web3Latest = getWeb3(web3);
+    const ContractWeb3 = new web3Latest.eth.Contract(artifact.abi);
+    const gas = new BN(await ContractWeb3.deploy({ data: artifact.bytecode, arguments }).estimateGas())
+    const gasPrice = new BN(await web3Latest.eth.getGasPrice());
+    console.log(`Gas estimation for ${artifact.contractName}:`, web3Latest.utils.fromWei(gas.mul(gasPrice).toString()), 'ether')
+    return gas;
+  } catch (err) {
+    console.log(err)
+    throw new Error(err)
+  }
+
+}
+
+const getMethodGas = async (web3, artifact, address, method, arguments, options) => {
+  const web3Latest = getWeb3(web3);
+  const ContractWeb3 = new web3Latest.eth.Contract(artifact.abi, address);
+  const gas = new BN(await ContractWeb3.methods[method](...arguments, ).estimateGas(options))
+  const gasPrice = new BN(await web3Latest.eth.getGasPrice());
+  console.log(`Gas estimation for ${artifact.contractName}.${method}:`, web3Latest.utils.fromWei(gas.mul(gasPrice).toString()), 'ether')
+  return gas;
+}
 
 module.exports = {
+  getWeb3,
+  getDeployGas,
+  getMethodGas,
   waitNBlocks,
   advanceBlock,
   increaseTime,
