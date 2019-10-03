@@ -2,8 +2,8 @@ pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./DAIProxyInterface.sol";
-import "./LoanContractInterface.sol";
+import "../DAIProxyInterface.sol";
+import "../LoanContractInterface.sol";
 
 contract LoanContract is LoanContractInterface {
     using SafeMath for uint256;
@@ -351,6 +351,10 @@ contract LoanContract is LoanContractInterface {
         setState(LoanState.REPAID);
         emit LoanRepaid(address(this), block.timestamp);
         return true;
+    }
+
+    function setAuctionEndTimestampTest(uint256 newEndTime) external {
+        auctionEndTimestamp = newEndTime;
     }
 
     function isAuctionExpired() public view returns (bool) {
