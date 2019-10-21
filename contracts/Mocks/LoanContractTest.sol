@@ -5,7 +5,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../DAIProxyInterface.sol";
 import "../LoanContractInterface.sol";
 
-contract LoanContract is LoanContractInterface {
+contract LoanContractTest is LoanContractInterface {
     using SafeMath for uint256;
     ERC20 DAIToken;
     DAIProxyInterface proxy;
