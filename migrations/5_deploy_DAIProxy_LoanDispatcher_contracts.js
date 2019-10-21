@@ -33,7 +33,6 @@ const migrationInt = async (deployer, network, accounts) => {
     await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxy.address, {
       from: deployerAddress,
       // gas: LoanDispatcherGas
-      gas: 800000
     });
 
     // Update contracts
@@ -66,7 +65,6 @@ const migrationInt = async (deployer, network, accounts) => {
     await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxyAddress, {
       from: deployerAddress,
       // gas: LoanDispatcherGas
-      gas: 800000
     });
 
     // Update contracts
