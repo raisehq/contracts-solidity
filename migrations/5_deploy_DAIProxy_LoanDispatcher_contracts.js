@@ -32,7 +32,8 @@ const migrationInt = async (deployer, network, accounts) => {
     const LoanDispatcherGas = await getDeployGas(web3, LoanDispatcher, [authAddress, daiAddress, DAIProxy.address])
     await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxy.address, {
       from: deployerAddress,
-      gas: LoanDispatcherGas
+      // gas: LoanDispatcherGas
+      gas: 800000
     });
 
     // Update contracts
@@ -64,7 +65,8 @@ const migrationInt = async (deployer, network, accounts) => {
     const LoanDispatcherGas = await getDeployGas(web3, LoanDispatcher, [authAddress, daiAddress, DAIProxyAddress])
     await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxyAddress, {
       from: deployerAddress,
-      gas: LoanDispatcherGas
+      // gas: LoanDispatcherGas
+      gas: 800000
     });
 
     // Update contracts
