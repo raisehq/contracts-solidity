@@ -37,6 +37,7 @@ contract LoanContractDispatcher is Ownable {
         address indexed originator,
         uint256 minAmount,
         uint256 maxAmount,
+        uint256 minInterestRate,
         uint256 maxInterestRate,
         uint256 termEndTimestamp,
         address indexed administrator,
@@ -145,6 +146,7 @@ contract LoanContractDispatcher is Ownable {
         uint256 loanMinAmount,
         uint256 loanMaxAmount,
         uint256 loanMaxInterestRate,
+        uint256 loanMinInterestRate,
         uint256 termLength,
         uint256 auctionLength
     ) external onlyKYC returns (address) {
@@ -165,6 +167,14 @@ contract LoanContractDispatcher is Ownable {
             loanMaxInterestRate >= minInterestRate && loanMaxInterestRate <= maxInterestRate,
             "maximum interest rate not correct"
         );
+        require(
+            loanMinInterestRate >= minInterestRate && loanMinInterestRate <= maxInterestRate,
+            "minimum interest rate not correct"
+        );
+        require(
+            loanMaxInterestRate >= loanMinInterestRate,
+            "minimum interest should not be greater than maximum interest"
+        );
         require(termLength >= minTermLength, "Term length is to small");
         require(auctionLength >= minAuctionLength, "Auction length is to small");
 
@@ -172,6 +182,7 @@ contract LoanContractDispatcher is Ownable {
             termLength,
             loanMinAmount,
             loanMaxAmount,
+            loanMinInterestRate,
             loanMaxInterestRate,
             msg.sender,
             DAITokenAddress,
@@ -188,6 +199,7 @@ contract LoanContractDispatcher is Ownable {
             msg.sender,
             loanMinAmount,
             loanMaxAmount,
+            loanMinInterestRate,
             loanMaxInterestRate,
             termLength,
             administrator,

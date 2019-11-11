@@ -27,8 +27,8 @@ contract LoanContract is LoanContractInterface {
     uint256 public auctionBalance;
     uint256 public loanWithdrawnAmount;
     uint256 public borrowerDebt; // Amount borrower need to repay == principal + interests
+    uint256 public minInterestRate;
     uint256 public maxInterestRate;
-    uint256 internal interestRate;
     uint256 public operatorFee;
     uint256 public operatorBalance;
 
@@ -62,6 +62,7 @@ contract LoanContract is LoanContractInterface {
         address indexed originator,
         uint256 minAmount,
         uint256 maxAmount,
+        uint256 minInterestRate,
         uint256 maxInterestRate,
         uint256 auctionStartTimestamp,
         uint256 auctionEndTimestamp,
@@ -151,6 +152,7 @@ contract LoanContract is LoanContractInterface {
         uint256 _termLength,
         uint256 _minAmount,
         uint256 _maxAmount,
+        uint256 _minInterestRate,
         uint256 _maxInterestRate,
         address _originator,
         address DAITokenAddress,
@@ -164,6 +166,7 @@ contract LoanContract is LoanContractInterface {
         originator = _originator;
         administrator = _administrator;
 
+        minInterestRate = _minInterestRate;
         maxInterestRate = _maxInterestRate;
         minAmount = _minAmount;
         maxAmount = _maxAmount;
@@ -184,6 +187,7 @@ contract LoanContract is LoanContractInterface {
             originator,
             minAmount,
             maxAmount,
+            minInterestRate,
             maxInterestRate,
             auctionStartTimestamp,
             auctionEndTimestamp,
@@ -391,14 +395,16 @@ contract LoanContract is LoanContractInterface {
     function getInterestRate() public view returns (uint256) {
         if (currentState == LoanState.CREATED) {
             return
-                maxInterestRate.mul(block.timestamp.sub(auctionStartTimestamp)).div(
-                    auctionEndTimestamp.sub(auctionStartTimestamp)
-                );
+                (maxInterestRate.sub(minInterestRate))
+                    .mul(block.timestamp.sub(auctionStartTimestamp))
+                    .div(auctionEndTimestamp.sub(auctionStartTimestamp))
+                    .add(minInterestRate);
         } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
             return
-                maxInterestRate.mul(lastFundedTimestamp.sub(auctionStartTimestamp)).div(
-                    auctionEndTimestamp.sub(auctionStartTimestamp)
-                );
+                (maxInterestRate.sub(minInterestRate))
+                    .mul(lastFundedTimestamp.sub(auctionStartTimestamp))
+                    .div(auctionEndTimestamp.sub(auctionStartTimestamp))
+                    .add(minInterestRate);
         } else {
             return 0;
         }
