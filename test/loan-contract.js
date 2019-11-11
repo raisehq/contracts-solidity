@@ -29,6 +29,7 @@ contract('LoanContract', (accounts) => {
 
     describe('Unit tests for LoanContract', () => {
         let loanAmount;
+        let minInterestRate;
         let maxInterestRate;
         let auctionLength; 
         let termLength;
@@ -48,6 +49,7 @@ contract('LoanContract', (accounts) => {
                 // Set Loan variables
                 minAmount = new BN(80);
                 maxAmount = new BN(100);
+                minInterestRate = new BN('0');
                 maxInterestRate = new BN('100000000000000000');
                 auctionLength = 60 * 60; // 1 hour in seconds
                 termLength = 2 * 60 * 60; // 2 hours in seconds
@@ -61,6 +63,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -270,6 +273,7 @@ contract('LoanContract', (accounts) => {
                         termLength,
                         maxAmount,
                         maxAmount,
+                        minInterestRate,
                         maxInterestRate,
                         borrower,
                         DAIToken.address, 
@@ -319,6 +323,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -449,6 +454,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -582,6 +588,7 @@ contract('LoanContract', (accounts) => {
                         termLength,
                         minAmount,
                         maxAmount,
+                        minInterestRate,
                         maxInterestRate,
                         borrower,
                         DAIToken.address, 
@@ -638,6 +645,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -754,6 +762,7 @@ contract('LoanContract', (accounts) => {
                         termLength,
                         minAmount,
                         maxAmount,
+                        minInterestRate,
                         maxInterestRate,
                         borrower,
                         DAIToken.address, 
@@ -831,6 +840,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -973,6 +983,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -1017,6 +1028,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -1044,6 +1056,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -1071,6 +1084,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -1128,6 +1142,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -1171,6 +1186,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
@@ -1210,6 +1226,7 @@ contract('LoanContract', (accounts) => {
                     // Set Loan variables 
                     minAmount = 80; 
                     maxAmount = 100; 
+                    minInterestRate = 0; 
                     maxInterestRate = 3000; 
                     auctionLength = 60 * 60; // 1 hour in seconds 
                     termEndTimestamp = 2 * 60 * 60; // 2 hours in seconds 
@@ -1217,6 +1234,7 @@ contract('LoanContract', (accounts) => {
                         termLength,
                         minAmount,
                         maxAmount,
+                        minInterestRate,
                         maxInterestRate,
                         borrower,
                         DAIToken.address, 
@@ -1273,6 +1291,7 @@ contract('LoanContract', (accounts) => {
                     termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 

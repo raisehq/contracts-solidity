@@ -65,7 +65,6 @@ contract LoanContractDispatcher is Ownable {
         minAmount = 1e18; //1000000000000000000; // Minimum 1 DAI
         maxAmount = 2500000e18; //2500000000000000000000000; // Maximum 2.5 Million DAI
 
-        minInterestRate = 0;
         maxInterestRate = 20e18; //20000000000000000000; // Max default MiR 20% / 240% APR
 
         operatorFee = 1e18; //1000000000000000000; // 1 % operator fee, expressed in wei
@@ -145,8 +144,8 @@ contract LoanContractDispatcher is Ownable {
     function deploy(
         uint256 loanMinAmount,
         uint256 loanMaxAmount,
-        uint256 loanMaxInterestRate,
         uint256 loanMinInterestRate,
+        uint256 loanMaxInterestRate,
         uint256 termLength,
         uint256 auctionLength
     ) external onlyKYC returns (address) {

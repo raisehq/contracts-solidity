@@ -111,6 +111,7 @@ contract('Integration', (accounts) => {
             const loanRepaymentTime = 2 * 60 * 60; // 2 hours in seconds
             loanMinAmount = web3.utils.toWei(new BN(90, 10));
             loanMaxAmount = web3.utils.toWei(new BN(100, 10));
+            const minInterestRate = 0;
             const maxInterestRate = 5000;
             auctionLength = 60 * 60;
             await LoanDispatcher.setMinAmount(loanMinAmount, {from: admin});
@@ -120,6 +121,7 @@ contract('Integration', (accounts) => {
             await LoanDispatcher.deploy(
                 loanMinAmount,
                 loanMaxAmount,
+                minInterestRate,
                 maxInterestRate,
                 loanRepaymentTime,
                 auctionLength,

@@ -329,12 +329,14 @@ contract('LoanContractDispatcher', (accounts) => {
                     
                     const minAmount = '1000000000000000000000';
                     const maxAmount = '2500000000000000000000000';
+                    const minInterestRate = 0;
                     const maxInterestRate = 1500;
                     const termLength = 2592000;
                     const auctionLength = 2592000;
                     await LoanDispatcher.deploy(
                         minAmount,
                         maxAmount,
+                        minInterestRate,
                         maxInterestRate,
                         termLength,
                         auctionLength,
