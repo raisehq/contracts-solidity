@@ -29,7 +29,7 @@
     "migration:cypress": "truffle migration --reset --network cypress",
     "console": "truffle console --network kovan",
     "test": "bash scripts/test.sh",
-    "coverage": "truffle run coverage",
+    "coverage": "npm run compile && truffle run coverage",
     "solhint": "./node_modules/.bin/solhint -f table contracts/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/*.sol"
   },
