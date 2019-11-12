@@ -5,11 +5,10 @@ stages:
   - test
   - deploy
   - publish
- 
-variables:
-  AWS_DEFAULT_REGION: eu-west-1 
-  BUCKET_NAME: blockchain-definitions/v5
 
+variables:
+  AWS_DEFAULT_REGION: eu-west-1
+  BUCKET_NAME: blockchain-definitions/v5
 
 cache:
   paths:
@@ -30,12 +29,12 @@ Prepare:
 Test:
   stage: test
   artifacts:
-    paths: 
+    paths:
       - build/
   before_script:
     - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
   script:
-    - npm run compile && npm test 
+    - npm run compile && npm test
   only:
     - integration
     - master
@@ -44,10 +43,10 @@ Check_Coverage:
   before_script:
     - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
   artifacts:
-    paths: 
+    paths:
       - coverage/
   script:
-    - npm run compile && SOLIDITY_COVERAGE=true bash scripts/test.sh
+    - npm run coverage
   only:
     - integration
     - master
@@ -67,46 +66,46 @@ Kovan:
   script:
     - npm run compile && npm run migration:kovan:reset
   artifacts:
-    paths: 
+    paths:
       - contracts.json
       - build/
   only:
     - integration
-      
+
 Contracts:
-  image: "python:latest"  
+  image: "python:latest"
   stage: publish
   artifacts:
-    paths: 
+    paths:
       - contracts.json
   before_script:
-    - pip install awscli  
+    - pip install awscli
   script:
     - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts.json
   only:
     - integration
 
 Artifacts:
-  image: "python:latest"  
+  image: "python:latest"
   stage: publish
   artifacts:
-    paths: 
+    paths:
       - build/
   before_script:
-    - pip install awscli  
+    - pip install awscli
   script:
-    -  aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts
+    - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts
   only:
     - integration
 
 Coverage:
-  image: "python:latest"  
+  image: "python:latest"
   stage: publish
   artifacts:
-    paths: 
+    paths:
       - coverage/
   before_script:
-    - pip install awscli  
+    - pip install awscli
   script:
     - aws s3 sync coverage s3://${BUCKET_NAME}/coverage
   only:
