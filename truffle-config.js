@@ -1,6 +1,6 @@
 require("@babel/polyfill");
-const fs = require('fs');
-const LedgerProvider = require('truffle-ledger-provider');
+const fs = require("fs");
+const LedgerProvider = require("truffle-ledger-provider");
 
 /**
  * Use this file to configure your truffle project. It's seeded with some
@@ -27,19 +27,17 @@ const LedgerProvider = require('truffle-ledger-provider');
 //
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
-const infuraApi = (network) => `https://${network}.infura.io/v3/0d42e812ddca4057bbfe91db1e18ce49`;
-const HDWalletProvider = require('truffle-hdwallet-provider');
-const ownerKey =
-  process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
-const adminKey =
-  process.env.PRIVATE_KEY || fs.readFileSync('./private.key').toString();
-const privateKeys = [ownerKey, adminKey]
+const infuraApi = network => `https://${network}.infura.io/v3/0d42e812ddca4057bbfe91db1e18ce49`;
+const HDWalletProvider = require("truffle-hdwallet-provider");
+const ownerKey = process.env.PRIVATE_KEY || fs.readFileSync("./private.key").toString();
+const adminKey = process.env.PRIVATE_KEY || fs.readFileSync("./private.key").toString();
+const privateKeys = [ownerKey, adminKey];
 const ledgerDefaultConfig = {
   //path: "44'/60'/0'/0/0", // ledger default derivation path
-  baseDerivationPath: "44'/60'/0'/0", // ledger default derivation path
-}
+  baseDerivationPath: "44'/60'/0'/0" // ledger default derivation path
+};
 
-const InfuraLedgerProvider = require('./rpc-ledger-provider')
+const InfuraLedgerProvider = require("./rpc-ledger-provider");
 
 module.exports = {
   /**
@@ -60,84 +58,82 @@ module.exports = {
     // options below to some value.
     //
     development: {
-      host: 'localhost',
+      host: "localhost",
       port: 8545,
       gas: 9994805,
       gasPrice: 20000000000,
-      network_id: '*' // Match any network id
+      network_id: "*" // Match any network id
     },
     cypress: {
-      host: 'localhost',
+      host: "localhost",
       port: 8545,
       gas: 0xfffffffffff, // <-- Use this high gas value
-      gasPrice: 0x01,     // <-- Use this low gas price
-      provider: function () {
-        return new HDWalletProvider("stamp polar cup smart ill agree human episode reform trigger text forget", "http://localhost:8545", 0, 10);
-      },      // <-- Use this low gas price
-      network_id: '*' // Match any network id
-    },
-    coverage: {
-      host: "localhost",
-      network_id: "*",
-      port: 8545,         // <-- If you change this, also set the port option in .solcover.js.
-      gas: 0xfffffffffff, // <-- Use this high gas value
-      gasPrice: 0x01 // <-- Use this low gas price
+      gasPrice: 0x01, // <-- Use this low gas price
+      provider: function() {
+        return new HDWalletProvider(
+          "stamp polar cup smart ill agree human episode reform trigger text forget",
+          "http://localhost:8545",
+          0,
+          10
+        );
+      }, // <-- Use this low gas price
+      network_id: "*" // Match any network id
     },
     kovan: {
       gas: 8000000,
       gasPrice: 1000000000,
-      provider: function () {
-        return new HDWalletProvider(privateKeys, infuraApi('kovan'), 0, 2);
+      provider: function() {
+        return new HDWalletProvider(privateKeys, infuraApi("kovan"), 0, 2);
       },
       skipDryRun: true,
-      network_id: '42', // Kovan network id
+      network_id: "42" // Kovan network id
     },
     goerli: {
       //gas: 4465030,
       gas: 7400000,
       gasPrice: 1000000000,
-      provider: function () {
-        return new HDWalletProvider(privateKeys, infuraApi('goerli'), 0, 2);
+      provider: function() {
+        return new HDWalletProvider(privateKeys, infuraApi("goerli"), 0, 2);
       },
       skipDryRun: true,
-      network_id: '5', // Görli network id
+      network_id: "5" // Görli network id
     },
     kovan_ledger: {
       gas: 9400000,
       gasPrice: 10000000000,
-      network_id: '42', // rinkeby,
+      network_id: "42", // rinkeby,
       skipDryRun: true,
-      provider: function () {
+      provider: function() {
         const ledgerOptions = {
           ...ledgerDefaultConfig,
-          networkId: 42, // kovan
+          networkId: 42 // kovan
         };
-        return InfuraLedgerProvider(ledgerOptions, infuraApi('kovan'));
+        return InfuraLedgerProvider(ledgerOptions, infuraApi("kovan"));
       }
     },
     rinkeby_ledger: {
       gas: 7400000,
       gasPrice: 100000000,
-      network_id: '4', // rinkeby
-      provider: function () {
+      network_id: "4", // rinkeby
+      provider: function() {
         const ledgerOptions = {
           ...ledgerDefaultConfig,
-          networkId: 4, // rinkeby
+          networkId: 4 // rinkeby
         };
-        return new LedgerProvider(ledgerOptions, infuraApi('rinkeby'));
-      },
+        return new LedgerProvider(ledgerOptions, infuraApi("rinkeby"));
+      }
     },
     mainnet: {
       gas: 9994805,
       gasPrice: 20000000000,
-      network_id: '1', // mainnet
-      provider: function () {
+      network_id: "1", // mainnet
+      provider: function() {
         const ledgerOptions = {
           ...ledgerDefaultConfig,
-          networkId: 1, // mainnet
+          networkId: 1 // mainnet
         };
-        return new LedgerProvider(ledgerOptions, infuraApi('mainnet'), true);
-      },
+        return new LedgerProvider(ledgerOptions, infuraApi("mainnet"), true);
+      }
     }
   },
 
@@ -149,11 +145,12 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
-      version: '0.5.10',
+      version: "0.5.10",
       optimizer: {
         enabled: true,
         runs: 200
       }
     }
-  }
+  },
+  plugins: ["solidity-coverage"]
 };

@@ -2,9 +2,15 @@ const _ = require("lodash");
 const DAIProxy = artifacts.require("DAIProxy");
 const LoanDispatcher = artifacts.require("LoanContractDispatcher");
 const LoanContract = artifacts.require("LoanContract");
-const { writeFileSync } = require("fs");
-const { getContracts, contractIsUpdated, getDeployGas, getMethodGas, getWeb3 } = require("../scripts/helpers");
-const { BN } = require('web3-utils');
+const {writeFileSync} = require("fs");
+const {
+  getContracts,
+  contractIsUpdated,
+  getDeployGas,
+  getMethodGas,
+  getWeb3
+} = require("../scripts/helpers");
+const {BN} = require("web3-utils");
 
 const migrationInt = async (deployer, network, accounts) => {
   const web3One = getWeb3(web3);
@@ -24,15 +30,13 @@ const migrationInt = async (deployer, network, accounts) => {
 
   if (daiproxyHasBeenUpdated()) {
     console.log("|============ deploying DAIProxy and LoanDispatcher ==============|");
-    const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress, daiAddress])
+    const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress, daiAddress]);
     await deployer.deploy(DAIProxy, authAddress, daiAddress, {
       from: deployerAddress,
       gas: DAIProxyGas
     });
-    const LoanDispatcherGas = await getDeployGas(web3, LoanDispatcher, [authAddress, daiAddress, DAIProxy.address])
     await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxy.address, {
-      from: deployerAddress,
-      gas: LoanDispatcherGas
+      from: deployerAddress
     });
 
     // Update contracts
@@ -61,12 +65,9 @@ const migrationInt = async (deployer, network, accounts) => {
     console.log("|============ DAIProxy: no changes to deploy ==============|");
 
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
-    const LoanDispatcherGas = await getDeployGas(web3, LoanDispatcher, [authAddress, daiAddress, DAIProxyAddress])
     await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxyAddress, {
-      from: deployerAddress,
-      // gas: LoanDispatcherGas
+      from: deployerAddress
     });
-
     // Update contracts
     newContracts = _.merge(newContracts, {
       address: {
@@ -95,9 +96,16 @@ const migrationInt = async (deployer, network, accounts) => {
     if (loandispatcherHasBeenUpdated()) {
       // set administrator
       const dispatcherDeployed = await LoanDispatcher.deployed();
-      const setAdminGas = await getMethodGas(web3, LoanDispatcher, dispatcherDeployed.address, 'setAdministrator', [admin], { from: deployerAddress })
-      await dispatcherDeployed.setAdministrator(admin, { from: deployerAddress, gas: setAdminGas });
-      network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, { from: admin }));
+      const setAdminGas = await getMethodGas(
+        web3,
+        LoanDispatcher,
+        dispatcherDeployed.address,
+        "setAdministrator",
+        [admin],
+        {from: deployerAddress}
+      );
+      await dispatcherDeployed.setAdministrator(admin, {from: deployerAddress, gas: setAdminGas});
+      network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, {from: admin}));
     }
   }
   await writeFileSync("./contracts.json", JSON.stringify(newContracts));
@@ -113,5 +121,5 @@ module.exports = async (deployer, network, accounts) => {
       console.log(err);
       throw err;
     }
-  })
+  });
 };
