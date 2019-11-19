@@ -12,11 +12,13 @@ contract DepositRegistry is Ownable {
     }
     mapping(address => Deposit) deposits;
     address public admin;
-    uint256 DEPOSIT_AMNT = 200000000000000000000;
-    ERC20 token;
+    uint256 constant DEPOSIT_AMNT = 200e18; //200000000000000000000;
+    ERC20 public token;
 
-    KYCRegistry kyc;
+    KYCRegistry public kyc;
     ReferralTracker public ref;
+
+    bool public migrationAllowed;
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "caller is not the admin");
@@ -26,25 +28,55 @@ contract DepositRegistry is Ownable {
     event UserDepositCompleted(address depositRegistry, address indexed user);
     event UserWithdrawnCompleted(address depositRegistry, address indexed user);
     event AddressUnlockedForWithdrawal(address depositRegistry, address indexed user);
+    event MigrationFinished(address depositRegistry);
 
     constructor(address tokenAddress, address kycAddress) public {
         token = ERC20(tokenAddress);
         kyc = KYCRegistry(kycAddress);
+        migrationAllowed = true;
     }
 
-    function setReferralTracker(address contractAddress) public onlyOwner {
+    function setReferralTracker(address contractAddress) external onlyOwner {
+        require(contractAddress != address(0x0), "Address needs to be valid");
         ref = ReferralTracker(contractAddress);
     }
 
-    function setAdministrator(address _admin) public onlyOwner {
+    function setERC20Token(address newToken) external onlyAdmin {
+        require(newToken != address(0x0), "Address needs to be valid");
+        token = ERC20(newToken);
+    }
+
+    function setKYC(address newKYC) external onlyAdmin {
+        require(newKYC != address(0x0), "Address needs to be valid");
+        kyc = KYCRegistry(newKYC);
+    }
+
+    function setAdministrator(address _admin) external onlyOwner {
+        require(_admin != address(0x0), "Address needs to be valid");
         admin = _admin;
     }
 
-    function setToken(address tokenAddress) public onlyOwner {
-        token = ERC20(tokenAddress);
+    function migrate(address[] calldata depositors, address oldDeposit) external onlyOwner {
+        require(migrationAllowed, "Migration already done");
+        for (uint256 i = 0; i < depositors.length; i++) {
+            require(deposits[depositors[i]].deposited == false, "Depositor already deposited");
+            DepositRegistry oldDepositRegistry = DepositRegistry(oldDeposit);
+            require(
+                oldDepositRegistry.hasDeposited(depositors[i]),
+                "Depositor does not have deposit in old Registry"
+            );
+            deposits[depositors[i]].deposited = true;
+            emit UserDepositCompleted(address(this), depositors[i]);
+        }
     }
 
-    function depositFor(address from) public {
+    function finishMigration() external onlyOwner {
+        require(migrationAllowed, "Migration already done");
+        migrationAllowed = false;
+        emit MigrationFinished(address(this));
+    }
+
+    function depositFor(address from) external {
         require(deposits[from].deposited == false, "already deposited");
         require(
             token.allowance(from, address(this)) >= DEPOSIT_AMNT,
@@ -52,12 +84,12 @@ contract DepositRegistry is Ownable {
         );
 
         deposits[from].deposited = true;
-        require(token.transferFrom(from, address(this), DEPOSIT_AMNT), "Tx failed");
+        require(token.transferFrom(from, address(this), DEPOSIT_AMNT), "Deposit transfer failed");
 
         emit UserDepositCompleted(address(this), from);
     }
 
-    function depositForWithReferral(address from, address referrer) public {
+    function depositForWithReferral(address from, address referrer) external {
         require(from != referrer, "can not refer to itself");
         require(deposits[referrer].deposited, "referrer has not deposited");
         require(deposits[from].deposited == false, "alredy deposited");
@@ -71,12 +103,15 @@ contract DepositRegistry is Ownable {
 
         require(ref.registerReferral(referrer, msg.sender), "ref failed");
 
-        require(token.transferFrom(from, address(this), DEPOSIT_AMNT), "Tx failed");
+        require(
+            token.transferFrom(from, address(this), DEPOSIT_AMNT),
+            "Deposit referal transfer failed"
+        );
 
         emit UserDepositCompleted(address(this), from);
     }
 
-    function withdraw(address to) public {
+    function withdraw(address to) external {
         require(deposits[msg.sender].deposited, "address not deposited");
         require(
             deposits[msg.sender].unlockedForWithdrawal || kyc.isConfirmed(msg.sender),
@@ -84,21 +119,21 @@ contract DepositRegistry is Ownable {
         );
 
         delete deposits[msg.sender];
-        token.transfer(to, DEPOSIT_AMNT);
+        require(token.transfer(to, DEPOSIT_AMNT), "Withdraw transfer failed");
         emit UserWithdrawnCompleted(address(this), msg.sender);
     }
 
-    function unlockAddressForWithdrawal(address user) public onlyAdmin {
+    function unlockAddressForWithdrawal(address user) external onlyAdmin {
         require(deposits[user].deposited, "address has not deposited");
         deposits[user].unlockedForWithdrawal = true;
         emit AddressUnlockedForWithdrawal(address(this), user);
     }
 
-    function hasDeposited(address user) public view returns (bool) {
+    function hasDeposited(address user) external view returns (bool) {
         return deposits[user].deposited;
     }
 
-    function isUnlocked(address user) public view returns (bool) {
+    function isUnlocked(address user) external view returns (bool) {
         return deposits[user].unlockedForWithdrawal;
     }
 }
