@@ -2,8 +2,8 @@ const _ = require("lodash");
 const Deposit = artifacts.require("DepositRegistry");
 const ReferralTracker = artifacts.require("ReferralTracker");
 const HeroToken = artifacts.require("HeroOrigenToken");
-const { writeFileSync } = require("fs");
-const { getContracts, contractIsUpdated } = require("../scripts/helpers");
+const {writeFileSync} = require("fs");
+const {getContracts, contractIsUpdated} = require("../scripts/helpers");
 const Web3 = require("web3");
 
 const loadWeb3One = () => {
@@ -41,20 +41,18 @@ const migrationInt = async (deployer, network, accounts) => {
 
       if (referralHasBeenUpdated()) {
         // set administrator
-        await referralContract.setAdministrator(admin, { from: deployerAddress });
+        await referralContract.setAdministrator(admin, {from: deployerAddress});
 
         // Add admin as pauser for referral contract
         const isPauser = await referralContract.isPauser(admin);
-        const isOwnerPauser = await referralContract.isPauser(deployerAddress);
-        if (!isPauser) {
-          await referralContract.addPauser(admin, {
+        console.log("> ADMIN IS PAUSER : ", isPauser);
+        !isPauser &&
+          (await referralContract.addPauser(admin, {
             from: deployerAddress,
             gas: 800000
-          });
-        }
-        console.log("> PAUSER ROLES (admin, owner): ", isPauser, isOwnerPauser);
+          }));
 
-        if (!network.includes("mainnet")) {
+        if (network !== "mainnet") {
           // add funds to referral so users can withdraw
           const tokens = web3.utils.toWei("100000", "ether"); // 100K tokens
           const HeroInstance = await HeroToken.at(heroTokenAddress);

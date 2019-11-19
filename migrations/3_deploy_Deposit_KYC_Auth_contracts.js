@@ -4,8 +4,8 @@ const KYC = artifacts.require("KYCRegistry");
 const Auth = artifacts.require("Authorization");
 const HeroToken = artifacts.require("HeroOrigenToken");
 const devAccounts = require("../int.accounts.json");
-const { writeFileSync } = require("fs");
-const { getContracts, contractIsUpdated } = require("../scripts/helpers");
+const {writeFileSync} = require("fs");
+const {getContracts, contractIsUpdated} = require("../scripts/helpers");
 const Web3 = require("web3");
 
 const loadWeb3One = () => {
@@ -72,9 +72,8 @@ const migrationInt = async (deployer, network, accounts) => {
     } else if (depositHasBeenUpdated()) {
       // deploy all contracts that depend on deposit contract if deposit changed
       try {
-        console.log("|============ THIS MUST HAPPEN ==============|");
+        console.log("|============ KYC: no changes to deploy ==============|");
         const kycAdd = _.get(contracts, `address.${netId}.KYC`);
-
         await deployer.deploy(Deposit, heroTokenAddress, kycAdd, {
           from: deployerAddress
         });
@@ -154,7 +153,7 @@ const migrationInt = async (deployer, network, accounts) => {
       if (depositHasBeenUpdated()) {
         try {
           const depositDeployed = await Deposit.deployed();
-          await depositDeployed.setAdministrator(admin, { from: deployerAddress });
+          await depositDeployed.setAdministrator(admin, {from: deployerAddress});
           if (network === "cypress") {
             const HeroInstance = await HeroToken.at(heroTokenAddress);
             const HeroAmount = "200000000000000000000";
@@ -185,9 +184,9 @@ const migrationInt = async (deployer, network, accounts) => {
       if (kycHasBeenUpdated()) {
         try {
           const kycDeployed = await KYC.deployed();
-          await kycDeployed.setAdministrator(admin, { from: deployerAddress });
+          await kycDeployed.setAdministrator(admin, {from: deployerAddress});
 
-          if (!network.includes("mainnet")) {
+          if (network !== "mainnet") {
             // Add default accounts to KYC
 
             for (let i = 0; i < IntAccounts.length; i++) {
@@ -210,7 +209,6 @@ const migrationInt = async (deployer, network, accounts) => {
         }
       }
     }
-    console.log("writting...");
     await writeFileSync("./contracts.json", JSON.stringify(newContracts, null, 2));
   } catch (err) {
     console.error("ERROR MINT AND SEND ", err);
