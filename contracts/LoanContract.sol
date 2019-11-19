@@ -1,13 +1,13 @@
 pragma solidity 0.5.10;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./DAIProxyInterface.sol";
 import "./LoanContractInterface.sol";
 
 contract LoanContract is LoanContractInterface {
     using SafeMath for uint256;
-    ERC20 DAIToken;
+    IERC20 DAIToken;
     DAIProxyInterface proxy;
     address public originator;
     address public administrator;
@@ -161,7 +161,7 @@ contract LoanContract is LoanContractInterface {
         uint256 _operatorFee,
         uint256 _auctionLength
     ) public {
-        DAIToken = ERC20(DAITokenAddress);
+        DAIToken = IERC20(DAITokenAddress);
         proxy = DAIProxyInterface(proxyAddress);
         originator = _originator;
         administrator = _administrator;
@@ -213,7 +213,7 @@ contract LoanContract is LoanContractInterface {
     }
 
     // Notes:
-    // - This function does not track if real ERC20 balance has changed. Needs to blindly "trust" DaiProxy.
+    // - This function does not track if real IERC20 balance has changed. Needs to blindly "trust" DaiProxy.
     function onFundingReceived(address lender, uint256 amount)
         external
         onlyCreated

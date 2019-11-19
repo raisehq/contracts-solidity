@@ -1,6 +1,7 @@
 node_modules
 # production
 /build
+.secret
 private.key
 contracts*.json
 contracts.json

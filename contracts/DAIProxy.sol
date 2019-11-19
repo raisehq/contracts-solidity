@@ -1,12 +1,12 @@
 pragma solidity 0.5.10;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./Authorization.sol";
 import "./LoanContractInterface.sol";
 import "./DAIProxyInterface.sol";
 
 contract DAIProxy is DAIProxyInterface, Ownable {
-    ERC20 DAIToken;
+    IERC20 private DAIToken;
     Authorization auth;
     address public administrator;
 
@@ -19,7 +19,11 @@ contract DAIProxy is DAIProxyInterface, Ownable {
 
     constructor(address authAddress, address DAIAddress) public {
         auth = Authorization(authAddress);
-        DAIToken = ERC20(DAIAddress);
+        DAIToken = IERC20(DAIAddress);
+    }
+
+    function getTokenAddress() public view returns (address) {
+        return address(DAIToken);
     }
 
     function setAdministrator(address admin) external onlyOwner {
@@ -28,7 +32,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
     }
 
     function setDaiTokenAddress(address daiAddress) external onlyAdmin {
-        DAIToken = ERC20(daiAddress);
+        DAIToken = IERC20(daiAddress);
         emit DaiTokenAddressUpdated(daiAddress, administrator);
     }
 
@@ -71,7 +75,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
         require(DAIToken.allowance(msg.sender, address(this)) >= amount, "funding not approved");
         uint256 balance = DAIToken.balanceOf(msg.sender);
         require(balance >= amount, "Not enough funds");
-        DAIToken.transferFrom(msg.sender, loanAddress, amount);
+        require(DAIToken.transferFrom(msg.sender, loanAddress, amount));
     }
 
     modifier onlyKYCanFund {

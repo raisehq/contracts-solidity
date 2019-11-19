@@ -30,19 +30,17 @@ const migrationInt = async (deployer, network, accounts) => {
 
   if (daiproxyHasBeenUpdated()) {
     console.log("|============ deploying DAIProxy and LoanDispatcher ==============|");
-    console.log("DAI inputs", authAddress, daiAddress);
     const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress, daiAddress]);
     await deployer.deploy(DAIProxy, authAddress, daiAddress, {
       from: deployerAddress,
       gas: DAIProxyGas
     });
-    console.log("Loan inputs", authAddress, daiAddress, DAIProxy.address);
-    const LoanDispGas = await getDeployGas(web3, LoanDispatcher, [authAddress, DAIProxy.address]);
-
-    console.log("GAS: Loandis", LoanDispGas);
+    console.log("loan params", [authAddress, DAIProxy.address]);
+    const LoanGas = await getDeployGas(web3, LoanDispatcher, [authAddress, DAIProxy.address]);
+    console.log("loan gas", LoanGas);
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxy.address, {
       from: deployerAddress,
-      gas: LoanDispGas
+      gas: LoanGas
     });
 
     // Update contracts
@@ -72,7 +70,7 @@ const migrationInt = async (deployer, network, accounts) => {
     console.log("checking gas...");
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
     const LoanGas = await getDeployGas(web3, LoanDispatcher, [authAddress, DAIProxyAddress]);
-    console.log("loan gas", LoanGas);
+    console.log("loan gas", LoanGas, authAddress, DAIProxyAddress);
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxyAddress, {
       from: deployerAddress,
       gas: LoanGas

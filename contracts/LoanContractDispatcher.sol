@@ -68,8 +68,6 @@ contract LoanContractDispatcher is Ownable {
         maxInterestRate = 20e18; //20000000000000000000; // Max default MiR 20% / 240% APR
 
         operatorFee = 1e18; //1000000000000000000; // 1 % operator fee, expressed in wei
-        minTermLength = 2592000;
-        minAuctionLength = 2592000;
     }
 
     function setDaiTokenAddress(address daiAddress) external onlyAdmin {

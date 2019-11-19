@@ -24,10 +24,12 @@ const LedgerProvider = require("truffle-ledger-provider");
 
 // const HDWalletProvider = require('truffle-hdwallet-provider');
 // const infuraKey = "fj4jll3k.....";
-//
-// const fs = require('fs');
-// const mnemonic = fs.readFileSync(".secret").toString().trim();
-const infuraApi = network => `https://${network}.infura.io/v3/0d42e812ddca4057bbfe91db1e18ce49`;
+
+const mnemonic = fs
+  .readFileSync(".secret")
+  .toString()
+  .trim();
+const infuraApi = network => `https://${network}.infura.io/v3/eb15aaa516234d9f9cf16c7ce4517f27`;
 const HDWalletProvider = require("truffle-hdwallet-provider");
 const ownerKey = process.env.PRIVATE_KEY || fs.readFileSync("./private.key").toString();
 const adminKey = process.env.PRIVATE_KEY || fs.readFileSync("./private.key").toString();
@@ -124,6 +126,14 @@ module.exports = {
       }
     },
     mainnet: {
+      //gas: 9912788,
+      gasPrice: 3500000000,
+      network_id: "1", // mainnet
+      provider: function() {
+        return new HDWalletProvider(mnemonic, infuraApi("mainnet"));
+      }
+    },
+    ledgerMainnet: {
       gas: 9994805,
       gasPrice: 20000000000,
       network_id: "1", // mainnet

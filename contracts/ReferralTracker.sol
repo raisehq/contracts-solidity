@@ -28,7 +28,7 @@ contract ReferralTracker is Ownable, Pausable {
     event FundsAdded(address referralAddress, address fundsDepositor, uint256 amount);
     event FundsRemoved(address referralAddress, address fundsWithdrawer, uint256 amount);
 
-    constructor(address registryAddress_, address tokenAdress) public {
+    constructor(address registryAddress_, address tokenAdress) public PauserRole() {
         registryAddress = registryAddress_;
         token = ERC20(tokenAdress);
     }
@@ -47,6 +47,10 @@ contract ReferralTracker is Ownable, Pausable {
         admin = _admin;
     }
 
+    function setToken(address _token) public onlyOwner {
+        token = ERC20(_token);
+    }
+
     function addFunds(uint256 amount) public onlyAdmin whenNotPaused {
         token.transferFrom(msg.sender, address(this), amount);
         emit FundsAdded(address(this), msg.sender, amount);
@@ -59,10 +63,16 @@ contract ReferralTracker is Ownable, Pausable {
         emit FundsRemoved(address(this), msg.sender, amount);
     }
 
-    function registerReferral(address referrer, address user) public onlyRegistry whenNotPaused {
+    function registerReferral(address referrer, address user)
+        public
+        onlyRegistry
+        whenNotPaused
+        returns (bool)
+    {
         unclaimedReferrals[referrer] = unclaimedReferrals[referrer].add(1);
 
         emit ReferralRegistered(address(this), referrer, user);
+        return true;
     }
 
     function withdraw(address to) public whenNotPaused {

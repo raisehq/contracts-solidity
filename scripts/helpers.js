@@ -1,9 +1,9 @@
-const {promisify} = require("util");
+const { promisify } = require("util");
 const BigNumber = require("bignumber.js");
-const {BN} = require("web3-utils");
+const { BN } = require("web3-utils");
 const DaiProxy = require("../build/contracts/DAIProxy.json");
 const DaiFake = require("../build/contracts/DAIFake.json");
-const {readFileSync} = require("fs");
+const { readFileSync } = require("fs");
 const axios = require("axios");
 const Web3 = require("web3");
 
@@ -96,7 +96,7 @@ async function getDai(web3) {
 const getS3Contracts = async () => {
   try {
     console.log("GET Contracts.json definition from S3");
-    const {data: contracts} = await axios(
+    const { data: contracts } = await axios(
       `https://blockchain-definitions.s3-eu-west-1.amazonaws.com/v5/contracts.json`
     );
     return contracts;
@@ -135,7 +135,9 @@ const getDeployGas = async (web3, artifact, arguments) => {
   try {
     const web3Latest = getWeb3(web3);
     const ContractWeb3 = new web3Latest.eth.Contract(artifact.abi);
-    let gas = new BN(await ContractWeb3.deploy({data: artifact.bytecode, arguments}).estimateGas());
+    let gas = new BN(
+      await ContractWeb3.deploy({ data: artifact.bytecode, arguments }).estimateGas()
+    ).add(new BN("1000000"));
     console.log("gas", gas.toString());
     gas = gas.gte(MAX_GAS_WEI) ? MAX_GAS_WEI : gas;
     const gasPrice = new BN(await web3Latest.eth.getGasPrice());
@@ -164,6 +166,12 @@ const getMethodGas = async (web3, artifact, address, method, arguments, options)
   return gas;
 };
 
+// CONSTANTS
+
+const HERO_TOKEN_MAINNET = "0xc01610abd718462d9e44488eeb212d912d136ed8";
+const DAI_TOKEN_MAINNET = "0x6b175474e89094c44da98b954eedeac495271d0f";
+const KYC_MAINNET = "0x18adbd9651643a91a520cee597ef361ae18ac329";
+
 module.exports = {
   getWeb3,
   getDeployGas,
@@ -179,5 +187,8 @@ module.exports = {
   getDai,
   getContracts,
   getS3Contracts,
-  contractIsUpdated
+  contractIsUpdated,
+  HERO_TOKEN_MAINNET,
+  DAI_TOKEN_MAINNET,
+  KYC_MAINNET
 };

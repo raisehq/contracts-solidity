@@ -4,13 +4,8 @@ const DAI = artifacts.require("DAIFake");
 const devAccounts = require("../int.accounts.json");
 const DAIabi = require("../abis/DAI-abi.json");
 const Heroabi = require("../abis/Hero-abi.json");
-const {
-  getContracts,
-  contractIsUpdated,
-  DAI_TOKEN_MAINNET,
-  HERO_TOKEN_MAINNET
-} = require("../scripts/helpers");
-const { writeFileSync } = require("fs");
+const {getContracts, contractIsUpdated} = require("../scripts/helpers");
+const {writeFileSync} = require("fs");
 
 const getContractTokens = async (contracts, deployerAddress) => {
   try {
@@ -50,7 +45,7 @@ const migrationKovan = async (deployer, network, accounts) => {
     const herotokenHasBeenUpdated = () =>
       contractIsUpdated(contracts, netId, "HeroToken", HeroToken);
 
-    const { heroTokenAddress, daiAddress } = await getContractTokens(contracts, deployerAddress);
+    const {heroTokenAddress, daiAddress} = await getContractTokens(contracts, deployerAddress);
 
     HeroTokenAddress = heroTokenAddress;
     DAIAddress = daiAddress;
@@ -190,8 +185,8 @@ const migrationCypress = async (deployer, network, accounts) => {
 const mainnetMigration = async (deployer, network, accounts) => {
   try {
     const contracts = await getContracts();
-    const heroTokenAddress = HERO_TOKEN_MAINNET; // hardcoded address of hero token contract on mainnet,
-    const daiAddress = DAI_TOKEN_MAINNET; // hardcoded addres of dai token contract on mainnet;
+    const heroTokenAddress = "0x02585e4a14da274d02df09b222d4606b10a4e940"; // hardcoded address of hero token contract on mainnet,
+    const daiAddress = "0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359"; // hardcoded addres of dai token contract on mainnet;
 
     const data = {
       address: {
@@ -202,8 +197,8 @@ const mainnetMigration = async (deployer, network, accounts) => {
       }
     };
     const abis = {
-      HeroToken: Heroabi,
-      DAI: DAIabi
+      HeroToken: HeroToken.abi,
+      DAI: DAI.abi
     };
 
     const newContracts = _.merge(contracts, data);
@@ -211,7 +206,6 @@ const mainnetMigration = async (deployer, network, accounts) => {
       newContracts["abi"][key] = abis[key];
     });
 
-    console.log("writting...");
     await writeFileSync(`./contracts.json`, JSON.stringify(newContracts, null, 2));
   } catch (error) {
     throw error;
@@ -223,7 +217,7 @@ module.exports = async (deployer, network, accounts) => {
   try {
     if (network === "cypress" || network === "cypress-fork")
       return await migrationCypress(deployer, network, accounts);
-    if (!network.includes("mainnet")) {
+    if (network !== "mainnet") {
       await migrationKovan(deployer, network, accounts);
     } else {
       deployer.then(async () => {

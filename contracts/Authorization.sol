@@ -20,4 +20,14 @@ contract Authorization is Ownable {
     function isKYCConfirmed(address user) public view returns (bool) {
         return kyc.isConfirmed(user);
     }
+
+    function setKYCRegistry(address kycAddress) public onlyOwner returns (bool) {
+        kyc = KYCRegistry(kycAddress);
+        return true;
+    }
+
+    function setDepositRegistry(address depositAddress) public onlyOwner returns (bool) {
+        deposit = DepositRegistry(depositAddress);
+        return true;
+    }
 }

@@ -40,6 +40,10 @@ contract DepositRegistry is Ownable {
         admin = _admin;
     }
 
+    function setToken(address tokenAddress) public onlyOwner {
+        token = ERC20(tokenAddress);
+    }
+
     function depositFor(address from) public {
         require(deposits[from].deposited == false, "already deposited");
         require(
@@ -48,7 +52,7 @@ contract DepositRegistry is Ownable {
         );
 
         deposits[from].deposited = true;
-        token.transferFrom(from, address(this), DEPOSIT_AMNT);
+        require(token.transferFrom(from, address(this), DEPOSIT_AMNT), "Tx failed");
 
         emit UserDepositCompleted(address(this), from);
     }
@@ -65,9 +69,9 @@ contract DepositRegistry is Ownable {
 
         deposits[from].deposited = true;
 
-        ref.registerReferral(referrer, msg.sender);
+        require(ref.registerReferral(referrer, msg.sender), "ref failed");
 
-        token.transferFrom(from, address(this), DEPOSIT_AMNT);
+        require(token.transferFrom(from, address(this), DEPOSIT_AMNT), "Tx failed");
 
         emit UserDepositCompleted(address(this), from);
     }

@@ -59,7 +59,7 @@
     "faker": "^4.1.0",
     "ganache-cli": "^6.4.1",
     "husky": "^2.7.0",
-    "openzeppelin-solidity": "^2.3.0",
+    "openzeppelin-solidity": "2.4.0",
     "truffle": "5.0.30",
     "truffle-assertions": "^0.9.1",
     "truffle-hdwallet-provider": "^1.0.13",
