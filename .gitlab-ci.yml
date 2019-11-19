@@ -69,6 +69,8 @@ Kovan:
     paths:
       - contracts.json
       - build/
+  when:
+    - manual
   only:
     - integration
 
