@@ -2,10 +2,10 @@ const _ = require("lodash");
 const Deposit = artifacts.require("DepositRegistry");
 const KYC = artifacts.require("KYCRegistry");
 const Auth = artifacts.require("Authorization");
-const HeroToken = artifacts.require("HeroOrigenToken");
+const HeroToken = artifacts.require("HeroOrigenERC20Token");
 const devAccounts = require("../int.accounts.json");
-const {writeFileSync} = require("fs");
-const {getContracts, contractIsUpdated} = require("../scripts/helpers");
+const { writeFileSync } = require("fs");
+const { getContracts, contractIsUpdated } = require("../scripts/helpers");
 const Web3 = require("web3");
 
 const loadWeb3One = () => {
@@ -153,7 +153,7 @@ const migrationInt = async (deployer, network, accounts) => {
       if (depositHasBeenUpdated()) {
         try {
           const depositDeployed = await Deposit.deployed();
-          await depositDeployed.setAdministrator(admin, {from: deployerAddress});
+          await depositDeployed.setAdministrator(admin, { from: deployerAddress });
           if (network === "cypress") {
             const HeroInstance = await HeroToken.at(heroTokenAddress);
             const HeroAmount = "200000000000000000000";
@@ -184,7 +184,7 @@ const migrationInt = async (deployer, network, accounts) => {
       if (kycHasBeenUpdated()) {
         try {
           const kycDeployed = await KYC.deployed();
-          await kycDeployed.setAdministrator(admin, {from: deployerAddress});
+          await kycDeployed.setAdministrator(admin, { from: deployerAddress });
 
           if (network !== "mainnet") {
             // Add default accounts to KYC

@@ -1,11 +1,11 @@
 const _ = require("lodash");
-const HeroToken = artifacts.require("HeroOrigenToken");
+const HeroToken = artifacts.require("HeroOrigenERC20Token");
 const DAI = artifacts.require("DAIFake");
 const devAccounts = require("../int.accounts.json");
 const DAIabi = require("../abis/DAI-abi.json");
 const Heroabi = require("../abis/Hero-abi.json");
-const {getContracts, contractIsUpdated} = require("../scripts/helpers");
-const {writeFileSync} = require("fs");
+const { getContracts, contractIsUpdated } = require("../scripts/helpers");
+const { writeFileSync } = require("fs");
 
 const getContractTokens = async (contracts, deployerAddress) => {
   try {
@@ -45,7 +45,7 @@ const migrationKovan = async (deployer, network, accounts) => {
     const herotokenHasBeenUpdated = () =>
       contractIsUpdated(contracts, netId, "HeroToken", HeroToken);
 
-    const {heroTokenAddress, daiAddress} = await getContractTokens(contracts, deployerAddress);
+    const { heroTokenAddress, daiAddress } = await getContractTokens(contracts, deployerAddress);
 
     HeroTokenAddress = heroTokenAddress;
     DAIAddress = daiAddress;
@@ -128,12 +128,10 @@ const migrationCypress = async (deployer, network, accounts) => {
     const netId = await web3.eth.net.getId();
 
     await deployer.deploy(HeroToken, {
-      from: deployerAddress,
-      overwrite: false
+      from: deployerAddress
     });
     await deployer.deploy(DAI, {
-      from: deployerAddress,
-      overwrite: false
+      from: deployerAddress
     });
 
     const HeroTokenAddress = HeroToken.address;
