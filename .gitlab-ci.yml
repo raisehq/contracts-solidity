@@ -38,18 +38,18 @@ Test:
   only:
     - integration
     - master
-Check_Coverage:
-  stage: test
-  before_script:
-    - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
-  artifacts:
-    paths:
-      - coverage/
-  script:
-    - npm run coverage
-  only:
-    - integration
-    - master
+#Check_Coverage:
+#  stage: test
+#  before_script:
+#    - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
+#  artifacts:
+#    paths:
+#      - coverage/
+#  script:
+#    - npm run coverage
+#  only:
+#    - integration
+#    - master
 
 Solhint:
   stage: test
