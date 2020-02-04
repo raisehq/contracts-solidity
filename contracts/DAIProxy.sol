@@ -41,11 +41,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
         emit AuthAddressUpdated(authAddress, administrator);
     }
 
-    function fund(address loanAddress, uint256 fundingAmount)
-        external
-        onlyKYCanFund
-        onlyHasDepositCanFund
-    {
+    function fund(address loanAddress, uint256 fundingAmount) external onlyKYCCanFund {
         uint256 newFundingAmount = fundingAmount;
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
 
@@ -55,30 +51,32 @@ contract DAIProxy is DAIProxyInterface, Ownable {
         if (auctionBalance + fundingAmount > maxAmount) {
             newFundingAmount = maxAmount - auctionBalance;
         }
-
-        bool canTransfer = loanContract.onFundingReceived(msg.sender, newFundingAmount);
-        if (canTransfer == true) {
-            transfer(loanAddress, newFundingAmount);
-        }
+        require(newFundingAmount > 0, "funding amount can not be zero");
+        require(
+            loanContract.onFundingReceived(msg.sender, newFundingAmount),
+            "funding failed at loan contract"
+        );
+        require(transfer(loanAddress, newFundingAmount), "erc20 transfer failed");
     }
 
-    function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCanFund {
+    function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
-        bool canTransfer = loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
-
-        if (canTransfer == true) {
-            transfer(loanAddress, repaymentAmount);
-        }
+        require(
+            loanContract.onRepaymentReceived(msg.sender, repaymentAmount),
+            "repayment failed at loan contract"
+        );
+        require(transfer(loanAddress, repaymentAmount), "erc20 repayment failed");
     }
 
-    function transfer(address loanAddress, uint256 amount) internal {
+    function transfer(address loanAddress, uint256 amount) internal returns (bool) {
         require(DAIToken.allowance(msg.sender, address(this)) >= amount, "funding not approved");
         uint256 balance = DAIToken.balanceOf(msg.sender);
         require(balance >= amount, "Not enough funds");
-        require(DAIToken.transferFrom(msg.sender, loanAddress, amount));
+        require(DAIToken.transferFrom(msg.sender, loanAddress, amount), "failed at transferFrom");
+        return true;
     }
 
-    modifier onlyKYCanFund {
+    modifier onlyKYCCanFund {
         require(auth.isKYCConfirmed(msg.sender), "user does not have KYC");
         _;
     }

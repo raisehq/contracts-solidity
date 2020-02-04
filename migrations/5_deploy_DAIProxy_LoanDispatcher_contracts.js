@@ -2,7 +2,7 @@ const _ = require("lodash");
 const DAIProxy = artifacts.require("DAIProxy");
 const LoanDispatcher = artifacts.require("LoanContractDispatcher");
 const LoanContract = artifacts.require("LoanContract");
-const { writeFileSync } = require("fs");
+const {writeFileSync} = require("fs");
 const {
   getContracts,
   contractIsUpdated,
@@ -10,7 +10,7 @@ const {
   getMethodGas,
   getWeb3
 } = require("../scripts/helpers");
-const { BN } = require("web3-utils");
+const {BN} = require("web3-utils");
 
 const migrationInt = async (deployer, network, accounts) => {
   const web3One = getWeb3(web3);
@@ -41,7 +41,7 @@ const migrationInt = async (deployer, network, accounts) => {
       daiAddress,
       DAIProxy.address
     ]);
-    console.log("loan gas", LoanGas);
+    console.log("loan gas", web3.utils.fromWei(LoanGas));
     await deployer.deploy(LoanDispatcher, authAddress, daiAddress, DAIProxy.address, {
       from: deployerAddress,
       gas: LoanGas
@@ -109,10 +109,10 @@ const migrationInt = async (deployer, network, accounts) => {
         dispatcherDeployed.address,
         "setAdministrator",
         [admin],
-        { from: deployerAddress }
+        {from: deployerAddress}
       );
-      await dispatcherDeployed.setAdministrator(admin, { from: deployerAddress, gas: setAdminGas });
-      network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, { from: admin }));
+      await dispatcherDeployed.setAdministrator(admin, {from: deployerAddress, gas: setAdminGas});
+      network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, {from: admin}));
     }
   }
   await writeFileSync("./contracts.json", JSON.stringify(newContracts));
