@@ -7,8 +7,12 @@ import "./LoanContractInterface.sol";
 
 contract LoanContract is LoanContractInterface {
     using SafeMath for uint256;
-    IERC20 DAIToken;
+    IERC20 ERC20Token;
     DAIProxyInterface proxy;
+
+    address public proxyContractAddress;
+    address public tokenAddress;
+
     address public originator;
     address public administrator;
 
@@ -155,14 +159,16 @@ contract LoanContract is LoanContractInterface {
         uint256 _minInterestRate,
         uint256 _maxInterestRate,
         address _originator,
-        address DAITokenAddress,
+        address ERC20TokenAddress,
         address proxyAddress,
         address _administrator,
         uint256 _operatorFee,
         uint256 _auctionLength
     ) public {
-        DAIToken = IERC20(DAITokenAddress);
-        proxy = DAIProxyInterface(proxyAddress);
+        tokenAddress = ERC20TokenAddress;
+        proxyContractAddress = proxyAddress;
+        ERC20Token = IERC20(tokenAddress);
+        proxy = DAIProxyInterface(proxyContractAddress);
         originator = _originator;
         administrator = _administrator;
 
@@ -268,7 +274,7 @@ contract LoanContract is LoanContractInterface {
         require(operatorBalance > 0, "no funds to withdraw");
         uint256 allFees = operatorBalance;
         operatorBalance = 0;
-        require(DAIToken.transfer(msg.sender, allFees), "transfer failed");
+        require(ERC20Token.transfer(msg.sender, allFees), "transfer failed");
         emit OperatorWithdrawn(allFees, msg.sender);
         return true;
     }
@@ -283,7 +289,7 @@ contract LoanContract is LoanContractInterface {
         loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
 
         require(
-            DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount),
+            ERC20Token.transfer(msg.sender, lenderPosition[msg.sender].bidAmount),
             "error while transfer"
         );
 
@@ -310,7 +316,7 @@ contract LoanContract is LoanContractInterface {
         emit RefundWithdrawn(address(this), msg.sender, lenderPosition[msg.sender].bidAmount);
 
         require(
-            DAIToken.transfer(msg.sender, lenderPosition[msg.sender].bidAmount),
+            ERC20Token.transfer(msg.sender, lenderPosition[msg.sender].bidAmount),
             "error while transfer"
         );
 
@@ -328,7 +334,7 @@ contract LoanContract is LoanContractInterface {
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
-        require(DAIToken.transfer(msg.sender, amount), "error while transfer");
+        require(ERC20Token.transfer(msg.sender, amount), "error while transfer");
 
         if (loanWithdrawnAmount == borrowerDebt) {
             setState(LoanState.CLOSED);
@@ -340,7 +346,7 @@ contract LoanContract is LoanContractInterface {
         require(!loanWithdrawn, "Already withdrawn");
         loanWithdrawn = true;
         emit LoanFundsWithdrawn(address(this), msg.sender, auctionBalance);
-        require(DAIToken.transfer(msg.sender, auctionBalance), "error while transfer");
+        require(ERC20Token.transfer(msg.sender, auctionBalance), "error while transfer");
     }
 
     function onRepaymentReceived(address from, uint256 amount)
