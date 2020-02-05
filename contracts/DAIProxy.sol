@@ -9,6 +9,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
     IERC20 private DAIToken;
     Authorization auth;
     address public administrator;
+    bool public hasToDeposit;
 
     event LoanFunded(address indexed funder, address indexed loanAddress, uint256 amount);
     event RepaymentReceived(address indexed repayer, address indexed loanAddress, uint256 amount);
@@ -16,6 +17,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
     event AuthAddressUpdated(address newAuthAddress, address administrator);
     event DaiTokenAddressUpdated(address newDaiTokenAddress, address administrator);
     event AdministratorUpdated(address newAdministrator);
+    event HasToDeposit(bool value, address administrator);
 
     constructor(address authAddress, address DAIAddress) public {
         auth = Authorization(authAddress);
@@ -26,6 +28,10 @@ contract DAIProxy is DAIProxyInterface, Ownable {
         return address(DAIToken);
     }
 
+    function setDepositRequeriment(bool value) external onlyAdmin {
+        hasToDeposit = value;
+        emit AdministratorUpdated(administrator);
+    }
     function setAdministrator(address admin) external onlyOwner {
         administrator = admin;
         emit AdministratorUpdated(administrator);
@@ -41,7 +47,11 @@ contract DAIProxy is DAIProxyInterface, Ownable {
         emit AuthAddressUpdated(authAddress, administrator);
     }
 
-    function fund(address loanAddress, uint256 fundingAmount) external onlyKYCCanFund {
+    function fund(address loanAddress, uint256 fundingAmount)
+        external
+        onlyHasDepositCanFund
+        onlyKYCCanFund
+    {
         uint256 newFundingAmount = fundingAmount;
         LoanContractInterface loanContract = LoanContractInterface(loanAddress);
 
@@ -82,7 +92,9 @@ contract DAIProxy is DAIProxyInterface, Ownable {
     }
 
     modifier onlyHasDepositCanFund {
-        require(auth.hasDeposited(msg.sender), "user does not have a deposit");
+        if (hasToDeposit) {
+            require(auth.hasDeposited(msg.sender), "user does not have a deposit");
+        }
         _;
     }
 

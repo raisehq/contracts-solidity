@@ -11,7 +11,6 @@ function receiptShouldSucceed(result) {
         reject(err);
       }
     } else {
-      console.log("gasUsed", result.receipt.gasUsed);
       resolve();
     }
   });
