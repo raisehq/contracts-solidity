@@ -2,23 +2,20 @@ pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./ReferralTracker.sol";
-import "./KYCRegistry.sol";
 
-contract DepositRegistry is Ownable {
-    struct Deposit {
-        bool deposited;
-        bool unlockedForWithdrawal;
-    }
+import "./IDepositRegistry.sol";
+import "./IReferralTracker.sol";
+import "./IKYCRegistry.sol";
+
+contract DepositRegistry is IDepositRegistry, Ownable {
     mapping(address => Deposit) deposits;
     address public admin;
     uint256 constant DEPOSIT_AMNT = 200e18; //200000000000000000000;
-    ERC20 public token;
-
-    KYCRegistry public kyc;
-    ReferralTracker public ref;
-
     bool public migrationAllowed;
+
+    IERC20 public token;
+    IKYCRegistry public kyc;
+    IReferralTracker public ref;
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "caller is not the admin");
@@ -32,23 +29,23 @@ contract DepositRegistry is Ownable {
 
     constructor(address tokenAddress, address kycAddress) public {
         token = ERC20(tokenAddress);
-        kyc = KYCRegistry(kycAddress);
+        kyc = IKYCRegistry(kycAddress);
         migrationAllowed = true;
     }
 
     function setReferralTracker(address contractAddress) external onlyOwner {
         require(contractAddress != address(0x0), "Address needs to be valid");
-        ref = ReferralTracker(contractAddress);
+        ref = IReferralTracker(contractAddress);
     }
 
     function setERC20Token(address newToken) external onlyAdmin {
         require(newToken != address(0x0), "Address needs to be valid");
-        token = ERC20(newToken);
+        token = IERC20(newToken);
     }
 
     function setKYC(address newKYC) external onlyAdmin {
         require(newKYC != address(0x0), "Address needs to be valid");
-        kyc = KYCRegistry(newKYC);
+        kyc = IKYCRegistry(newKYC);
     }
 
     function setAdministrator(address _admin) external onlyOwner {
@@ -109,6 +106,22 @@ contract DepositRegistry is Ownable {
         );
 
         emit UserDepositCompleted(address(this), from);
+    }
+
+    function delegateDeposit(address to) external {
+        require(deposits[to].deposited == false, "already deposited");
+        require(
+            token.allowance(msg.sender, address(this)) >= DEPOSIT_AMNT,
+            "address not approved amount"
+        );
+
+        require(
+            token.transferFrom(msg.sender, address(this), DEPOSIT_AMNT),
+            "Deposit transfer failed"
+        );
+        deposits[to].deposited = true;
+
+        emit UserDepositCompleted(address(this), to);
     }
 
     function withdraw(address to) external {
