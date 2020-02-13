@@ -33,7 +33,7 @@ contract SwapAndDeposit {
         notTemplate
         returns (bool)
     {
-        require(depositAddress == address(0), "already init");
+        require(depositAddress != address(0), "already init");
         depositAddress = _depositAddress;
         factoryAddress = _factoryAddress;
     }
