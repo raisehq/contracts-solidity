@@ -341,7 +341,7 @@ contract LoanContract is ILoanContract {
         }
     }
 
-    function withdrawRepaymentAndDeposit() external onlyRepaid returns (bool) {
+    function withdrawRepaymentAndDeposit() external onlyRepaid {
         require(swapFactory != address(0), "swap factory is 0");
         require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
