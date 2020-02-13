@@ -1,12 +1,15 @@
 pragma solidity 0.5.10;
 
-import "./Authorization.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./interfaces/ILoanContractDispatcher.sol";
+import "./interfaces/IAuthorization.sol";
 import "./LoanContract.sol";
 
-contract LoanContractDispatcher is Ownable {
-    Authorization auth;
-    address DAITokenAddress;
-    address DAIProxyAddress;
+contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
+    address public auth;
+    address public DAITokenAddress;
+    address public DAIProxyAddress;
+    address public swapFactory;
 
     address public administrator;
 
@@ -22,7 +25,7 @@ contract LoanContractDispatcher is Ownable {
     mapping(address => bool) public isLoanContract;
 
     modifier onlyKYC {
-        require(auth.isKYCConfirmed(msg.sender), "user does not have KYC");
+        require(IAuthorization(auth).isKYCConfirmed(msg.sender), "user does not have KYC");
         _;
     }
 
@@ -54,14 +57,20 @@ contract LoanContractDispatcher is Ownable {
     event AuthAddressUpdated(address newAuthAddress, address administrator);
     event DaiTokenAddressUpdated(address newDaiTokenAddress, address administrator);
     event DaiProxyAddressUpdated(address newDaiProxyAddress, address administrator);
+    event SwapFactoryAddressUpdated(address newSwapFactory, address administrator);
 
     event AdministratorUpdated(address newAdminAddress);
 
-    constructor(address authAddress, address _DAITokenAddress, address _DAIProxyAddress) public {
-        auth = Authorization(authAddress);
+    constructor(
+        address authAddress,
+        address _DAITokenAddress,
+        address _DAIProxyAddress,
+        address _swapFactory
+    ) public {
+        auth = authAddress;
         DAITokenAddress = _DAITokenAddress;
         DAIProxyAddress = _DAIProxyAddress;
-
+        swapFactory = _swapFactory;
         minAmount = 1e18; //1000000000000000000; // Minimum 1 DAI
         maxAmount = 2500000e18; //2500000000000000000000000; // Maximum 2.5 Million DAI
 
@@ -76,13 +85,18 @@ contract LoanContractDispatcher is Ownable {
     }
 
     function setAuthAddress(address authAddress) external onlyAdmin {
-        auth = Authorization(authAddress);
+        auth = authAddress;
         emit AuthAddressUpdated(authAddress, administrator);
     }
 
     function setDaiProxyAddress(address daiProxyAddress) external onlyAdmin {
         DAIProxyAddress = daiProxyAddress;
         emit DaiProxyAddressUpdated(DAIProxyAddress, administrator);
+    }
+
+    function setSwapFactory(address _swapFactory) external onlyAdmin {
+        swapFactory = _swapFactory;
+        emit SwapFactoryAddressUpdated(swapFactory, administrator);
     }
 
     function setAdministrator(address admin) external onlyOwner {
@@ -186,7 +200,8 @@ contract LoanContractDispatcher is Ownable {
             DAIProxyAddress,
             administrator,
             operatorFee,
-            auctionLength
+            auctionLength,
+            swapFactory
         );
         isLoanContract[address(loanContract)] = true;
 

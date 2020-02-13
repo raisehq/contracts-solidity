@@ -1,6 +1,6 @@
 pragma solidity 0.5.10;
 
-interface LoanContractInterface {
+interface ILoanContract {
     function onFundingReceived(address lender, uint256 amount) external returns (bool);
     function withdrawRepayment() external;
     function withdrawLoan() external;

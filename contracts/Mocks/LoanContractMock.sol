@@ -1,9 +1,9 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../LoanContractInterface.sol";
+import "../interfaces/ILoanContract.sol";
 
-contract LoanContractMock is LoanContractInterface {
+contract LoanContractMock is ILoanContract {
     uint256 auctionBalance;
     uint256 maxAmount = 100;
     ERC20 DAIToken;

@@ -1,13 +1,14 @@
 pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "./Authorization.sol";
-import "./LoanContractInterface.sol";
-import "./DAIProxyInterface.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./interfaces/IAuthorization.sol";
+import "./interfaces/ILoanContract.sol";
+import "./interfaces/IDAIProxy.sol";
 
-contract DAIProxy is DAIProxyInterface, Ownable {
+contract DAIProxy is IDAIProxy, Ownable {
     IERC20 private DAIToken;
-    Authorization auth;
+    IAuthorization auth;
     address public administrator;
     bool public hasToDeposit;
 
@@ -20,7 +21,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
     event HasToDeposit(bool value, address administrator);
 
     constructor(address authAddress, address DAIAddress) public {
-        auth = Authorization(authAddress);
+        auth = IAuthorization(authAddress);
         DAIToken = IERC20(DAIAddress);
     }
 
@@ -43,7 +44,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
     }
 
     function setAuthAddress(address authAddress) external onlyAdmin {
-        auth = Authorization(authAddress);
+        auth = IAuthorization(authAddress);
         emit AuthAddressUpdated(authAddress, administrator);
     }
 
@@ -53,7 +54,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
         onlyKYCCanFund
     {
         uint256 newFundingAmount = fundingAmount;
-        LoanContractInterface loanContract = LoanContractInterface(loanAddress);
+        ILoanContract loanContract = ILoanContract(loanAddress);
 
         uint256 auctionBalance = loanContract.getAuctionBalance();
         uint256 maxAmount = loanContract.getMaxAmount();
@@ -70,7 +71,7 @@ contract DAIProxy is DAIProxyInterface, Ownable {
     }
 
     function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
-        LoanContractInterface loanContract = LoanContractInterface(loanAddress);
+        ILoanContract loanContract = ILoanContract(loanAddress);
         require(
             loanContract.onRepaymentReceived(msg.sender, repaymentAmount),
             "repayment failed at loan contract"

@@ -3,9 +3,9 @@ pragma solidity 0.5.10;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
-import "./IDepositRegistry.sol";
-import "./IReferralTracker.sol";
-import "./IKYCRegistry.sol";
+import "./interfaces/IDepositRegistry.sol";
+import "./interfaces/IReferralTracker.sol";
+import "./interfaces/IKYCRegistry.sol";
 
 contract DepositRegistry is IDepositRegistry, Ownable {
     mapping(address => Deposit) deposits;
@@ -73,20 +73,22 @@ contract DepositRegistry is IDepositRegistry, Ownable {
         emit MigrationFinished(address(this));
     }
 
-    function depositFor(address from) external {
+    function depositFor(address from) external returns (bool) {
         require(deposits[from].deposited == false, "already deposited");
         require(
             token.allowance(from, address(this)) >= DEPOSIT_AMNT,
             "address not approved amount"
         );
 
-        deposits[from].deposited = true;
         require(token.transferFrom(from, address(this), DEPOSIT_AMNT), "Deposit transfer failed");
 
+        deposits[from].deposited = true;
+
         emit UserDepositCompleted(address(this), from);
+        return true;
     }
 
-    function depositForWithReferral(address from, address referrer) external {
+    function depositForWithReferral(address from, address referrer) external returns (bool) {
         require(from != referrer, "can not refer to itself");
         require(deposits[referrer].deposited, "referrer has not deposited");
         require(deposits[from].deposited == false, "alredy deposited");
@@ -96,8 +98,6 @@ contract DepositRegistry is IDepositRegistry, Ownable {
         );
         require(msg.sender == from, "cannot deposit with a referral from another address");
 
-        deposits[from].deposited = true;
-
         require(ref.registerReferral(referrer, msg.sender), "ref failed");
 
         require(
@@ -105,10 +105,13 @@ contract DepositRegistry is IDepositRegistry, Ownable {
             "Deposit referal transfer failed"
         );
 
+        deposits[from].deposited = true;
+
         emit UserDepositCompleted(address(this), from);
+        return true;
     }
 
-    function delegateDeposit(address to) external {
+    function delegateDeposit(address to) external returns (bool) {
         require(deposits[to].deposited == false, "already deposited");
         require(
             token.allowance(msg.sender, address(this)) >= DEPOSIT_AMNT,
@@ -119,9 +122,11 @@ contract DepositRegistry is IDepositRegistry, Ownable {
             token.transferFrom(msg.sender, address(this), DEPOSIT_AMNT),
             "Deposit transfer failed"
         );
+
         deposits[to].deposited = true;
 
         emit UserDepositCompleted(address(this), to);
+        return true;
     }
 
     function withdraw(address to) external {
@@ -148,5 +153,9 @@ contract DepositRegistry is IDepositRegistry, Ownable {
 
     function isUnlocked(address user) external view returns (bool) {
         return deposits[user].unlockedForWithdrawal;
+    }
+
+    function getERC20Token() external view returns (address) {
+        return address(token);
     }
 }

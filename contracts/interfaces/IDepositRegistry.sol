@@ -23,11 +23,11 @@ interface IDepositRegistry {
 
     function finishMigration() external;
 
-    function depositFor(address from) external;
+    function depositFor(address from) external returns (bool);
 
-    function depositForWithReferral(address from, address referrer) external;
+    function depositForWithReferral(address from, address referrer) external returns (bool);
 
-    function delegateDeposit(address to) external;
+    function delegateDeposit(address to) external returns (bool);
 
     function withdraw(address to) external;
 
@@ -36,4 +36,7 @@ interface IDepositRegistry {
     function hasDeposited(address user) external view returns (bool);
 
     function isUnlocked(address user) external view returns (bool);
+
+    function getERC20Token() external view returns (address);
+
 }

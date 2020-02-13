@@ -2,13 +2,13 @@ pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../DAIProxyInterface.sol";
-import "../LoanContractInterface.sol";
+import "../interfaces/IDAIProxy.sol";
+import "../interfaces/ILoanContract.sol";
 
-contract LoanContractTest is LoanContractInterface {
+contract LoanContractTest is ILoanContract {
     using SafeMath for uint256;
     ERC20 DAIToken;
-    DAIProxyInterface proxy;
+    IDAIProxy proxy;
     address public originator;
     address public administrator;
 
@@ -160,7 +160,7 @@ contract LoanContractTest is LoanContractInterface {
         uint256 _auctionLength
     ) public {
         DAIToken = ERC20(DAITokenAddress);
-        proxy = DAIProxyInterface(proxyAddress);
+        proxy = IDAIProxy(proxyAddress);
         originator = _originator;
         administrator = _administrator;
 

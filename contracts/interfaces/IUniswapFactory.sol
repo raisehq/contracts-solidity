@@ -1,3 +1,5 @@
+pragma solidity 0.5.10;
+
 interface IUniswapFactory {
     // Create Exchange
     function createExchange(address token) external returns (address exchange);

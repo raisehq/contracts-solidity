@@ -1,3 +1,5 @@
+pragma solidity 0.5.10;
+
 interface IUniswapExchange {
     // Address of ERC20 token sold on this exchange
     function tokenAddress() external view returns (address token);

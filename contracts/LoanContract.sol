@@ -2,32 +2,27 @@ pragma solidity 0.5.10;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./DAIProxyInterface.sol";
-import "./LoanContractInterface.sol";
+import "./interfaces/IDAIProxy.sol";
+import "./interfaces/ILoanContract.sol";
+import "./interfaces/ISwapAndDeposit.sol";
+import "./interfaces/ISwapAndDepositFactory.sol";
 
-contract LoanContract is LoanContractInterface {
+contract LoanContract is ILoanContract {
     using SafeMath for uint256;
-    IERC20 ERC20Token;
-    DAIProxyInterface proxy;
-
+    address public swapFactory;
     address public proxyContractAddress;
     address public tokenAddress;
-
     address public originator;
     address public administrator;
 
     uint256 public minAmount;
     uint256 public maxAmount;
-
     uint256 public auctionEndTimestamp;
     uint256 public auctionStartTimestamp;
     uint256 public auctionLength;
-
     uint256 public lastFundedTimestamp;
-
     uint256 public termEndTimestamp;
     uint256 public termLength;
-
     uint256 public auctionBalance;
     uint256 public loanWithdrawnAmount;
     uint256 public borrowerDebt; // Amount borrower need to repay == principal + interests
@@ -35,10 +30,6 @@ contract LoanContract is LoanContractInterface {
     uint256 public maxInterestRate;
     uint256 public operatorFee;
     uint256 public operatorBalance;
-
-    bool public loanWithdrawn;
-    bool public minimumReached;
-
     uint256 constant MONTH_SECONDS = 2592000;
     uint256 constant ONE_HUNDRED = 100000000000000000000;
 
@@ -60,6 +51,12 @@ contract LoanContract is LoanContractInterface {
     }
 
     LoanState public currentState;
+
+    IERC20 ERC20Token;
+    IDAIProxy proxy;
+
+    bool public loanWithdrawn;
+    bool public minimumReached;
 
     event LoanCreated(
         address indexed contractAddr,
@@ -163,14 +160,16 @@ contract LoanContract is LoanContractInterface {
         address proxyAddress,
         address _administrator,
         uint256 _operatorFee,
-        uint256 _auctionLength
+        uint256 _auctionLength,
+        address _swapFactory
     ) public {
         tokenAddress = ERC20TokenAddress;
         proxyContractAddress = proxyAddress;
         ERC20Token = IERC20(tokenAddress);
-        proxy = DAIProxyInterface(proxyContractAddress);
+        proxy = IDAIProxy(proxyContractAddress);
         originator = _originator;
         administrator = _administrator;
+        swapFactory = _swapFactory;
 
         minInterestRate = _minInterestRate;
         maxInterestRate = _maxInterestRate;
@@ -331,11 +330,33 @@ contract LoanContract is LoanContractInterface {
         require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
         uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
         lenderPosition[msg.sender].withdrawn = true;
-        emit RepaymentWithdrawn(address(this), msg.sender, amount);
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
         require(ERC20Token.transfer(msg.sender, amount), "error while transfer");
 
+        emit RepaymentWithdrawn(address(this), msg.sender, amount);
+        if (loanWithdrawnAmount == borrowerDebt) {
+            setState(LoanState.CLOSED);
+            emit FullyRefunded(address(this));
+        }
+    }
+
+    function withdrawRepaymentAndDeposit() external onlyRepaid returns (bool) {
+        require(swapFactory != address(0), "swap factory is 0");
+        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+        require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
+        uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
+        lenderPosition[msg.sender].withdrawn = true;
+
+        loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
+        address swapAddress = ISwapAndDepositFactory(swapFactory).deploy();
+        require(swapAddress != address(0), "error swap deploy");
+        require(
+            ISwapAndDeposit(swapAddress).swapAndDeposit(msg.sender, tokenAddress, amount),
+            "error at swap"
+        );
+
+        emit RepaymentWithdrawn(address(this), msg.sender, amount);
         if (loanWithdrawnAmount == borrowerDebt) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
