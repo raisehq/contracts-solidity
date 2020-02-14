@@ -222,4 +222,8 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         return address(loanContract);
     }
 
+    function checkLoanContract(address loanAddress) external view returns (bool) {
+        return isLoanContract[loanAddress];
+    }
+
 }

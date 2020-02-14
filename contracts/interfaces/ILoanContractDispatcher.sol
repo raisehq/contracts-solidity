@@ -48,5 +48,12 @@ interface ILoanContractDispatcher {
 
     function setMinAuctionLength(uint256 requestedMinAuctionLength) external;
 
-    function deploy() external returns (address);
+    function deploy(
+        uint256 loanMinAmount,
+        uint256 loanMaxAmount,
+        uint256 loanMinInterestRate,
+        uint256 loanMaxInterestRate,
+        uint256 termLength,
+        uint256 auctionLength
+    ) external returns (address);
 }

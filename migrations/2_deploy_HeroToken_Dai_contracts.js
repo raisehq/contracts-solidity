@@ -4,8 +4,8 @@ const DAI = artifacts.require("DAIFake");
 const devAccounts = require("../int.accounts.json");
 const DAIabi = require("../abis/DAI-abi.json");
 const Heroabi = require("../abis/Hero-abi.json");
-const { getContracts, contractIsUpdated } = require("../scripts/helpers");
-const { writeFileSync } = require("fs");
+const {getContracts, contractIsUpdated} = require("../scripts/helpers");
+const {writeFileSync} = require("fs");
 
 const getContractTokens = async (contracts, deployerAddress) => {
   try {
@@ -45,7 +45,7 @@ const migrationKovan = async (deployer, network, accounts) => {
     const herotokenHasBeenUpdated = () =>
       contractIsUpdated(contracts, netId, "HeroToken", HeroToken);
 
-    const { heroTokenAddress, daiAddress } = await getContractTokens(contracts, deployerAddress);
+    const {heroTokenAddress, daiAddress} = await getContractTokens(contracts, deployerAddress);
 
     HeroTokenAddress = heroTokenAddress;
     DAIAddress = daiAddress;
@@ -54,11 +54,13 @@ const migrationKovan = async (deployer, network, accounts) => {
       // deploy in kovan only if they are not deployed already
       await deployer.deploy(HeroToken, {
         from: deployerAddress,
-        overwrite: false
+        overwrite: false,
+        gas: 8000000
       });
       await deployer.deploy(DAI, {
         from: deployerAddress,
-        overwrite: false
+        overwrite: false,
+        gas: 8000000
       });
 
       HeroTokenAddress = HeroToken.address;
