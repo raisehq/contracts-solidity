@@ -10,14 +10,17 @@ const truffleAssert = require('truffle-assertions');
 const DAIProxyContract = artifacts.require('DAIProxyMock');
 const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
 const LoanContract = artifacts.require('LoanContract');
+const SwapFactoryContract = artifacts.require('SwapAndDepositFactory');
 
 const helpers = require('./helpers.js');
 const { calculateNetLoan, increaseTime } = helpers;
+const zeroAddress = '0x0000000000000000000000000000000000000000';
 
 contract('LoanContract', (accounts) => {
     let DAIProxy;
     let DAIToken;
     let Loan;
+    let SwapFactory;
 
     const averageMiningBlockTime = 15;
 
@@ -53,6 +56,7 @@ contract('LoanContract', (accounts) => {
                 maxInterestRate = new BN('100000000000000000');
                 auctionLength = 60 * 60; // 1 hour in seconds
                 termLength = 2 * 60 * 60; // 2 hours in seconds
+                SwapFactory = await SwapFactoryContract.new(zeroAddress, zeroAddress, zeroAddress, {from: owner});
             } catch (error) {
                 throw error;
             }
@@ -70,7 +74,8 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
                 );
             });
             it('Expect onFundingReceived to revert if caller is NOT DaiProxy', async () => {
@@ -280,7 +285,8 @@ contract('LoanContract', (accounts) => {
                         DAIProxy.address,
                         admin,
                         operatorPercentFee,
-                        auctionLength
+                        auctionLength,
+                        SwapFactory.address
                     );
                 } catch (error) {
                     throw error;
@@ -330,7 +336,8 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
                 );
             });
             it('Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ', async () => {
@@ -461,7 +468,8 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
                 );
             });
             it('Expect withdrawLoan to allow Borrower take loan if state == ACTIVE', async () => {
@@ -595,7 +603,8 @@ contract('LoanContract', (accounts) => {
                         DAIProxy.address,
                         admin,
                         operatorPercentFee,
-                        auctionLength
+                        auctionLength,
+                        SwapFactory.address
                     );
                     await helpers.waitNBlocks(1000);
                     const isExpired = await Loan.isDefaulted();
@@ -652,7 +661,8 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
                 );
             });
             it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID', async () => {
@@ -769,7 +779,9 @@ contract('LoanContract', (accounts) => {
                         DAIProxy.address,
                         admin,
                         operatorPercentFee,
-                        auctionLength
+                        auctionLength,
+                        SwapFactory.address
+
                     );
                     await helpers.waitNBlocks(1000);
                     const isExpired = await Loan.isDefaulted();
@@ -847,7 +859,9 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expect withdrawRefund to allow Lender refund if state == FAILED_TO_FUND', async () => {
@@ -990,7 +1004,9 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID', async () => {
@@ -1035,7 +1051,9 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects to return true when block number is greater than the auction end block', async() => {
@@ -1063,7 +1081,9 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects to return true when block timestamp is greater than the termEndTimestamp', async() => {
@@ -1091,7 +1111,9 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects to calculate correctly the interest rate when loan is in state = CREATED', async () => {
@@ -1149,7 +1171,9 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects lender to withdraw funds after unlocked', async() => {
@@ -1193,7 +1217,9 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects to unlock the funds if admin', async () => {
@@ -1241,7 +1267,9 @@ contract('LoanContract', (accounts) => {
                         DAIProxy.address,
                         admin,
                         operatorPercentFee,
-                        auctionLength
+                        auctionLength,
+                        SwapFactory.address
+
                     ); 
                 } catch (error) { 
                     throw error; 
@@ -1298,7 +1326,9 @@ contract('LoanContract', (accounts) => {
                     DAIProxy.address,
                     admin,
                     operatorPercentFee,
-                    auctionLength
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expect operators to withdraw the loan operator fee if borrower has withdraw', async () => {

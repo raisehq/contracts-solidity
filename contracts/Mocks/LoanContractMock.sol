@@ -25,6 +25,8 @@ contract LoanContractMock is ILoanContract {
 
     function withdrawRepayment() public {}
 
+    function withdrawRepaymentAndDeposit() public {}
+
     function withdrawLoan() public {}
 
     function onRepaymentReceived(address from, uint256 amount) public returns (bool) {
