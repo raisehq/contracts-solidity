@@ -20,7 +20,7 @@ ganache_running() {
 }
 
 start_ganache() {
-  npx ganache-cli --gasLimit 0xfffffffffff --port "$ganache_port" > /dev/null &
+  npx ganache-cli -e 10000000 --gasLimit 0xfffffffffff --port "$ganache_port" > /dev/null &
 
   ganache_pid=$!
 

@@ -40,13 +40,11 @@ const migration = async (deployer, network, accounts) => {
     })
       .deploy({arguments: []})
       .send({from: deployerAddress, gas: 6000000});
-    console.log("deployed exchange");
     const uniswapFactory = await new web3One.eth.Contract(UniswapFactoryAbi, {
       data: UNISWAP_FACTORY_BYTECODE
     })
       .deploy({arguments: []})
       .send({from: deployerAddress, gas: 6000000});
-    console.log("deployed factory");
     // Initialize uniswap
     await uniswapFactory.methods.initializeFactory(uniswapExchange.options.address);
 

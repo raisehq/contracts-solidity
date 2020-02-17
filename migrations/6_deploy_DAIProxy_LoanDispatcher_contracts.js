@@ -42,7 +42,6 @@ const migration = async (deployer, network, accounts) => {
       DAIProxy.address,
       swapFactoryAddress
     ]);
-    console.log("prior");
     await deployer.deploy(
       LoanDispatcher,
       authAddress,
@@ -54,7 +53,6 @@ const migration = async (deployer, network, accounts) => {
         gas: LoanGas
       }
     );
-    console.log("afr");
 
     // Update contracts
     newContracts = _.merge(newContracts, {

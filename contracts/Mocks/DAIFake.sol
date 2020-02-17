@@ -11,14 +11,18 @@ contract DAIFake is ERC20Mintable {
 
     // 1000 tokens == 1000000000000000000000 in 18 decimal (Like wei)
     constructor() public {
-        super.mint(msg.sender, 1000000000000000000000);
+        super.mint(msg.sender, 1000000000 ether);
     }
 
     function transferFakeDAITokens(address destinationAddress) public {
-        super.mint(destinationAddress, 1000000000000000000000);
+        super.mint(destinationAddress, 1000000000 ether);
     }
 
     function transferAmountToAddress(address to, uint256 amount) public {
         super.mint(to, amount);
+    }
+
+    function mintTokens(address destinationAddress) public {
+        super.mint(destinationAddress, 1000000000 ether);
     }
 }

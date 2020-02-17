@@ -36,6 +36,7 @@ contract SwapAndDeposit {
         require(depositAddress == address(0) && factoryAddress == address(0), "already init");
         depositAddress = _depositAddress;
         factoryAddress = _factoryAddress;
+        return true;
     }
 
     function swapTokenToTokenOutput(
