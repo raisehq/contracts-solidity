@@ -10,148 +10,288 @@ const {expect} = chai;
 
 const SwapAndDeposit = artifacts.require("SwapAndDeposit");
 const SwapFactoryContract = artifacts.require("SwapAndDepositFactory");
-const UniswapExchangeAbi = artifacts.require("IUniswapExchange").abi;
-const UniswapFactoryAbi = artifacts.require("IUniswapFactory").abi;
+
 const DAITokenContract = artifacts.require("DAIFake");
 const RaiseTokenContract = artifacts.require("RaiseFake");
-const AbiERC20 = artifacts.require("DAIFake").abi;
 const KYCContract = artifacts.require("KYCRegistry");
 const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
 
-const {
-  getWeb3,
-  UNISWAP_EXCHANGE_BYTECODE,
-  UNISWAP_FACTORY_BYTECODE
-} = require("../scripts/helpers.js");
+const {getWeb3} = require("../scripts/helpers.js");
 
-// Exchange Alpha mimics DAI pool at 17 feb 2020
-const exchangeAlphaPool = {
-  tokenPool: web3.utils.toWei("2072168"),
-  ethPool: web3.utils.toWei("8257")
-};
-// Exchange Beta mimics RAISE pool at 17 feb 2020
-const exchangeBetaPool = {
-  tokenPool: web3.utils.toWei("263875"),
-  ethPool: web3.utils.toWei("24")
-};
-/**
- * initializeUniswap: deploy uniswap factory and exchange template to replicate Uniswap in local testnet
- * @param {*} anyWeb3
- * @param {*} tokenA
- * @param {*} tokenB
- * @param {*} owner
- */
-const initializeUniswap = async (anyWeb3, tokenA, tokenB, owner) => {
-  const web3One = getWeb3(anyWeb3);
-  const defaultOptions = {from: owner, gas: 9000000};
-  const tokenInstanceA = new web3One.eth.Contract(AbiERC20, tokenA);
-  const tokenInstanceB = new web3One.eth.Contract(AbiERC20, tokenB);
+const {initializeUniswap} = require("./uniswap.utils");
 
-  // deploy exchange contract
-  const uniswapExchange = await new web3One.eth.Contract(UniswapExchangeAbi, {
-    data: UNISWAP_EXCHANGE_BYTECODE
-  })
-    .deploy({arguments: []})
-    .send(defaultOptions);
-
-  // deploy uniswap factory
-  const uniswapFactory = await new web3One.eth.Contract(UniswapFactoryAbi, {
-    data: UNISWAP_FACTORY_BYTECODE
-  })
-    .deploy({arguments: []})
-    .send(defaultOptions);
-  // Initialize factory
-  await uniswapFactory.methods
-    .initializeFactory(uniswapExchange.options.address)
-    .send(defaultOptions);
-
-  // Create exchange Alpha
-  await uniswapFactory.methods.createExchange(tokenA).send(defaultOptions);
-  const exchangeAlphaAddress = await uniswapFactory.methods.getExchange(tokenA).call();
-  const exchangeAlpha = new web3One.eth.Contract(UniswapExchangeAbi, exchangeAlphaAddress);
-  // Create exchange Beta
-  await uniswapFactory.methods.createExchange(tokenB).send(defaultOptions);
-  const exchangeBetaAddress = await uniswapFactory.methods.getExchange(tokenB).call();
-  console.log(exchangeAlphaAddress, exchangeBetaAddress);
-  const exchangeBeta = new web3One.eth.Contract(UniswapExchangeAbi, exchangeBetaAddress);
-
-  const deadline = Math.floor(new Date().getTime() / 1000 + 600000);
-  // Approve to exchanges
-  await tokenInstanceA.methods
-    .approve(exchangeAlphaAddress, exchangeAlphaPool.tokenPool)
-    .send(defaultOptions);
-  await tokenInstanceB.methods
-    .approve(exchangeBetaAddress, exchangeBetaPool.tokenPool)
-    .send(defaultOptions);
-
-  // Add liquidity to uniswap exchanges
-  await exchangeBeta.methods
-    .addLiquidity("0", exchangeBetaPool.tokenPool, deadline.toString())
-    .send({value: exchangeBetaPool.ethPool, from: owner, gas: 9000000});
-
-  await exchangeAlpha.methods
-    .addLiquidity("0", exchangeAlphaPool.tokenPool, deadline.toString())
-    .send({value: exchangeAlphaPool.ethPool, from: owner, gas: 9000000});
-
-  // return factory address;
-  return uniswapFactory.options.address;
-};
+const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 contract("SwapAndDeposit", accounts => {
+  const web3One = getWeb3(web3);
+
+  // Activate better error handling with revert reasons
+  web3One.eth.handleRevert = true;
+
   let SwapFactory;
   let SwapAndDepositTemplate;
   let RaiseToken;
   let DAIToken;
+  let DepositRegistry;
+  let Auth;
 
   const owner = accounts[0];
   const admin = accounts[1];
   const borrower = accounts[2];
   const lender = accounts[3];
 
-  describe("Unit tests for SwapAndDeposit minimal proxy", () => {
-    before(async () => {
+  const INPUT_AMOUNT = web3.utils.toWei("300"); // 300 DAI
+
+  const beforeTest = async () => {
+    try {
+      RaiseToken = await RaiseTokenContract.new({from: owner});
+      DAIToken = await DAITokenContract.new({from: owner});
+
+      // Mint 1.000.000.000 DAI tokens to lender
+      await DAIToken.mintTokens(lender, {from: owner});
+
+      // adding borrower and lender to KYC
+      KYCRegistry = await KYCContract.new();
+      await KYCRegistry.setAdministrator(admin);
+      await KYCRegistry.addAddressToKYC(borrower, {from: admin});
+      await KYCRegistry.addAddressToKYC(lender, {from: admin});
+
+      DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
+        from: owner
+      });
+
+      Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
+      SwapAndDepositTemplate = await SwapAndDeposit.new({from: owner});
+
+      uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
+
+      SwapFactory = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        Auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  describe("SwapAndDeposit Factory", () => {
+    beforeEach(beforeTest);
+    it("Expects to deploy a initiated minimal proxy", async () => {
+      const tx = await SwapFactory.deploy();
+      truffleAssert.eventEmitted(tx, "NewSwapContract");
+    });
+    it("Expecta to NOT deploy if library is not set", async () => {
+      const swapFactoryTrufle = await SwapFactoryContract.new(
+        zeroAddress,
+        Auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      const swapFactory = new web3One.eth.Contract(
+        SwapFactoryContract.abi,
+        swapFactoryTrufle.address
+      );
+
       try {
-        RaiseToken = await RaiseTokenContract.new({from: owner});
-        DAIToken = await DAITokenContract.new({from: owner});
+        await swapFactory.methods.deploy().send({from: owner});
 
-        // Mint DAI tokens to lender
-        await DAIToken.mintTokens(lender, {from: owner});
-        // adding borrower and lender to KYC
-        KYCRegistry = await KYCContract.new();
-        await KYCRegistry.setAdministrator(admin);
-        await KYCRegistry.addAddressToKYC(borrower, {from: admin});
-        await KYCRegistry.addAddressToKYC(lender, {from: admin});
-
-        DepositRegistry = await DepositRegistryContract.new(
-          RaiseToken.address,
-          KYCRegistry.address,
-          {from: owner}
-        );
-
-        Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-        SwapAndDepositTemplate = await SwapAndDeposit.new({from: owner});
-
-        uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
-        SwapFactory = await SwapFactoryContract.new(
-          SwapAndDepositTemplate.address,
-          Auth.address,
-          uniswapAddress,
-          {
-            from: owner
-          }
-        );
+        assert.fail("Tx should not success");
       } catch (error) {
-        throw error;
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "library must be set");
+        assert(error.message.includes("reverted"));
       }
     });
-    describe("Deploy", () => {
-      beforeEach(async () => {});
-      it("Expects to deploy a minimal proxy", async () => {
-        const tx = await SwapFactory.deploy();
-        console.log(tx);
-        truffleAssert.eventEmitted(tx, "NewSwapContract");
-      });
+    it("Expects to NOT deploy if uniswap factory is not set", async () => {
+      const swapFactoryTrufle = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        Auth.address,
+        zeroAddress,
+        {
+          from: owner
+        }
+      );
+      const swapFactory = new web3One.eth.Contract(
+        SwapFactoryContract.abi,
+        swapFactoryTrufle.address
+      );
+      try {
+        await swapFactory.methods.deploy().send({from: owner});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "uniswap must be set");
+        assert(error.message.includes("reverted"));
+      }
+    });
+    it("Expects to NOT deploy if deposit is not set", async () => {
+      const AuthTruffle = await AuthContract.new(KYCRegistry.address, zeroAddress);
+      const swapFactoryTrufle = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        AuthTruffle.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      const swapFactory = new web3One.eth.Contract(
+        SwapFactoryContract.abi,
+        swapFactoryTrufle.address
+      );
+
+      try {
+        await swapFactory.methods.deploy().send({from: owner});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "deposit must be set");
+        assert(error.message.includes("reverted"));
+      }
+    });
+    it("Expects to NOT deploy if auth is not set", async () => {
+      const swapFactoryTrufle = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        zeroAddress,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      const swapFactory = new web3One.eth.Contract(
+        SwapFactoryContract.abi,
+        swapFactoryTrufle.address
+      );
+
+      try {
+        await swapFactory.methods.deploy().send({from: owner});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "auth must be set");
+        assert(error.message.includes("reverted"));
+      }
+    });
+  });
+  describe("SwapAndDeposit Master Template", () => {
+    beforeEach(beforeTest);
+    it("Expects to SwapAndDeposit Template to not be initialized", async () => {
+      const swapTemplateTruffle = await SwapAndDeposit.new({from: owner});
+      const swapTemplate = new web3One.eth.Contract(
+        SwapAndDepositTemplate.abi,
+        swapTemplateTruffle.address
+      );
+
+      try {
+        await swapTemplate.methods
+          .init(DepositRegistry.address, uniswapAddress)
+          .send({from: lender});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "is template contract");
+        assert(error.message.includes("reverted"));
+      }
+    });
+    it("Expects to SwapAndDeposit Template to not be able to swap", async () => {
+      const swapTemplateTruffle = await SwapAndDeposit.new({from: owner});
+      const swapTemplate = new web3One.eth.Contract(
+        SwapAndDepositTemplate.abi,
+        swapTemplateTruffle.address
+      );
+
+      await DAIToken.approve(swapTemplateTruffle.address, INPUT_AMOUNT, {from: lender});
+      try {
+        await swapTemplate.methods
+          .swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT)
+          .send({from: lender, gas: 6000000});
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "is template contract");
+        assert(error.message.includes("reverted"));
+      }
+    });
+  });
+  describe("SwapAndDeposit Minimal Proxy", () => {
+    beforeEach(beforeTest);
+    it("Expects to swap DAI to RAISE and deposit to the DepositRegistry contract", async () => {
+      const DAI_COST_200_RAISE = new BN("4596059099803939333");
+      const allDaiBalance = await DAIToken.balanceOf(lender);
+      const tx = await SwapFactory.deploy();
+      // Assert contract creation
+      expect(tx.logs).not.to.be.empty;
+      expect(tx.logs[0]).to.have.nested.property("args.proxyAddress");
+      truffleAssert.eventEmitted(tx, "NewSwapContract");
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxyTruffle = await SwapAndDeposit.at(proxyAddress);
+      const swapProxy = new web3One.eth.Contract(SwapAndDepositTemplate.abi, proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: lender});
+
+      const swapGas = await swapProxy.methods
+        .swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT)
+        .estimateGas({from: lender});
+      // Swap DAI to 200 RAISE and deposit it
+      const swapTx = await swapProxy.methods
+        .swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT)
+        .send({from: lender, gas: swapGas});
+
+      // Create truffle assert contexts
+      const swapContext = await truffleAssert.createTransactionResult(
+        swapProxyTruffle,
+        swapTx.transactionHash
+      );
+      const depositContext = await truffleAssert.createTransactionResult(
+        DepositRegistry,
+        swapTx.transactionHash
+      );
+
+      // Check important events
+      truffleAssert.eventEmitted(
+        depositContext,
+        "UserDepositCompleted"
+        //({depositRegistry, user}) =>
+        // depositRegistry === DepositRegistry.address && user === lender
+      );
+      truffleAssert.eventEmitted(
+        swapContext,
+        "SwapDeposit"
+        //({loan, guy}) => loan === lender && guy === lender
+      );
+
+      // All the remaining DAI should come back to the user
+      const afterDaiBalance = await DAIToken.balanceOf(lender);
+      const afterRaiseBalance = await RaiseToken.balanceOf(lender);
+
+      // Destroyed contract address must NOT hold any token or ETH
+      const destroyedContractEther = await web3One.eth.getBalance(proxyAddress);
+      const destroyedContractDAI = await DAIToken.balanceOf(proxyAddress);
+      const destroyedContractRaise = await RaiseToken.balanceOf(proxyAddress);
+      expect(destroyedContractEther).to.be.eq.BN("0");
+      expect(destroyedContractDAI).to.be.eq.BN("0");
+      expect(destroyedContractRaise).to.be.eq.BN("0");
+      // User DAI balance should decrease the cost of 200 RAISE price
+      expect(afterDaiBalance).to.be.lt.BN(allDaiBalance);
+      expect(afterDaiBalance).to.be.eq.BN(allDaiBalance.sub(DAI_COST_200_RAISE));
+      // User RAISE balance must be zero
+      expect(afterRaiseBalance).to.be.eq.BN("0");
+      // User have deposit inside the DepositRegistry
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(true);
     });
   });
 });

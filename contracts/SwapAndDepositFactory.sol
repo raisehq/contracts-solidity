@@ -11,7 +11,7 @@ contract SwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable 
     address public authAddress;
     address public uniswapAddress;
 
-    event NewSwapContract(address newSwap);
+    event NewSwapContract(address proxyAddress);
 
     constructor(address _libraryAddress, address _authAddress, address _uniswapAddress) public {
         libraryAddress = _libraryAddress;
@@ -32,13 +32,14 @@ contract SwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable 
     }
 
     function deploy() external returns (address proxyAddress) {
+        require(authAddress != address(0), "auth must be set");
         address depositAddress = IAuthorization(authAddress).getDepositAddress();
         require(libraryAddress != address(0), "library must be set");
         require(uniswapAddress != address(0), "uniswap must be set");
         require(depositAddress != address(0), "deposit must be set");
         proxyAddress = createClone(libraryAddress);
         require(
-            ISwapAndDeposit(proxyAddress).init(depositAddress, uniswapAddress) == true,
+            ISwapAndDeposit(proxyAddress).init(depositAddress, uniswapAddress),
             "Failed to init"
         );
 

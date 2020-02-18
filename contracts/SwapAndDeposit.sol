@@ -14,7 +14,7 @@ contract SwapAndDeposit {
 
     bool isTemplate;
 
-    uint8 constant DEADLINE_BLOCK_LENGTH = 60;
+    uint16 constant DEADLINE_TIME_LENGTH = 300;
     uint256 constant DEPOSIT_AMOUNT = 200 ether;
 
     event SwapDeposit(address loan, address guy);
@@ -47,24 +47,28 @@ contract SwapAndDeposit {
         uint256 outputTokenAmount
     ) internal returns (bool) {
         require(
-            IERC20(inputTokenAddress).allowance(msg.sender, address(this)) >= inputTokenAmount,
-            "Transfer not allowed"
-        );
-        require(
             IERC20(inputTokenAddress).transferFrom(msg.sender, address(this), inputTokenAmount),
             "Transfer failed"
         );
-        address exchangeAddress = IUniswapFactory(factoryAddress).getExchange(inputTokenAddress);
-        IERC20(inputTokenAddress).approve(exchangeAddress, inputTokenAmount);
-        uint256 inputTokenSpent = IUniswapExchange(exchangeAddress).tokenToTokenSwapOutput(
+        IUniswapExchange exchange = IUniswapExchange(
+            IUniswapFactory(factoryAddress).getExchange(inputTokenAddress)
+        );
+        require(
+            IERC20(inputTokenAddress).approve(address(exchange), inputTokenAmount),
+            "fail to approve"
+        );
+        uint256 inputTokenSpent = exchange.tokenToTokenSwapOutput(
             outputTokenAmount,
             inputTokenAmount, // at least prevent to consume more input tokens than the transfer
             uint256(-1), // do not check how much eth is sold prior the swap: input token --> eth --> output token
-            block.number.add(DEADLINE_BLOCK_LENGTH), // prevent swap to go throught if is not mined after deadline
+            block.timestamp.add(DEADLINE_TIME_LENGTH), // prevent swap to go throught if is not mined after deadline
             outputTokenAddress
         );
         require(inputTokenSpent > 0, "Swap not spent input token");
-        IERC20(inputTokenAddress).transfer(depositor, inputTokenAmount.sub(inputTokenSpent));
+        require(
+            IERC20(inputTokenAddress).transfer(depositor, inputTokenAmount.sub(inputTokenSpent)),
+            "transfered"
+        );
         require(IERC20(inputTokenAddress).balanceOf(address(this)) == 0, "input token still here");
         return true;
     }
@@ -88,6 +92,7 @@ contract SwapAndDeposit {
         address inputTokenAddress,
         uint256 inputTokenAmount
     ) external notTemplate returns (bool) {
+        require(depositAddress != address(0) && factoryAddress != address(0), "not init");
         address outputTokenAddress = IDepositRegistry(depositAddress).getERC20Token();
         require(outputTokenAddress != address(0), "output token is 0");
         require(
