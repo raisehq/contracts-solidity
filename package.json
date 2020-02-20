@@ -29,7 +29,7 @@
     "migration:cypress": "truffle migration --reset --network cypress",
     "console": "truffle console --network kovan",
     "test": "bash scripts/test.sh",
-    "coverage": "truffle run coverage --solcoverjs ./.solcover.js --network development",
+    "coverage": "truffle run coverage --solcoverjs ./.solcover.js",
     "solhint": "./node_modules/.bin/solhint -f table contracts/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/*.sol"
   },
@@ -60,7 +60,7 @@
     "ganache-cli": "^6.9.1",
     "husky": "^2.7.0",
     "openzeppelin-solidity": "2.4.0",
-    "truffle": "^5.0.30",
+    "truffle": "^5.1.13",
     "truffle-assertions": "^0.9.1",
     "truffle-hdwallet-provider": "^1.0.13",
     "truffle-ledger-provider": "^1.0.1",
@@ -68,6 +68,9 @@
     "web3-utils": "^1.2.6"
   },
   "devDependencies": {
+    "@nomiclabs/buidler": "^1.1.2",
+    "@nomiclabs/buidler-truffle5": "^1.1.2",
+    "@nomiclabs/buidler-web3": "^1.1.2",
     "npm-watch": "^0.6.0",
     "prettier": "^1.18.2",
     "prettier-plugin-solidity": "^1.0.0-alpha.27",

@@ -8,13 +8,20 @@ chai.use(bnChai(BN));
 const { expect } = chai;
 const truffleAssert = require('truffle-assertions');
 const DAIProxyContract = artifacts.require('DAIProxyMock');
-const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
+const DAITokenContract = artifacts.require("DAIFake");
 const LoanContract = artifacts.require('LoanContract');
+const SwapAndDepositContract = artifacts.require('SwapAndDeposit');
 const SwapFactoryContract = artifacts.require('SwapAndDepositFactory');
-
+const RaiseTokenContract = artifacts.require("RaiseFake");
+const KYCContract = artifacts.require("KYCRegistry");
+const AuthContract = artifacts.require("Authorization");
+const DepositRegistryContract = artifacts.require("DepositRegistry");
+const {initializeUniswap} = require('./uniswap.utils');
 const helpers = require('./helpers.js');
 const { calculateNetLoan, increaseTime } = helpers;
-const zeroAddress = '0x0000000000000000000000000000000000000000';
+
+const DAI_COST_200_RAISE = new BN("4596059099803939333");
+
 
 contract('LoanContract', (accounts) => {
     let DAIProxy;
@@ -29,6 +36,7 @@ contract('LoanContract', (accounts) => {
     const borrower = accounts[2];
     const admin = accounts[3];
     const bob = accounts[4];
+    const otherLender = accounts[5];
 
     describe('Unit tests for LoanContract', () => {
         let loanAmount;
@@ -37,29 +45,54 @@ contract('LoanContract', (accounts) => {
         let auctionLength; 
         let termLength;
         let currentBlock;
+        let DepositRegistry;
         const operatorPercentFee = toWei(new BN(5));
         beforeEach(async () => {
-            try {
-                DAIToken = await HeroFakeTokenContract.new({from: owner});
-                await DAIToken.transferAmountToAddress(lender, 150, {from: owner});
-                await DAIToken.transferAmountToAddress(borrower, 200, {from: owner});
-                await DAIToken.transferAmountToAddress(bob, 1, {from: owner});
+            DAIToken = await DAITokenContract.new({from: owner});
+            await DAIToken.transferAmountToAddress(otherLender, web3.utils.toWei('3000'), {from: owner});
+            await DAIToken.transferAmountToAddress(lender, 150, {from: owner});
+            await DAIToken.transferAmountToAddress(borrower, web3.utils.toWei('3000000'), {from: owner});
+            await DAIToken.transferAmountToAddress(bob, 1, {from: owner});
 
-                DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
-            
-                currentBlock = await web3.eth.getBlock('latest');
+            DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+        
+            currentBlock = await web3.eth.getBlock('latest');
 
-                // Set Loan variables
-                minAmount = new BN(80);
-                maxAmount = new BN(100);
-                minInterestRate = new BN('0');
-                maxInterestRate = new BN('100000000000000000');
-                auctionLength = 60 * 60; // 1 hour in seconds
-                termLength = 2 * 60 * 60; // 2 hours in seconds
-                SwapFactory = await SwapFactoryContract.new(zeroAddress, zeroAddress, zeroAddress, {from: owner});
-            } catch (error) {
-                throw error;
-            }
+            const RaiseToken = await RaiseTokenContract.new({from: owner});
+
+            // adding borrower and lender to KYC
+            const KYCRegistry = await KYCContract.new();
+            await KYCRegistry.setAdministrator(admin);
+            await KYCRegistry.addAddressToKYC(borrower, {from: admin});
+            await KYCRegistry.addAddressToKYC(lender, {from: admin});
+            await KYCRegistry.addAddressToKYC(otherLender, {from: admin});
+
+            DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
+                from: owner
+            });
+
+            const Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
+            const depositAddress = await Auth.getDepositAddress()
+            // Set Loan variables
+            minAmount = new BN(80);
+            maxAmount = new BN(100);
+            minInterestRate = new BN('0');
+            maxInterestRate = new BN('100000000000000000');
+            auctionLength = 60 * 60; // 1 hour in seconds
+            termLength = 2 * 60 * 60; // 2 hours in seconds
+
+            const SwapAndDepositTemplate = await SwapAndDepositContract.new({from: owner});
+
+            const uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
+
+            SwapFactory = await SwapFactoryContract.new(
+                SwapAndDepositTemplate.address,
+                Auth.address,
+                uniswapAddress,
+                {
+                from: owner
+                }
+            );
         });
         describe('Method onFundingReceived', () => {
             beforeEach(async () => {
@@ -259,7 +292,7 @@ contract('LoanContract', (accounts) => {
         describe('Method borrower debt calculation', () => {
             beforeEach(async () => {
                 try {
-                    DAIToken = await HeroFakeTokenContract.new({from: owner});
+                    DAIToken = await DAITokenContract.new({from: owner});
                     await DAIToken.transferAmountToAddress(lender, toWei('10000'), {from: owner});
                     await DAIToken.transferAmountToAddress(borrower, toWei('10000'), {from: owner});
                     await DAIToken.transferAmountToAddress(bob, toWei('10000'), {from: owner});
@@ -648,8 +681,65 @@ contract('LoanContract', (accounts) => {
                 }
             });
         });
+        describe('Method withdrawRepaymentAndDeposit', () => {
+            const loanMinAmount = web3.utils.toWei('2000');
+            const loanMaxAmount = web3.utils.toWei('2000');
+            beforeEach(async () => {
+                const loanTermLength = 12 * 30 * 24 * 60 * 60; // 1 year in seconds
+                Loan = await LoanContract.new(
+                    loanTermLength,
+                    loanMinAmount,
+                    loanMaxAmount,
+                    maxInterestRate,
+                    maxInterestRate,
+                    borrower,
+                    DAIToken.address, 
+                    DAIProxy.address,
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+                );
+            });
+            it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID', async () => {
+                const balancee = await DAIToken.balanceOf(otherLender);
+                await DAIToken.approve(DAIProxy.address, loanMaxAmount, { from: otherLender });
+                await DAIProxy.fund(Loan.address, loanMaxAmount, {from: otherLender});
+                const bidAmount = await Loan.getLenderBidAmount(otherLender);
+                const balancee2 = await DAIToken.balanceOf(otherLender);
+                // Retrieve current state == ACTIVE
+                const stateAfterFund = await Loan.currentState({from: owner});
+                expect(Number(stateAfterFund)).to.equal(2);
+
+                await Loan.withdrawLoan({from: borrower});
+
+                const amountToRepay = await Loan.borrowerDebt();
+                const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+
+                await DAIToken.approve(DAIProxy.address, amountToRepay, { from: borrower });
+                await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+                const borrowerBalanceAfter = await DAIToken.balanceOf(borrower);
+                // Fast way to check. TODO: Use BN.js to exact calc-
+                expect(borrowerBalanceAfter).to.be.eq.BN(borrowerBalancePrior.sub(amountToRepay));
+
+                // State should change to REPAID
+                const endState = await Loan.currentState({from: owner});
+                expect(Number(endState)).to.equal(4);
+                const lenderAmount = await Loan.getLenderBidAmount(otherLender);
+                const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+                const lenderBalanceBefore = await DAIToken.balanceOf(otherLender);
+                await Loan.withdrawRepaymentAndDeposit({ from: otherLender, gas: 6000000 });
+                const lenderBalanceAfter = await DAIToken.balanceOf(otherLender);
+                expect(lenderBalanceAfter).to.be.eq.BN(lenderBalanceBefore.add(lenderAmountWithInterest).sub(DAI_COST_200_RAISE));
+                // User have deposit inside the DepositRegistry
+                const deposited = await DepositRegistry.hasDeposited(otherLender);
+                expect(deposited).to.equal(true);
+            });
+        });
         describe('Method withdrawRepayment', () => {
             beforeEach(async () => {
+
                 Loan = await LoanContract.new(
                     termLength,
                     minAmount,
@@ -1238,7 +1328,7 @@ contract('LoanContract', (accounts) => {
         describe('Tests for when withdrawn even if DAI is transfered [Community found]', () => {
             beforeEach(async () => { 
                 try { 
-                    DAIToken = await HeroFakeTokenContract.new({from: owner});
+                    DAIToken = await DAITokenContract.new({from: owner});
 
                     await DAIToken.transferAmountToAddress(lender, 150, {from: owner}); 
                     await DAIToken.transferAmountToAddress(borrower, 200, {from: owner}); 

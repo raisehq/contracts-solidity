@@ -117,6 +117,9 @@ const migration = async (deployer, network, accounts) => {
 };
 
 module.exports = async (deployer, network, accounts) => {
+  if (network.includes("coverage")) {
+    return;
+  }
   try {
     await migration(deployer, network, accounts);
   } catch (err) {

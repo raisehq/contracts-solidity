@@ -31,13 +31,13 @@ contract SwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable 
         libraryAddress = _libraryAddress;
     }
 
-    function deploy() external returns (address proxyAddress) {
+    function deploy() external returns (address) {
         require(authAddress != address(0), "auth must be set");
         address depositAddress = IAuthorization(authAddress).getDepositAddress();
         require(libraryAddress != address(0), "library must be set");
         require(uniswapAddress != address(0), "uniswap must be set");
         require(depositAddress != address(0), "deposit must be set");
-        proxyAddress = createClone(libraryAddress);
+        address proxyAddress = createClone(libraryAddress);
         require(
             ISwapAndDeposit(proxyAddress).init(depositAddress, uniswapAddress),
             "Failed to init"
@@ -46,5 +46,9 @@ contract SwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable 
         emit NewSwapContract(proxyAddress);
 
         return proxyAddress;
+    }
+
+    function isCloned(address target, address query) external view returns (bool result) {
+        return isClone(target, query);
     }
 }

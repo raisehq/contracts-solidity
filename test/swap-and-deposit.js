@@ -40,6 +40,7 @@ contract("SwapAndDeposit", accounts => {
   const admin = accounts[1];
   const borrower = accounts[2];
   const lender = accounts[3];
+  const other = accounts[4];
 
   const INPUT_AMOUNT = web3.utils.toWei("300"); // 300 DAI
 
@@ -84,8 +85,90 @@ contract("SwapAndDeposit", accounts => {
     it("Expects to deploy a initiated minimal proxy", async () => {
       const tx = await SwapFactory.deploy();
       truffleAssert.eventEmitted(tx, "NewSwapContract");
+      // Assert contract creation
+      expect(tx.logs).not.to.be.empty;
+      expect(tx.logs[0]).to.have.nested.property("args.proxyAddress");
     });
-    it("Expecta to NOT deploy if library is not set", async () => {
+    it("Expects to check if address is a clone from template", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      const isClone = await SwapFactory.isCloned(SwapAndDepositTemplate.address, proxyAddress);
+      expect(isClone).to.be.true;
+    });
+
+    it("Expects to SET auth if owner", async () => {
+      const randomAddress = "0xda1827CDe22388eC0f8CdC384267B288A4079756";
+      await SwapFactory.setAuthAddress(randomAddress, {from: owner});
+      const newAddress = await SwapFactory.authAddress();
+      expect(newAddress).to.be.equals(randomAddress);
+    });
+
+    it("Expects to SET uniswap if owner", async () => {
+      const randomAddress = "0xdaB026ff46F72E35EDFe4D1AD37469C49CEC3F0b";
+      await SwapFactory.setUniswapAddress(randomAddress, {from: owner});
+      const newAddress = await SwapFactory.uniswapAddress();
+      expect(newAddress).to.be.equals(randomAddress);
+    });
+
+    it("Expects to SET library if owner", async () => {
+      const randomAddress = "0xda95b09EdC58Fd6d9390A0b0d6073f16d4F7f758";
+      await SwapFactory.setLibraryAddress(randomAddress, {from: owner});
+      const newAddress = await SwapFactory.libraryAddress();
+      expect(newAddress).to.be.equals(randomAddress);
+    });
+
+    it("Expects to NOT SET auth if other", async () => {
+      const swapFactory = new web3One.eth.Contract(SwapFactoryContract.abi, SwapFactory.address);
+      const currentAddress = await SwapFactory.authAddress();
+      const randomAddress = "0xda8e883e03F077666B164AA90075BEbf56d9455e";
+      try {
+        await swapFactory.methods.setAuthAddress(randomAddress).send({from: other});
+        assert.fail("Other user should not be alllowed to set");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "Ownable: caller is not the owner");
+        assert(error.message.includes("reverted"));
+      }
+      const newAddress = await SwapFactory.authAddress();
+      expect(newAddress).to.not.be.equals(randomAddress);
+      expect(newAddress).to.be.equals(currentAddress);
+    });
+    it("Expects to NOT SET uniswap if other", async () => {
+      const swapFactory = new web3One.eth.Contract(SwapFactoryContract.abi, SwapFactory.address);
+      const currentAddress = await SwapFactory.uniswapAddress();
+      const randomAddress = "0xda6494Ed9cfED40f2321adcFbcca8f80fD764ed2";
+      try {
+        await swapFactory.methods.setUniswapAddress(randomAddress).send({from: other});
+        assert.fail("Other user should not be alllowed to set");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "Ownable: caller is not the owner");
+        assert(error.message.includes("reverted"));
+      }
+      const newAddress = await SwapFactory.uniswapAddress();
+      expect(newAddress).to.not.be.equals(randomAddress);
+      expect(newAddress).to.be.equals(currentAddress);
+    });
+
+    it("Expects to NOT SET library if other", async () => {
+      const swapFactory = new web3One.eth.Contract(SwapFactoryContract.abi, SwapFactory.address);
+      const currentAddress = await SwapFactory.libraryAddress();
+      const randomAddress = "0xda9B6bE048aEaA333290226F07BD6B0A7AFE4B49";
+      try {
+        await swapFactory.methods.setLibraryAddress(randomAddress).send({from: other});
+        assert.fail("Other user should not be alllowed to set");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "Ownable: caller is not the owner");
+        assert(error.message.includes("reverted"));
+      }
+      const newAddress = await SwapFactory.libraryAddress();
+      expect(newAddress).to.not.be.equals(randomAddress);
+      expect(newAddress).to.be.equals(currentAddress);
+    });
+
+    it("Expects to NOT deploy if library is not set", async () => {
       const swapFactoryTrufle = await SwapFactoryContract.new(
         zeroAddress,
         Auth.address,
@@ -225,6 +308,7 @@ contract("SwapAndDeposit", accounts => {
   });
   describe("SwapAndDeposit Minimal Proxy", () => {
     beforeEach(beforeTest);
+
     it("Expects to swap DAI to RAISE and deposit to the DepositRegistry contract", async () => {
       const DAI_COST_200_RAISE = new BN("4596059099803939333");
       const allDaiBalance = await DAIToken.balanceOf(lender);

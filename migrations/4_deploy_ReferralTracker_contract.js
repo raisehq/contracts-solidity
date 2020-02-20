@@ -99,6 +99,9 @@ const migrationInt = async (deployer, network, accounts) => {
 };
 
 module.exports = async (deployer, network, accounts) => {
+  if (network.includes("coverage")) {
+    return;
+  }
   try {
     loadWeb3One();
     deployer.then(async () => {

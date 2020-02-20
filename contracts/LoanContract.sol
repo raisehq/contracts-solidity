@@ -347,15 +347,11 @@ contract LoanContract is ILoanContract {
         require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
         uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
         lenderPosition[msg.sender].withdrawn = true;
-
         loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
         address swapAddress = ISwapAndDepositFactory(swapFactory).deploy();
         require(swapAddress != address(0), "error swap deploy");
-        require(
-            ISwapAndDeposit(swapAddress).swapAndDeposit(msg.sender, tokenAddress, amount),
-            "error at swap"
-        );
-
+        ERC20Token.approve(swapAddress, amount);
+        ISwapAndDeposit(swapAddress).swapAndDeposit(msg.sender, tokenAddress, amount);
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
         if (loanWithdrawnAmount == borrowerDebt) {
             setState(LoanState.CLOSED);

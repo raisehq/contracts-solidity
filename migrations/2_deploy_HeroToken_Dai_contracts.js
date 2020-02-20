@@ -146,12 +146,12 @@ const migrationCypress = async (deployer, network, accounts) => {
     const daiDeployed = await DAI.at(DAIAddress);
     for (let i = 0; i < IntAccounts.length; i++) {
       await heroDeployed.mint(IntAccounts[i], tokens, {
-        from: deployerAddress,
-        gas: 800000
+        from: deployerAddress
+        //gas: 800000
       });
       await daiDeployed.mint(IntAccounts[i], tokens, {
-        from: deployerAddress,
-        gas: 800000
+        from: deployerAddress
+        //gas: 800000
       });
 
       console.log(` Sent Herotokens and DAI to ${IntAccounts[i]}`);
@@ -213,6 +213,9 @@ const mainnetMigration = async (deployer, network, accounts) => {
 };
 
 module.exports = async (deployer, network, accounts) => {
+  if (network.includes("coverage")) {
+    return;
+  }
   console.log(`Deploying in network:: ${network}`);
   try {
     if (network === "cypress" || network === "cypress-fork")

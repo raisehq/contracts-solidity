@@ -5,6 +5,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./interfaces/IDepositRegistry.sol";
 import "./interfaces/IUniswapFactory.sol";
 import "./interfaces/IUniswapExchange.sol";
+import "@nomiclabs/buidler/console.sol";
 
 contract SwapAndDeposit {
     using SafeMath for uint256;
@@ -33,7 +34,7 @@ contract SwapAndDeposit {
         notTemplate
         returns (bool)
     {
-        require(depositAddress == address(0) && factoryAddress == address(0), "already init");
+        //require(depositAddress == address(0) && factoryAddress == address(0), "already init");
         depositAddress = _depositAddress;
         factoryAddress = _factoryAddress;
         return true;
@@ -87,11 +88,15 @@ contract SwapAndDeposit {
         return true;
     }
 
+    function ping() external view returns (bool) {
+        return true;
+    }
+
     function swapAndDeposit(
         address payable depositor,
         address inputTokenAddress,
         uint256 inputTokenAmount
-    ) external notTemplate returns (bool) {
+    ) external notTemplate {
         require(depositAddress != address(0) && factoryAddress != address(0), "not init");
         address outputTokenAddress = IDepositRegistry(depositAddress).getERC20Token();
         require(outputTokenAddress != address(0), "output token is 0");
@@ -112,7 +117,5 @@ contract SwapAndDeposit {
         emit SwapDeposit(msg.sender, depositor);
         // Self destruct this contract
         selfdestruct(depositor);
-        // KEEP IN MIND TO PREVENT MASTER CONTRACT TO EXECUTE SELF-DESTRUCT
     }
-
 }
