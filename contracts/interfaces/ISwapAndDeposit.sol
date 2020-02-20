@@ -5,7 +5,7 @@ interface ISwapAndDeposit {
 
     function init(address _depositAddress, address _factoryAddress) external returns (bool);
 
-    function ping() external view returns (bool);
+    function isDestroyed() external view returns (bool);
     function swapAndDeposit(address depositor, address inputTokenAddress, uint256 inputTokenAmount)
         external;
 }

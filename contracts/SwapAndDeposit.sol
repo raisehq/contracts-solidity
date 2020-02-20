@@ -13,6 +13,7 @@ contract SwapAndDeposit {
     address depositAddress;
     address factoryAddress;
 
+    bool internal destroyed;
     bool isTemplate;
 
     uint16 constant DEADLINE_TIME_LENGTH = 300;
@@ -26,6 +27,7 @@ contract SwapAndDeposit {
 
     modifier notTemplate() {
         require(isTemplate == false, "is template contract");
+        require(destroyed == false, "this contract will selfdestruct");
         _;
     }
 
@@ -34,7 +36,8 @@ contract SwapAndDeposit {
         notTemplate
         returns (bool)
     {
-        //require(depositAddress == address(0) && factoryAddress == address(0), "already init");
+        require(depositAddress == address(0), "deposit already init");
+        require(factoryAddress == address(0), "factory already init");
         depositAddress = _depositAddress;
         factoryAddress = _factoryAddress;
         return true;
@@ -74,6 +77,10 @@ contract SwapAndDeposit {
         return true;
     }
 
+    function isDestroyed() external view returns (bool) {
+        return destroyed;
+    }
+
     function delegateDeposit(
         address depositor,
         address outputTokenAddress,
@@ -85,10 +92,6 @@ contract SwapAndDeposit {
             IERC20(outputTokenAddress).balanceOf(address(this)) == 0,
             "output token still here"
         );
-        return true;
-    }
-
-    function ping() external view returns (bool) {
         return true;
     }
 
@@ -115,6 +118,9 @@ contract SwapAndDeposit {
             "error while deposit"
         );
         emit SwapDeposit(msg.sender, depositor);
+        // mark this contract as destroyed, so external contract can know this contract is being selfdestruct after the tx
+        // also prevents to call this function again
+        destroyed = true;
         // Self destruct this contract
         selfdestruct(depositor);
     }

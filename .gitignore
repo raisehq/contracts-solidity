@@ -9,3 +9,7 @@ coverage*/
 coverage/
 .coverage_artifacts/
 .coverage_contracts/
+
+# buidler files
+cache/
+artifacts/

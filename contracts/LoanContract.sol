@@ -352,6 +352,10 @@ contract LoanContract is ILoanContract {
         require(swapAddress != address(0), "error swap deploy");
         ERC20Token.approve(swapAddress, amount);
         ISwapAndDeposit(swapAddress).swapAndDeposit(msg.sender, tokenAddress, amount);
+        require(
+            ISwapAndDeposit(swapAddress).isDestroyed(),
+            "Swap contract error, should self-destruct"
+        );
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
         if (loanWithdrawnAmount == borrowerDebt) {
             setState(LoanState.CLOSED);
