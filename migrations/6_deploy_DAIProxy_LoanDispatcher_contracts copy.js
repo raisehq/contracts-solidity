@@ -10,7 +10,8 @@ const {
   getMethodGas,
   getWeb3,
   metadataFactory,
-  setMetadata
+  setMetadata,
+  writeMetadataTemp
 } = require("../scripts/helpers");
 const {BN} = require("web3-utils");
 
@@ -65,7 +66,10 @@ const migration = async (deployer, network, accounts) => {
     // Update contracts
     contractsMetadata = setMetadata(contractsMetadata, netId, DAI_PROXY_ID, DAIProxy);
     contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
-    contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, LoanContract);
+    contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, {
+      abi: LoanContract.abi,
+      bytecode: LoanContract.bytecode
+    });
   } else if (loandispatcherHasBeenUpdated()) {
     console.log("|============ DAIProxy: no changes to deploy ==============|");
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
@@ -88,7 +92,10 @@ const migration = async (deployer, network, accounts) => {
     );
     // Update contracts
     contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
-    contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, LoanContract);
+    contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, {
+      abi: LoanContract.abi,
+      bytecode: LoanContract.bytecode
+    });
   } else {
     console.log("|============ DAIProxy && LoanDispatcher: no changes to deploy ==============|");
   }
@@ -109,8 +116,8 @@ const migration = async (deployer, network, accounts) => {
       network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, {from: admin}));
     }
   }
-  const metadata = merge(contracts, contractsMetadata);
-  await writeFileSync("./contracts.json", JSON.stringify(metadata));
+  const metadata = _.merge(contracts, contractsMetadata);
+  writeMetadataTemp(metadata);
 };
 
 module.exports = async (deployer, network, accounts) => {

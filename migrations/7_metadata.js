@@ -1,13 +1,14 @@
 const spawn = require("child_process").spawn;
-const version = require("./package.json").version;
-const {copyFileSync, mkdirSync} = require("fs");
+const version = require("../package.json").version;
+const path = require("path");
+const {copyFileSync, mkdirSync, existsSync} = require("fs");
+const {NEW_METADATA, PRIOR_METADATA} = require("../scripts/helpers");
 
-async function jsondiff() {
-  const cmd = spawn("npx jsondiffpatch", ["./contracts.json ./old.contracts.json"], {
+async function jsondiff(files) {
+  const cmd = spawn("npx jsondiffpatch", files, {
     shell: true,
     stdio: "inherit"
   });
-
   cmd.on("exit", code => console.log(code));
 }
 
@@ -17,16 +18,17 @@ module.exports = async (deployer, network, accounts) => {
   const netId = await web3.eth.net.getId();
 
   console.log("\n\nCompare last version and new version:\n");
-  const compareFiles = ["./contracts.json", "./old.contracts.json"];
+  const compareFiles = [`${process.env.PWD}/${PRIOR_METADATA}``${process.env.PWD}/${NEW_METADATA}`];
+  console.log(compareFiles);
   await jsondiff(compareFiles);
 
   if (SUPPORTED_NETWORKS.includes(netId)) {
-    console.log(`Generating metadata file: ${__dirname}/contracts_${version}.json`);
-    const metaDir = __dirname + "/metadata";
-    if (!path.existsSync(metaDir)) {
-      fs.mkdirSync(dir, 0744);
+    const metaDir = `${process.env.PWD}/metadata`;
+    console.log(`Generating metadata file: metadata/contracts_${version}.json`);
+    if (!existsSync(metaDir)) {
+      mkdirSync(metaDir, 0744);
     }
-    copyFileSync("./contracts.json", `${metaDir}/contracts_${version}.json`);
+    copyFileSync(`${process.env.PWD}/${NEW_METADATA}`, `${metaDir}/contracts_${version}.json`);
   } else {
     console.log("Not added to metadata folder due is not Kovan or Mainnet.");
   }

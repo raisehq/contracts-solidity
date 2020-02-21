@@ -3,12 +3,13 @@ const Deposit = artifacts.require("DepositRegistry");
 const ReferralTracker = artifacts.require("ReferralTracker");
 const RaiseToken = artifacts.require("RaiseTokenContract");
 const {writeFileSync} = require("fs");
+const erc20Abi = artifacts.require("IERC20").abi;
 const {
   getContracts,
   contractIsUpdated,
   metadataFactory,
   setMetadata,
-  erc20Abi
+  writeMetadataTemp
 } = require("../scripts/helpers");
 const Web3 = require("web3");
 
@@ -64,6 +65,7 @@ const migrationInt = async (deployer, network, accounts) => {
         if (!network.includes("mainnet")) {
           // add funds to referral so users can withdraw
           const tokens = web3.utils.toWei("100000", "ether"); // 100K tokens
+          console.log("raisetoken", raiseTokenAddress);
           const raiseInstance = new web3.eth.Contract(erc20Abi, raiseTokenAddress);
           const balance = await raiseInstance.methods.balanceOf(admin).call({from: admin});
           console.log(balance, web3.utils.fromWei(balance));
@@ -77,12 +79,10 @@ const migrationInt = async (deployer, network, accounts) => {
           });
         }
       }
-
       contractMetadata = setMetadata(contractMetadata, netId, REFERRAL_ID, ReferralTracker);
 
       const metadata = _.merge(contracts, contractMetadata);
-
-      await writeFileSync("./contracts.json", JSON.stringify(metadata));
+      writeMetadataTemp(metadata);
     } else {
       console.log("|============ ReferralTracker: no changes to deploy ==============|");
     }

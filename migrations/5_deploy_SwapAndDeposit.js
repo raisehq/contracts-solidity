@@ -12,7 +12,8 @@ const {
   UNISWAP_EXCHANGE_BYTECODE,
   UNISWAP_FACTORY_ADDRESS,
   metadataFactory,
-  setMetadata
+  setMetadata,
+  writeMetadataTemp
 } = require("../scripts/helpers");
 const {BN} = require("web3-utils");
 
@@ -92,8 +93,8 @@ const migration = async (deployer, network, accounts) => {
       "|============ SwapAndDeposit and SwapAndFactory: no changes to deploy ==============|"
     );
   }
-  const metadata = merge(contracts, contractMetadata);
-  await writeFileSync("./contracts.json", JSON.stringify(metadata));
+  const metadata = _.merge(contracts, contractMetadata);
+  writeMetadataTemp(metadata);
 };
 
 module.exports = async (deployer, network, accounts) => {

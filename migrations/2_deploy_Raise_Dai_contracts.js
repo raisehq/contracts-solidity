@@ -9,7 +9,10 @@ const {
   contractIsDeployed,
   mintTokens,
   setMetadata,
-  metadataFactory
+  metadataFactory,
+  writeMetadataTemp,
+  PRIOR_METADATA,
+  MCD_DAI_ABI
 } = require("../scripts/helpers");
 const {writeFileSync} = require("fs");
 
@@ -18,6 +21,10 @@ const TOKENS_PER_ACCOUNT = web3.utils.toWei("10000000", "ether"); // 10 million 
 const DAI_CONTRACT_ID = "DAI";
 const RAISE_CONTRACT_ID = "RaiseToken";
 
+const DAI_ADDRESSES = {
+  42: "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa", // v.1.0.2
+  1: "0x6B175474E89094C44Da98b954EedeAC495271d0F" // v.1.0.2
+};
 const migrationKovan = async (deployer, network, accounts) => {
   try {
     let contractMetadata = metadataFactory();
@@ -40,7 +47,7 @@ const migrationKovan = async (deployer, network, accounts) => {
       await mintTokens(raiseFakeInstance, IntAccounts, TOKENS_PER_ACCOUNT, deployerAddress);
       contractMetadata = setMetadata(contractMetadata, netId, RAISE_CONTRACT_ID, RaiseFakeToken);
     }
-    if (!daiDeployed()) {
+    if (!daiDeployed() && !network.includes("kovan")) {
       console.log("Deploying DAI Fake token.");
       const daiFakeInstance = await deployer.deploy(DAIFake, {
         from: deployerAddress,
@@ -51,13 +58,20 @@ const migrationKovan = async (deployer, network, accounts) => {
       await mintTokens(daiFakeInstance, IntAccounts, TOKENS_PER_ACCOUNT, deployerAddress);
       contractMetadata = setMetadata(contractMetadata, netId, DAI_CONTRACT_ID, DAIFake);
     }
+    if (!daiDeployed() && network.includes("kovan") && DAI_ADDRESSES[netId]) {
+      console.log(`Set KOVAN Dai address: ${DAI_ADDRESSES[netId]}`);
+
+      contractMetadata = setMetadata(contractMetadata, netId, DAI_CONTRACT_ID, {
+        address: DAI_ADDRESSES[netId],
+        abi: MCD_DAI_ABI
+      });
+    }
 
     console.log(contractMetadata.address);
     console.log("Writting artifacts...");
 
     const metadata = merge(contracts, contractMetadata);
-
-    await writeFileSync(`./contracts.json`, JSON.stringify(metadata, null, 2));
+    writeMetadataTemp(metadata);
   } catch (err) {
     throw err;
   }
@@ -79,14 +93,13 @@ const mainnetMigration = async (deployer, network, accounts) => {
       abi: {
         "1": {
           RaiseToken: RaiseToken.abi,
-          DAI: DAI.abi
+          DAI: MCD_DAI_ABI
         }
       }
     };
 
     const metadata = merge(contracts, newMetadata);
-
-    await writeFileSync(`./contracts.json`, JSON.stringify(metadata, null, 2));
+    writeMetadataTemp(metadata);
   } catch (error) {
     throw error;
   }
@@ -102,9 +115,12 @@ module.exports = async (deployer, network, accounts) => {
   const currentContracts = await getContracts();
 
   try {
-    // Copying prior contracts to old.contracts.json to do JSON diff at the end of migrations
-    await writeFileSync(`./old.contracts.json`, JSON.stringify(currentContracts, null, 2));
-
+    // Copying prior contracts to last.contracts.json to do JSON diff at the end of migrations
+    console.log("Writting prior metadata to ", `${process.env.PWD}/${PRIOR_METADATA}`);
+    writeFileSync(
+      `${process.env.PWD}/${PRIOR_METADATA}`,
+      JSON.stringify(currentContracts, null, 2)
+    );
     // Start migrations
     if (network.includes("mainnet")) {
       await mainnetMigration(deployer, network, accounts);

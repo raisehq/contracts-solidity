@@ -9,7 +9,8 @@ const {
   getContracts,
   contractIsUpdated,
   metadataFactory,
-  setMetadata
+  setMetadata,
+  writeMetadataTemp
 } = require("../scripts/helpers");
 const Web3 = require("web3");
 
@@ -132,7 +133,7 @@ const migrationInt = async (deployer, network, accounts) => {
       }
     }
     const metadata = _.merge(contracts, contractMetadata);
-    await writeFileSync("./contracts.json", JSON.stringify(metadata, null, 2));
+    writeMetadataTemp(metadata);
   } catch (err) {
     console.error("ERROR MINT AND SEND ", err);
   }
