@@ -1,4 +1,4 @@
-pragma solidity 0.5.10;
+pragma solidity 0.5.12;
 
 interface ILoanContract {
     function onFundingReceived(address lender, uint256 amount) external returns (bool);

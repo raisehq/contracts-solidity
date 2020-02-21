@@ -1,4 +1,4 @@
-pragma solidity 0.5.10;
+pragma solidity 0.5.12;
 
 interface IDAIProxy {
     function fund(address loanAddress, uint256 fundingAmount) external;

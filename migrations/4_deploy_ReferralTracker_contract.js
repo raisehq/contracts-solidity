@@ -52,7 +52,7 @@ const migrationInt = async (deployer, network, accounts) => {
             gas: 800000
           }));
 
-        if (network !== "mainnet") {
+        if (!network.includes("mainnet")) {
           // add funds to referral so users can withdraw
           const tokens = web3.utils.toWei("100000", "ether"); // 100K tokens
           const HeroInstance = await HeroToken.at(heroTokenAddress);
@@ -104,9 +104,7 @@ module.exports = async (deployer, network, accounts) => {
   }
   try {
     loadWeb3One();
-    deployer.then(async () => {
-      await migrationInt(deployer, network, accounts);
-    });
+    await migrationInt(deployer, network, accounts);
   } catch (err) {
     // Prettier error output
     console.error(err);

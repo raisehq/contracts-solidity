@@ -110,7 +110,7 @@ module.exports = {
           ...ledgerDefaultConfig,
           networkId: 42 // kovan
         };
-        return InfuraLedgerProvider(ledgerOptions, infuraApi("kovan"));
+        return InfuraLedgerProvider(privateKeys, infuraApi("kovan"));
       }
     },
     rinkeby_ledger: {
@@ -123,6 +123,19 @@ module.exports = {
           networkId: 4 // rinkeby
         };
         return new LedgerProvider(ledgerOptions, infuraApi("rinkeby"));
+      }
+    },
+    mainnetfork: {
+      //gas: 9912788,
+      gasPrice: 3500000000,
+      network_id: "1", // mainnet
+      provider: function() {
+        return new HDWalletProvider(
+          "stamp polar cup smart ill agree human episode reform trigger text forget",
+          "http://localhost:8545",
+          0,
+          10
+        );
       }
     },
     mainnet: {
@@ -156,7 +169,7 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
-      version: "0.5.10",
+      version: "0.5.12",
       settings: {
         optimizer: {
           enabled: true,

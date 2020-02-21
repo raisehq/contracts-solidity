@@ -1,4 +1,4 @@
-pragma solidity 0.5.10;
+pragma solidity 0.5.12;
 
 import "../interfaces/IDAIProxy.sol";
 import "../interfaces/ILoanContract.sol";

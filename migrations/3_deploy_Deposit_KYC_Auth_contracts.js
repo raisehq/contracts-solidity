@@ -18,8 +18,6 @@ const migrationInt = async (deployer, network, accounts) => {
     const admin = network === "mainnet" ? process.env.ADMIN_ADDRESS : accounts[1];
     const netId = await web3.eth.net.getId();
     const heroTokenAddress = _.get(contracts, `address.${netId}.HeroToken`);
-    // Contracts deployment if updated logic::
-    const oldDepositBytecode = _.get(contracts, `bytecode.Deposit`);
 
     const kycHasBeenUpdated = () => contractIsUpdated(contracts, netId, "KYC", KYC);
     const depositHasBeenUpdated = () => contractIsUpdated(contracts, netId, "Deposit", Deposit);
@@ -52,7 +50,7 @@ const migrationInt = async (deployer, network, accounts) => {
           bytecode: {
             KYC: KYC.bytecode,
             Auth: Auth.bytecode,
-            Deposit: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
+            Deposit: Deposit.bytecode
           }
         });
 
@@ -90,7 +88,7 @@ const migrationInt = async (deployer, network, accounts) => {
           },
           bytecode: {
             Auth: Auth.bytecode,
-            Deposit: oldDepositBytecode // Don't overwrite old bytecode so in next migration referral can check the state
+            Deposit: Deposit.bytecode
           }
         });
 
@@ -221,9 +219,7 @@ module.exports = async (deployer, network, accounts) => {
   }
   try {
     loadWeb3One();
-    deployer.then(async () => {
-      await migrationInt(deployer, network, accounts);
-    });
+    await migrationInt(deployer, network, accounts);
   } catch (err) {
     // Prettier error output
     console.error(err);
