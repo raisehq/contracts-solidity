@@ -8,26 +8,34 @@ const {
   contractIsUpdated,
   getDeployGas,
   getMethodGas,
-  getWeb3
+  getWeb3,
+  metadataFactory,
+  setMetadata
 } = require("../scripts/helpers");
 const {BN} = require("web3-utils");
 
+const DAI_ID = "DAI";
+const DAI_PROXY_ID = "DAIProxy";
+const DISPATCHER_ID = "LoanDispatcher";
+const AUTH_ID = "Auth";
+const SWAP_FACTORY_ID = "SwapAndDepositFactory";
+const LOAN_ID = "LoanContract";
+
 const migration = async (deployer, network, accounts) => {
+  let contractsMetadata = metadataFactory();
   const web3One = getWeb3(web3);
   const contracts = await getContracts();
   const netId = await web3One.eth.net.getId();
   const deployerAddress = accounts[0];
-  const admin = network === "mainnet" ? process.env.ADMIN_ADDRESS : accounts[1];
+  const admin = network.includes("mainnet") ? process.env.ADMIN_ADDRESS : accounts[1];
 
-  const daiAddress = _.get(contracts, `address.${netId}.DAI`);
-  const authAddress = _.get(contracts, `address.${netId}.Auth`);
-  const swapFactoryAddress = _.get(contracts, `address.${netId}.SwapAndDepositFactory`);
+  const daiAddress = _.get(contracts, `address.${netId}.${DAI_ID}`);
+  const authAddress = _.get(contracts, `address.${netId}.${AUTH_ID}`);
+  const swapFactoryAddress = _.get(contracts, `address.${netId}.${SWAP_FACTORY_ID}`);
 
-  const daiproxyHasBeenUpdated = () => contractIsUpdated(contracts, netId, "DAIProxy", DAIProxy);
+  const daiproxyHasBeenUpdated = () => contractIsUpdated(contracts, netId, DAI_PROXY_ID, DAIProxy);
   const loandispatcherHasBeenUpdated = () =>
-    contractIsUpdated(contracts, netId, "LoanDispatcher", LoanDispatcher);
-
-  let newContracts = _.cloneDeep(contracts);
+    contractIsUpdated(contracts, netId, DISPATCHER_ID, LoanDispatcher);
 
   if (daiproxyHasBeenUpdated()) {
     console.log("|============ deploying DAIProxy and LoanDispatcher ==============|");
@@ -55,27 +63,9 @@ const migration = async (deployer, network, accounts) => {
     );
 
     // Update contracts
-    newContracts = _.merge(newContracts, {
-      address: {
-        [netId]: {
-          DAIProxy: DAIProxy.address,
-          LoanDispatcher: LoanDispatcher.address
-        }
-      },
-      bytecode: {
-        DAIProxy: DAIProxy.bytecode,
-        LoanDispatcher: LoanDispatcher.bytecode
-      }
-    });
-    // Merge ABIS
-    let abis = {
-      DAIProxy: DAIProxy.abi,
-      LoanDispatcher: LoanDispatcher.abi,
-      LoanContract: LoanContract.abi
-    };
-    Object.keys(abis).forEach(key => {
-      newContracts["abi"][key] = abis[key];
-    });
+    contractsMetadata = setMetadata(contractsMetadata, netId, DAI_PROXY_ID, DAIProxy);
+    contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
+    contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, LoanContract);
   } else if (loandispatcherHasBeenUpdated()) {
     console.log("|============ DAIProxy: no changes to deploy ==============|");
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
@@ -97,25 +87,8 @@ const migration = async (deployer, network, accounts) => {
       }
     );
     // Update contracts
-    newContracts = _.merge(newContracts, {
-      address: {
-        [netId]: {
-          LoanDispatcher: LoanDispatcher.address
-        }
-      },
-      bytecode: {
-        LoanDispatcher: LoanDispatcher.bytecode
-      }
-    });
-
-    // Merge ABIS
-    let abis = {
-      LoanDispatcher: LoanDispatcher.abi,
-      LoanContract: LoanContract.abi
-    };
-    Object.keys(abis).forEach(key => {
-      newContracts["abi"][key] = abis[key];
-    });
+    contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
+    contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, LoanContract);
   } else {
     console.log("|============ DAIProxy && LoanDispatcher: no changes to deploy ==============|");
   }
@@ -136,7 +109,8 @@ const migration = async (deployer, network, accounts) => {
       network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, {from: admin}));
     }
   }
-  await writeFileSync("./contracts.json", JSON.stringify(newContracts));
+  const metadata = merge(contracts, contractsMetadata);
+  await writeFileSync("./contracts.json", JSON.stringify(metadata));
 };
 
 module.exports = async (deployer, network, accounts) => {
