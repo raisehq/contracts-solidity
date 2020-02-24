@@ -7,7 +7,7 @@ import "./LoanContract.sol";
 
 contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     address public auth;
-    address public DAITokenAddress;
+    // address public DefaultTokenAddress;
     address public DAIProxyAddress;
     address public swapFactory;
 
@@ -21,6 +21,8 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
 
     uint256 public minInterestRate;
     uint256 public maxInterestRate;
+
+    mapping(address => bool) public acceptedTokens;
 
     mapping(address => bool) public isLoanContract;
 
@@ -45,7 +47,8 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         uint256 termEndTimestamp,
         address indexed administrator,
         uint256 operatorFee,
-        uint256 auctionLength
+        uint256 auctionLength,
+        address indexed tokenAddress
     );
 
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
@@ -55,20 +58,21 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     event OperatorFeeUpdated(uint256 operatorFee, address loanDispatcher, address administrator);
 
     event AuthAddressUpdated(address newAuthAddress, address administrator);
-    event DaiTokenAddressUpdated(address newDaiTokenAddress, address administrator);
+    // event DaiTokenAddressUpdated(address newDaiTokenAddress, address administrator);
     event DaiProxyAddressUpdated(address newDaiProxyAddress, address administrator);
     event SwapFactoryAddressUpdated(address newSwapFactory, address administrator);
 
     event AdministratorUpdated(address newAdminAddress);
+    event AddTokenToAcceptedList(address tokenAddress);
+    event RemoveTokenFromAcceptedList(address tokenAddress);
 
     constructor(
         address authAddress,
-        address _DAITokenAddress,
         address _DAIProxyAddress,
         address _swapFactory
     ) public {
         auth = authAddress;
-        DAITokenAddress = _DAITokenAddress;
+        // DefaultTokenAddress = _DefaultTokenAddress;
         DAIProxyAddress = _DAIProxyAddress;
         swapFactory = _swapFactory;
         minAmount = 1e18; //1000000000000000000; // Minimum 1 DAI
@@ -79,9 +83,24 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         operatorFee = 1e18; //1000000000000000000; // 1 % operator fee, expressed in wei
     }
 
-    function setDaiTokenAddress(address daiAddress) external onlyAdmin {
-        DAITokenAddress = daiAddress;
-        emit DaiTokenAddressUpdated(DAITokenAddress, administrator);
+    // function setDaiTokenAddress(address daiAddress) external onlyAdmin {
+    //     DAITokenAddress = daiAddress;
+    //     emit DaiTokenAddressUpdated(DAITokenAddress, administrator);
+    // }
+
+    function isTokenAccepted(address tokenAddress) external returns(bool) {
+        return acceptedTokens[tokenAddress];
+    }
+
+    function addTokenToAcceptedList(address tokenAddress) external onlyAdmin {
+        acceptedTokens[tokenAddress] = true;
+        emit AddTokenToAcceptedList(tokenAddress);
+
+    }
+
+    function removeTokenFromAcceptedList(address tokenAddress) external onlyAdmin {
+        acceptedTokens[tokenAddress] = false;
+        emit RemoveTokenFromAcceptedList(tokenAddress);
     }
 
     function setAuthAddress(address authAddress) external onlyAdmin {
@@ -92,6 +111,11 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     function setDaiProxyAddress(address daiProxyAddress) external onlyAdmin {
         DAIProxyAddress = daiProxyAddress;
         emit DaiProxyAddressUpdated(DAIProxyAddress, administrator);
+    }
+
+    function setDefaultTokenAddress(address defaultTokenAddress) external onlyAdmin {
+        DefaultTokenAddress = defaultTokenAddress;
+        emit DefaultTokenAddressUpdated(DefaultTokenAddress, administrator);
     }
 
     function setSwapFactory(address _swapFactory) external onlyAdmin {
@@ -152,7 +176,7 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     function setMinAuctionLength(uint256 requestedMinAuctionLength) external onlyAdmin {
         minAuctionLength = requestedMinAuctionLength;
     }
-
+    // TODO: create a pool of accepted tokens with functions to add or remove and checks to see if the passed token is accepted
     function deploy(
         uint256 loanMinAmount,
         uint256 loanMaxAmount,
@@ -160,6 +184,7 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         uint256 loanMaxInterestRate,
         uint256 termLength,
         uint256 auctionLength
+        address tokenAddress
     ) external onlyKYC returns (address) {
         require(administrator != address(0), "There is no administrator set");
         require(
@@ -188,6 +213,7 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         );
         require(termLength >= minTermLength, "Term length is to small");
         require(auctionLength >= minAuctionLength, "Auction length is to small");
+        require(acceptedTokens[tokenAddress] == true, "TokenAddress not accepted");
 
         LoanContract loanContract = new LoanContract(
             termLength,
@@ -196,7 +222,7 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
             loanMinInterestRate,
             loanMaxInterestRate,
             msg.sender,
-            DAITokenAddress,
+            tokenAddress,
             DAIProxyAddress,
             administrator,
             operatorFee,
@@ -216,7 +242,8 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
             termLength,
             administrator,
             operatorFee,
-            auctionLength
+            auctionLength,
+            tokenAddress
         );
 
         return address(loanContract);

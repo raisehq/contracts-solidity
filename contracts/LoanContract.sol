@@ -52,8 +52,8 @@ contract LoanContract is ILoanContract {
 
     LoanState public currentState;
 
-    IERC20 ERC20Token;
-    IDAIProxy proxy;
+    IERC20 public ERC20Token;
+    IDAIProxy public proxy;
 
     bool public loanWithdrawn;
     bool public minimumReached;
@@ -161,7 +161,7 @@ contract LoanContract is ILoanContract {
         address _administrator,
         uint256 _operatorFee,
         uint256 _auctionLength,
-        address _swapFactory
+        address _swapFactory,
     ) public {
         tokenAddress = ERC20TokenAddress;
         proxyContractAddress = proxyAddress;

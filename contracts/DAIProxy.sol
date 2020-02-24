@@ -7,40 +7,26 @@ import "./interfaces/ILoanContract.sol";
 import "./interfaces/IDAIProxy.sol";
 
 contract DAIProxy is IDAIProxy, Ownable {
-    IERC20 private DAIToken;
+    // IERC20 private DAIToken;
     IAuthorization auth;
     address public administrator;
     bool public hasToDeposit;
 
-    event LoanFunded(address indexed funder, address indexed loanAddress, uint256 amount);
-    event RepaymentReceived(address indexed repayer, address indexed loanAddress, uint256 amount);
-
     event AuthAddressUpdated(address newAuthAddress, address administrator);
-    event DaiTokenAddressUpdated(address newDaiTokenAddress, address administrator);
     event AdministratorUpdated(address newAdministrator);
     event HasToDeposit(bool value, address administrator);
 
-    constructor(address authAddress, address DAIAddress) public {
+    constructor(address authAddress) public {
         auth = IAuthorization(authAddress);
-        DAIToken = IERC20(DAIAddress);
-    }
-
-    function getTokenAddress() public view returns (address) {
-        return address(DAIToken);
     }
 
     function setDepositRequeriment(bool value) external onlyAdmin {
         hasToDeposit = value;
-        emit AdministratorUpdated(administrator);
+        emit HasToDeposit(value, administrator);
     }
     function setAdministrator(address admin) external onlyOwner {
         administrator = admin;
         emit AdministratorUpdated(administrator);
-    }
-
-    function setDaiTokenAddress(address daiAddress) external onlyAdmin {
-        DAIToken = IERC20(daiAddress);
-        emit DaiTokenAddressUpdated(daiAddress, administrator);
     }
 
     function setAuthAddress(address authAddress) external onlyAdmin {
@@ -55,6 +41,7 @@ contract DAIProxy is IDAIProxy, Ownable {
     {
         uint256 newFundingAmount = fundingAmount;
         ILoanContract loanContract = ILoanContract(loanAddress);
+        address tokenAddress = loanContract.tokenAddress();
 
         uint256 auctionBalance = loanContract.getAuctionBalance();
         uint256 maxAmount = loanContract.getMaxAmount();
@@ -67,23 +54,29 @@ contract DAIProxy is IDAIProxy, Ownable {
             loanContract.onFundingReceived(msg.sender, newFundingAmount),
             "funding failed at loan contract"
         );
-        require(transfer(loanAddress, newFundingAmount), "erc20 transfer failed");
+        require(transfer(loanAddress, newFundingAmount, tokenAddress), "erc20 transfer failed");
     }
 
     function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
         ILoanContract loanContract = ILoanContract(loanAddress);
+        address tokenAddress = loanContract.tokenAddress();
         require(
             loanContract.onRepaymentReceived(msg.sender, repaymentAmount),
             "repayment failed at loan contract"
         );
-        require(transfer(loanAddress, repaymentAmount), "erc20 repayment failed");
+        require(transfer(loanAddress, repaymentAmount, tokenAddress), "erc20 repayment failed");
     }
 
-    function transfer(address loanAddress, uint256 amount) internal returns (bool) {
-        require(DAIToken.allowance(msg.sender, address(this)) >= amount, "funding not approved");
-        uint256 balance = DAIToken.balanceOf(msg.sender);
+    function transfer(address loanAddress, uint256 amount, address tokenAddress)
+        internal
+        returns (bool)
+    {
+        IERC20 ERC20Token = IERC20(tokenAddress);
+
+        require(ERC20Token.allowance(msg.sender, address(this)) >= amount, "funding not approved");
+        uint256 balance = ERC20Token.balanceOf(msg.sender);
         require(balance >= amount, "Not enough funds");
-        require(DAIToken.transferFrom(msg.sender, loanAddress, amount), "failed at transferFrom");
+        require(ERC20Token.transferFrom(msg.sender, loanAddress, amount), "failed at transferFrom");
         return true;
     }
 
