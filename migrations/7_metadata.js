@@ -5,7 +5,7 @@ const {copyFileSync, mkdirSync, existsSync} = require("fs");
 const {NEW_METADATA, PRIOR_METADATA} = require("../scripts/helpers");
 
 async function jsondiff(files) {
-  const cmd = spawn("npx jsondiffpatch", files, {
+  const cmd = spawn(`node ${process.env.PWD}/scripts/diff.js`, files, {
     shell: true,
     stdio: "inherit"
   });
@@ -18,7 +18,10 @@ module.exports = async (deployer, network, accounts) => {
   const netId = await web3.eth.net.getId();
 
   console.log("\n\nCompare last version and new version:\n");
-  const compareFiles = [`${process.env.PWD}/${PRIOR_METADATA}``${process.env.PWD}/${NEW_METADATA}`];
+  const compareFiles = [
+    `${process.env.PWD}/${PRIOR_METADATA}`,
+    `${process.env.PWD}/${NEW_METADATA}`
+  ];
   console.log(compareFiles);
   await jsondiff(compareFiles);
 

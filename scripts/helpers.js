@@ -8,6 +8,7 @@ const axios = require("axios");
 const Web3 = require("web3");
 const _ = require("lodash");
 const {writeFileSync} = require("fs");
+const {fixedContracts} = require("../truffle-config.js");
 
 const LoanState = i =>
   [
@@ -123,6 +124,9 @@ const getContracts = async () => {
 };
 
 const contractIsUpdated = (contracts, netId, name, artifacts) => {
+  if (fixedContracts[name] && fixedContracts[name][netId]) {
+    return false;
+  }
   return (
     !_.hasIn(contracts, `address.${netId}.${name}`) ||
     artifacts["bytecode"] !== _.get(contracts, `bytecode.${netId}.${name}`)

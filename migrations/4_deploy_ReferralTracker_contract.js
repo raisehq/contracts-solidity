@@ -67,6 +67,7 @@ const migrationInt = async (deployer, network, accounts) => {
           const tokens = web3.utils.toWei("100000", "ether"); // 100K tokens
           console.log("raisetoken", raiseTokenAddress);
           const raiseInstance = new web3.eth.Contract(erc20Abi, raiseTokenAddress);
+          console.log("balance");
           const balance = await raiseInstance.methods.balanceOf(admin).call({from: admin});
           console.log(balance, web3.utils.fromWei(balance));
           await raiseInstance.methods.approve(referralContract.address, tokens).send({

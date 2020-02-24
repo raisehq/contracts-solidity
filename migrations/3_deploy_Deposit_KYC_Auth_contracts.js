@@ -4,7 +4,48 @@ const KYC = artifacts.require("KYCRegistry");
 const Auth = artifacts.require("Authorization");
 const RaiseToken = artifacts.require("RaiseTokenContract");
 const devAccounts = require("../int.accounts.json");
-const {writeFileSync} = require("fs");
+const axios = require("axios");
+const bluebird = require("bluebird");
+const abiLogs = [
+  {type: "address", name: "depositRegistry"},
+  {type: "address", indexed: true, name: "user"}
+];
+const getDeployedBlock = async (address, netId) => {
+  console.log("Address", address);
+  const networkPath = {
+    1: "api",
+    42: "api-kovan"
+  };
+  const response = await axios.get(
+    `https://${networkPath[netId]}.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${process.env.ETHSCAN_API_KEY}`
+  );
+  if (response.data.status !== "1") {
+    console.error(response);
+    throw new Error("Etherscan ERROR");
+  }
+  const result = response.data.result;
+  const fromBlock = result[0].blockNumber;
+  const toBlock = result[result.length - 1].blockNumber;
+  const rawEventsDeposit = await axios.get(
+    `https://${networkPath[netId]}.etherscan.io/api?module=logs&action=getLogs&fromBlock=0&toBlock=latest&address=${address}&topic0=0x8e3a4b41b9e3f3c2607bf719067910bebb395cb4e233001944cb4f8ea8fa5883&apikey=${process.env.ETHSCAN_API_KEY}`
+  );
+  const eventsDeposits = rawEventsDeposit.data.result.map(({data: d, topics}) =>
+    web3.eth.abi.decodeLog(abiLogs, d, topics.slice(1))
+  );
+
+  const OldDeposit = new web3.eth.Contract(Deposit.abi, address);
+  const uniqueEvents = _.uniqBy(eventsDeposits, "user");
+  const depositors = await bluebird.filter(
+    uniqueEvents,
+    ({user}, index) => {
+      console.log(`checking address ${user}: ${index + 1} of ${uniqueEvents.length}`);
+      return OldDeposit.methods.hasDeposited(user).call({from: user});
+    },
+    {concurrency: 10}
+  );
+  return depositors;
+};
+
 const {
   getContracts,
   contractIsUpdated,
@@ -108,6 +149,23 @@ const migrationInt = async (deployer, network, accounts) => {
         } catch (error) {
           console.error(" ERROR DEPOSIT SET ADMIN or SET DEPOSITFOR ", error);
           throw error;
+        }
+
+        // Do deposit migration if found a prior contract
+        const priorDepositAddress = _.get(contracts, ["address", netId, DEPOSIT_ID]);
+        if (process.env.ETHSCAN_API_KEY && priorDepositAddress) {
+          const events = await getDeployedBlock(priorDepositAddress, netId);
+          const depositInstance = await Deposit.deployed();
+          await depositInstance.migrate(events.map(({user}) => user), priorDepositAddress, {
+            from: deployerAddress,
+            gas: 7000000
+          });
+          await depositInstance.finishMigration({from: deployerAddress});
+          console.log("Deposit Migration FINISHED");
+        } else {
+          throw Error(
+            "Deployment block not found. Are you sure to point the right Deposit Address and network id?"
+          );
         }
       }
 
