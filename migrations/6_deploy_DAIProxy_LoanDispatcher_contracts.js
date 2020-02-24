@@ -31,29 +31,23 @@ const migration = async (deployer, network, accounts) => {
 
   if (daiproxyHasBeenUpdated()) {
     console.log("|============ deploying DAIProxy and LoanDispatcher ==============|");
-    const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress, daiAddress]);
-    await deployer.deploy(DAIProxy, authAddress, daiAddress, {
+    const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress]);
+    await deployer.deploy(DAIProxy, authAddress, {
       from: deployerAddress,
       gas: DAIProxyGas
     });
+    console.log("deployed dai proxy********************");
     const LoanGas = await getDeployGas(web3, LoanDispatcher, [
       authAddress,
-      daiAddress,
       DAIProxy.address,
       swapFactoryAddress
     ]);
-    await deployer.deploy(
-      LoanDispatcher,
-      authAddress,
-      daiAddress,
-      DAIProxy.address,
-      swapFactoryAddress,
-      {
-        from: deployerAddress,
-        gas: LoanGas
-      }
-    );
-
+    console.log("******************: loan dispatcher gas");
+    await deployer.deploy(LoanDispatcher, authAddress, DAIProxy.address, swapFactoryAddress, {
+      from: deployerAddress,
+      gas: LoanGas
+    });
+    console.log("********* loan dispatcher deployed");
     // Update contracts
     newContracts = _.merge(newContracts, {
       address: {
@@ -76,26 +70,19 @@ const migration = async (deployer, network, accounts) => {
     Object.keys(abis).forEach(key => {
       newContracts["abi"][key] = abis[key];
     });
+    console.log("---------------------------------||||||||||||||||||--------------------------");
   } else if (loandispatcherHasBeenUpdated()) {
     console.log("|============ DAIProxy: no changes to deploy ==============|");
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
     const LoanGas = await getDeployGas(web3, LoanDispatcher, [
       authAddress,
-      daiAddress,
       DAIProxy.address,
       swapFactoryAddress
     ]);
-    await deployer.deploy(
-      LoanDispatcher,
-      authAddress,
-      daiAddress,
-      DAIProxyAddress,
-      swapFactoryAddress,
-      {
-        from: deployerAddress,
-        gas: LoanGas
-      }
-    );
+    await deployer.deploy(LoanDispatcher, authAddress, DAIProxyAddress, swapFactoryAddress, {
+      from: deployerAddress,
+      gas: LoanGas
+    });
     // Update contracts
     newContracts = _.merge(newContracts, {
       address: {

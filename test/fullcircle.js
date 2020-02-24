@@ -62,9 +62,12 @@ contract("Integration", accounts => {
     let auctionLength;
     let Loan;
     const daiBalance = web3.utils.toWei(new BN(100, 10));
+
     beforeEach(async () => {
       DAIToken = await HeroFakeTokenContract.new({from: owner});
+      USDCToken = await HeroFakeTokenContract.new({from: owner});
       HeroToken = await HeroFakeTokenContract.new({from: owner});
+
       await HeroToken.transferFakeHeroTokens(lender, {from: owner});
       await HeroToken.transferFakeHeroTokens(lender2, {from: owner});
       await HeroToken.transferFakeHeroTokens(lender3, {from: owner});
@@ -92,7 +95,7 @@ contract("Integration", accounts => {
 
       // initialize proxies for lender and borrower
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-      DAIProxy = await DAIProxyContract.new(Auth.address, DAIToken.address, {from: owner});
+      DAIProxy = await DAIProxyContract.new(Auth.address, {from: owner});
 
       // check KYC and Deposit
       lenderKYC = await Auth.isKYCConfirmed(lender);
@@ -107,7 +110,6 @@ contract("Integration", accounts => {
       // initialize loan contract dispatcher
       LoanDispatcher = await LoanContractDispatcherContract.new(
         Auth.address,
-        DAIToken.address,
         DAIProxy.address,
         zeroAddress, // SwapAndDepositFactory
         {
@@ -115,11 +117,17 @@ contract("Integration", accounts => {
         }
       );
       await LoanDispatcher.setAdministrator(admin, {from: owner});
+      await LoanDispatcher.addTokenToAcceptedList(DAIToken, {from: admin});
+      await LoanDispatcher.addTokenToAcceptedList(USDCToken, {from: admin});
+
       // Setup DAI amounts
 
       await DAIToken.transferAmountToAddress(lender, daiBalance, {from: owner});
       await DAIToken.transferAmountToAddress(lender2, daiBalance, {from: owner});
       await DAIToken.transferAmountToAddress(lender3, daiBalance, {from: owner});
+      await USDCToken.transferAmountToAddress(lender, daiBalance, {from: owner});
+      await USDCToken.transferAmountToAddress(lender2, daiBalance, {from: owner});
+      await USDCToken.transferAmountToAddress(lender3, daiBalance, {from: owner});
 
       // borrower creates loan
       const currentBlock = await web3.eth.getBlock("latest");
@@ -129,6 +137,7 @@ contract("Integration", accounts => {
       const minInterestRate = 0;
       const maxInterestRate = 5000;
       auctionLength = 60 * 60;
+      console.log("token address =======================================> ", DAIToken.address);
       await LoanDispatcher.deploy(
         loanMinAmount,
         loanMaxAmount,
@@ -136,6 +145,7 @@ contract("Integration", accounts => {
         maxInterestRate,
         loanRepaymentTime,
         auctionLength,
+        DAIToken.address,
         {from: borrower}
       );
       const loanEventHistory = await LoanDispatcher.getPastEvents("LoanContractCreated"); // {fromBlock: 0, toBlock: "latest"} put this to get all

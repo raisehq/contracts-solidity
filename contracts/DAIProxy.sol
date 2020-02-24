@@ -41,7 +41,7 @@ contract DAIProxy is IDAIProxy, Ownable {
     {
         uint256 newFundingAmount = fundingAmount;
         ILoanContract loanContract = ILoanContract(loanAddress);
-        address tokenAddress = loanContract.tokenAddress();
+        address tokenAddress = loanContract.getTokenAddress();
 
         uint256 auctionBalance = loanContract.getAuctionBalance();
         uint256 maxAmount = loanContract.getMaxAmount();
@@ -59,7 +59,7 @@ contract DAIProxy is IDAIProxy, Ownable {
 
     function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
         ILoanContract loanContract = ILoanContract(loanAddress);
-        address tokenAddress = loanContract.tokenAddress();
+        address tokenAddress = loanContract.getTokenAddress();
         require(
             loanContract.onRepaymentReceived(msg.sender, repaymentAmount),
             "repayment failed at loan contract"

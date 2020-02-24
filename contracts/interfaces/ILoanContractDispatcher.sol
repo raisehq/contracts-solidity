@@ -12,7 +12,8 @@ interface ILoanContractDispatcher {
         uint256 termEndTimestamp,
         address indexed administrator,
         uint256 operatorFee,
-        uint256 auctionLength
+        uint256 auctionLength,
+        address indexed tokenAddress
     );
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
     event MaxAmountUpdated(uint256 maxAmount, address loanDispatcher);
@@ -20,13 +21,10 @@ interface ILoanContractDispatcher {
     event MaxInterestRateUpdated(uint256 maxInterestRate, address loanDispatcher);
     event OperatorFeeUpdated(uint256 operatorFee, address loanDispatcher, address administrator);
     event AuthAddressUpdated(address newAuthAddress, address administrator);
-    event DaiTokenAddressUpdated(address newDaiTokenAddress, address administrator);
     event DaiProxyAddressUpdated(address newDaiProxyAddress, address administrator);
     event AdministratorUpdated(address newAdminAddress);
 
     function checkLoanContract(address loanAddress) external view returns (bool);
-
-    function setDaiTokenAddress(address daiAddress) external;
 
     function setAuthAddress(address authAddress) external;
 
@@ -54,6 +52,7 @@ interface ILoanContractDispatcher {
         uint256 loanMinInterestRate,
         uint256 loanMaxInterestRate,
         uint256 termLength,
-        uint256 auctionLength
+        uint256 auctionLength,
+        address tokenAddress
     ) external returns (address);
 }

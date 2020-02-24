@@ -10,4 +10,5 @@ interface ILoanContract {
     function calculateValueWithInterest(uint256 value) external view returns (uint256);
     function getMaxAmount() external view returns (uint256);
     function getAuctionBalance() external view returns (uint256);
+    function getTokenAddress() external view returns (address);
 }

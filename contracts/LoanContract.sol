@@ -68,7 +68,8 @@ contract LoanContract is ILoanContract {
         uint256 auctionStartTimestamp,
         uint256 auctionEndTimestamp,
         address indexed administrator,
-        uint256 operatorFee
+        uint256 operatorFee,
+        address tokenAddress
     );
 
     event MinimumFundingReached(address loanAddress, uint256 currentBalance, uint256 interest);
@@ -161,7 +162,7 @@ contract LoanContract is ILoanContract {
         address _administrator,
         uint256 _operatorFee,
         uint256 _auctionLength,
-        address _swapFactory,
+        address _swapFactory
     ) public {
         tokenAddress = ERC20TokenAddress;
         proxyContractAddress = proxyAddress;
@@ -197,7 +198,8 @@ contract LoanContract is ILoanContract {
             auctionStartTimestamp,
             auctionEndTimestamp,
             administrator,
-            operatorFee
+            operatorFee,
+            tokenAddress
         );
     }
 
@@ -217,6 +219,9 @@ contract LoanContract is ILoanContract {
         return lenderPosition[lender].withdrawn;
     }
 
+    function getTokenAddress() external view returns (address) {
+        return tokenAddress;
+    }
     // Notes:
     // - This function does not track if real IERC20 balance has changed. Needs to blindly "trust" DaiProxy.
     function onFundingReceived(address lender, uint256 amount)
