@@ -153,7 +153,14 @@ const migrationInt = async (deployer, network, accounts) => {
 
         // Do deposit migration if found a prior contract
         const priorDepositAddress = _.get(contracts, ["address", netId, DEPOSIT_ID]);
-        if (process.env.ETHSCAN_API_KEY && priorDepositAddress) {
+        const newDepositAddress = _.get(contractMetadata[("address", netId, DEPOSIT_ID)]);
+        if (
+          process.env.ETHSCAN_API_KEY &&
+          priorDepositAddress &&
+          newDepositAddress &&
+          priorDepositAddress.toLowerCase() !== newDepositAddress.toLowerCase()
+        ) {
+          console.log("Process with Deposit migration");
           const events = await getDeployedBlock(priorDepositAddress, netId);
           const depositInstance = await Deposit.deployed();
           await depositInstance.migrate(events.map(({user}) => user), priorDepositAddress, {
@@ -161,11 +168,7 @@ const migrationInt = async (deployer, network, accounts) => {
             gas: 7000000
           });
           await depositInstance.finishMigration({from: deployerAddress});
-          console.log("Deposit Migration FINISHED");
-        } else {
-          throw Error(
-            "Deployment block not found. Are you sure to point the right Deposit Address and network id?"
-          );
+          console.log("Finished Deposit Migration:", events.length, "migrated");
         }
       }
 
