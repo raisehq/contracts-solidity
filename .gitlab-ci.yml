@@ -38,18 +38,18 @@ Test:
   only:
     - integration
     - master
-#Check_Coverage:
-#  stage: test
-#  before_script:
-#    - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
-#  artifacts:
-#    paths:
-#      - coverage/
-#  script:
-#    - npm run coverage
-#  only:
-#    - integration
-#    - master
+Check_Coverage:
+  stage: test
+  before_script:
+    - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
+  artifacts:
+    paths:
+      - coverage/
+  script:
+    - npm run coverage
+  only:
+    - integration
+    - master
 
 Solhint:
   stage: test
@@ -67,8 +67,10 @@ Kovan:
     - npm run compile && npm run migration:kovan:reset
   artifacts:
     paths:
-      - contracts.json
+      - package.json
+      - new.metadata.json
       - build/
+      - metadata/
   when: manual
   only:
     - integration
@@ -78,11 +80,11 @@ Contracts:
   stage: publish
   artifacts:
     paths:
-      - contracts.json
+      - new.metadata.json
   before_script:
     - pip install awscli
   script:
-    - aws s3 cp contracts.json s3://${BUCKET_NAME}/contracts.json
+    - aws s3 cp new.metadata.json s3://${BUCKET_NAME}/contracts.json
   only:
     - integration
 
@@ -92,10 +94,15 @@ Artifacts:
   artifacts:
     paths:
       - build/
+      - metadata/
+      - package.json
   before_script:
     - pip install awscli
+    - apt update && apt install jq
+    - export VERSION=$(cat package.json | jq -r .version)
   script:
-    - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts
+    - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts/${VERSION}/
+    - aws s3 sync metadata/contracts_${VERSION}.json s3://${BUCKET_NAME}/metadata/
   only:
     - integration
 
@@ -104,10 +111,13 @@ Coverage:
   stage: publish
   artifacts:
     paths:
+      - package.json
       - coverage/
   before_script:
     - pip install awscli
+    - apt update && apt install jq
+    - export VERSION=$(cat package.json | jq -r .version)
   script:
-    - aws s3 sync coverage s3://${BUCKET_NAME}/coverage
+    - aws s3 sync coverage s3://${BUCKET_NAME}/coverage/${VERSION}/
   only:
     - integration
