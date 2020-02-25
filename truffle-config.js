@@ -42,6 +42,12 @@ const ledgerDefaultConfig = {
 const InfuraLedgerProvider = require("./rpc-ledger-provider");
 
 module.exports = {
+  fixedContracts: {
+    KYC: {
+      42: true,
+      1: true
+    }
+  },
   /**
    * Networks define how you connect to your ethereum client and let you set the
    * defaults web3 uses to send transactions. If you don't specify one truffle
@@ -100,31 +106,6 @@ module.exports = {
       skipDryRun: true,
       network_id: "5" // Görli network id
     },
-    kovan_ledger: {
-      gas: 9400000,
-      gasPrice: 10000000000,
-      network_id: "42", // rinkeby,
-      skipDryRun: true,
-      provider: function() {
-        const ledgerOptions = {
-          ...ledgerDefaultConfig,
-          networkId: 42 // kovan
-        };
-        return InfuraLedgerProvider(ledgerOptions, infuraApi("kovan"));
-      }
-    },
-    rinkeby_ledger: {
-      gas: 7400000,
-      gasPrice: 100000000,
-      network_id: "4", // rinkeby
-      provider: function() {
-        const ledgerOptions = {
-          ...ledgerDefaultConfig,
-          networkId: 4 // rinkeby
-        };
-        return new LedgerProvider(ledgerOptions, infuraApi("rinkeby"));
-      }
-    },
     mainnet: {
       //gas: 9912788,
       gasPrice: 3500000000,
@@ -156,7 +137,7 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
-      version: "0.5.10",
+      version: "0.5.12",
       settings: {
         optimizer: {
           enabled: true,

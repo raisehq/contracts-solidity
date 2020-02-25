@@ -10,7 +10,10 @@ const {
   getWeb3,
   UNISWAP_FACTORY_BYTECODE,
   UNISWAP_EXCHANGE_BYTECODE,
-  UNISWAP_FACTORY_ADDRESS
+  UNISWAP_FACTORY_ADDRESS,
+  metadataFactory,
+  setMetadata,
+  writeMetadataTemp
 } = require("../scripts/helpers");
 const {BN} = require("web3-utils");
 
@@ -18,6 +21,7 @@ const SwapAndDepositId = "SwapAndDeposit";
 const SwapAndDepositFactoryId = "SwapAndDepositFactory";
 
 const migration = async (deployer, network, accounts) => {
+  let contractMetadata = metadataFactory();
   const web3One = getWeb3(web3);
   const contracts = await getContracts();
   const netId = await web3One.eth.net.getId();
@@ -30,8 +34,6 @@ const migration = async (deployer, network, accounts) => {
     contractIsUpdated(contracts, netId, SwapAndDepositId, SwapAndDeposit);
   const swapFactoryHasUpdated = () =>
     contractIsUpdated(contracts, netId, SwapAndDepositFactoryId, SwapAndDepositFactory);
-
-  let newContracts = _.cloneDeep(contracts);
 
   if (!uniswapAddress) {
     console.log("--- deploying uniswap ---");
@@ -66,23 +68,13 @@ const migration = async (deployer, network, accounts) => {
     );
 
     // Update contracts
-    newContracts = _.merge(newContracts, {
-      abi: {
-        [SwapAndDepositId]: SwapAndDeposit.abi,
-        [SwapAndDepositFactoryId]: SwapAndDepositFactory.abi
-      },
-      address: {
-        [netId]: {
-          [SwapAndDepositId]: SwapAndDeposit.address,
-          [SwapAndDepositFactoryId]: SwapAndDepositFactory.address
-        }
-      },
-      bytecode: {
-        [SwapAndDepositId]: SwapAndDeposit.bytecode,
-        [SwapAndDepositFactoryId]: SwapAndDepositFactory.bytecode
-      }
-    });
-    console.log("after");
+    contractMetadata = setMetadata(contractMetadata, netId, SwapAndDepositId, SwapAndDeposit);
+    contractMetadata = setMetadata(
+      contractMetadata,
+      netId,
+      SwapAndDepositFactoryId,
+      SwapAndDepositFactory
+    );
   } else if (swapTemplateHasUpdated() && !swapFactoryHasUpdated()) {
     console.log(
       "|============ swapTemplate changed: deploying new SwapTemplate and updating swapFactory ==============|"
@@ -95,25 +87,14 @@ const migration = async (deployer, network, accounts) => {
     await swapFactoryInstance.setLibraryAddress(SwapAndDeposit.address);
 
     // Update contracts
-    newContracts = _.merge(newContracts, {
-      abi: {
-        SwapAndDeposit: SwapAndDeposit.abi
-      },
-      address: {
-        [netId]: {
-          [SwapAndDepositId]: SwapAndDeposit.address
-        }
-      },
-      bytecode: {
-        [SwapAndDepositId]: SwapAndDeposit.bytecode
-      }
-    });
+    contractMetadata = setMetadata(contractMetadata, netId, SwapAndDepositId, SwapAndDeposit);
   } else {
     console.log(
       "|============ SwapAndDeposit and SwapAndFactory: no changes to deploy ==============|"
     );
   }
-  await writeFileSync("./contracts.json", JSON.stringify(newContracts));
+  const metadata = _.merge(contracts, contractMetadata);
+  writeMetadataTemp(metadata);
 };
 
 module.exports = async (deployer, network, accounts) => {

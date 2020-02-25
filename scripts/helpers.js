@@ -6,6 +6,9 @@ const DaiFake = require("../build/contracts/DAIFake.json");
 const {readFileSync} = require("fs");
 const axios = require("axios");
 const Web3 = require("web3");
+const _ = require("lodash");
+const {writeFileSync} = require("fs");
+const {fixedContracts} = require("../truffle-config.js");
 
 const LoanState = i =>
   [
@@ -101,16 +104,15 @@ const getS3Contracts = async () => {
     );
     return contracts;
   } catch (error) {
-    console.log("what", error);
     if (error.response.status !== 404) throw error;
-    console.log(`No exist previous contracts.json we continue and create new one.`);
+    console.log(`No exist previous ${NEW_METADATA} we continue and create new one.`);
     return {};
   }
 };
 
 const getContracts = async () => {
   try {
-    const contracts = JSON.parse(readFileSync(`./contracts.json`));
+    const contracts = JSON.parse(readFileSync(`./${NEW_METADATA}`));
     return contracts;
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -122,11 +124,19 @@ const getContracts = async () => {
 };
 
 const contractIsUpdated = (contracts, netId, name, artifacts) => {
+  if (fixedContracts[name] && fixedContracts[name][netId]) {
+    return false;
+  }
   return (
     !_.hasIn(contracts, `address.${netId}.${name}`) ||
-    artifacts["bytecode"] !== _.get(contracts, `bytecode.${name}`)
+    artifacts["bytecode"] !== _.get(contracts, `bytecode.${netId}.${name}`)
   );
 };
+
+const contractIsDeployed = (contracts, netId, name) => {
+  return _.hasIn(contracts, `address.${netId}.${name}`);
+};
+
 const getWeb3 = web3Intance => {
   return new Web3(web3Intance.currentProvider);
 };
@@ -183,6 +193,315 @@ const UNISWAP_EXCHANGE_BYTECODE =
 const UNISWAP_FACTORY_BYTECODE =
   "0x6103f056600035601c52740100000000000000000000000000000000000000006020526f7fffffffffffffffffffffffffffffff6040527fffffffffffffffffffffffffffffffff8000000000000000000000000000000060605274012a05f1fffffffffffffffffffffffffdabf41c006080527ffffffffffffffffffffffffed5fa0e000000000000000000000000000000000060a05263538a3f0e60005114156100ed57602060046101403734156100b457600080fd5b60043560205181106100c557600080fd5b50600054156100d357600080fd5b60006101405114156100e457600080fd5b61014051600055005b631648f38e60005114156102bf576020600461014037341561010e57600080fd5b600435602051811061011f57600080fd5b50600061014051141561013157600080fd5b6000600054141561014157600080fd5b60026101405160e05260c052604060c020541561015d57600080fd5b7f602e600c600039602e6000f33660006000376110006000366000730000000000610180526c010000000000000000000000006000540261019b527f5af41558576110006000f30000000000000000000000000000000000000000006101af5260406101806000f0806101cf57600080fd5b61016052610160513b6101e157600080fd5b610160513014156101f157600080fd5b6000600060246366d3820361022052610140516102405261023c6000610160515af161021c57600080fd5b6101605160026101405160e05260c052604060c020556101405160036101605160e05260c052604060c02055600154600160015401101561025c57600080fd5b6001600154016102a0526102a0516001556101405160046102a05160e05260c052604060c0205561016051610140517f9d42cb017eb05bd8944ab536a8b35bc68085931dd5f4356489801453923953f960006000a36101605160005260206000f3005b6306f2bf62600051141561030e57602060046101403734156102e057600080fd5b60043560205181106102f157600080fd5b5060026101405160e05260c052604060c0205460005260206000f3005b6359770438600051141561035d576020600461014037341561032f57600080fd5b600435602051811061034057600080fd5b5060036101405160e05260c052604060c0205460005260206000f3005b63aa65a6c0600051141561039a576020600461014037341561037e57600080fd5b60046101405160e05260c052604060c0205460005260206000f3005b631c2bbd1860005114156103c05734156103b357600080fd5b60005460005260206000f3005b639f181b5e60005114156103e65734156103d957600080fd5b60015460005260206000f3005b60006000fd5b6100046103f0036100046000396100046103f0036000f3";
 
+const mintTokens = async (truffleTokenInstance, accounts, tokensToMint, from) => {
+  for (let i = 0; i < accounts.length; i++) {
+    await truffleTokenInstance.mint(accounts[i], tokensToMint, {
+      from,
+      gas: 800000
+    });
+  }
+};
+
+const metadataFactory = () => ({abi: {}, address: {}, bytecode: {}});
+
+const setMetadata = (metadata, netId, contractId, {address, abi, bytecode}) => {
+  const clonedMetadata = _.cloneDeep(metadata);
+  if (!!address) {
+    _.set(clonedMetadata, `address.${netId}.${contractId}`, address);
+  }
+  if (!!abi) {
+    _.set(clonedMetadata, `abi.${netId}.${contractId}`, abi);
+  }
+  if (!!bytecode) {
+    _.set(clonedMetadata, `bytecode.${netId}.${contractId}`, bytecode);
+  }
+  return clonedMetadata;
+};
+
+const NEW_METADATA = "new.metadata.json";
+const PRIOR_METADATA = "prior.metadata.json";
+
+const writeMetadataTemp = metadata => {
+  writeFileSync(`${process.env.PWD}/${NEW_METADATA}`, JSON.stringify(metadata, null, 2));
+};
+
+const MCD_DAI_ABI = [
+  {
+    inputs: [{internalType: "uint256", name: "chainId_", type: "uint256"}],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "constructor"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {indexed: true, internalType: "address", name: "src", type: "address"},
+      {indexed: true, internalType: "address", name: "guy", type: "address"},
+      {indexed: false, internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "Approval",
+    type: "event"
+  },
+  {
+    anonymous: true,
+    inputs: [
+      {indexed: true, internalType: "bytes4", name: "sig", type: "bytes4"},
+      {indexed: true, internalType: "address", name: "usr", type: "address"},
+      {indexed: true, internalType: "bytes32", name: "arg1", type: "bytes32"},
+      {indexed: true, internalType: "bytes32", name: "arg2", type: "bytes32"},
+      {indexed: false, internalType: "bytes", name: "data", type: "bytes"}
+    ],
+    name: "LogNote",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {indexed: true, internalType: "address", name: "src", type: "address"},
+      {indexed: true, internalType: "address", name: "dst", type: "address"},
+      {indexed: false, internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "Transfer",
+    type: "event"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "DOMAIN_SEPARATOR",
+    outputs: [{internalType: "bytes32", name: "", type: "bytes32"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "PERMIT_TYPEHASH",
+    outputs: [{internalType: "bytes32", name: "", type: "bytes32"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [
+      {internalType: "address", name: "", type: "address"},
+      {internalType: "address", name: "", type: "address"}
+    ],
+    name: "allowance",
+    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "usr", type: "address"},
+      {internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "approve",
+    outputs: [{internalType: "bool", name: "", type: "bool"}],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [{internalType: "address", name: "", type: "address"}],
+    name: "balanceOf",
+    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "usr", type: "address"},
+      {internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "burn",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "decimals",
+    outputs: [{internalType: "uint8", name: "", type: "uint8"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [{internalType: "address", name: "guy", type: "address"}],
+    name: "deny",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "usr", type: "address"},
+      {internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "mint",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "src", type: "address"},
+      {internalType: "address", name: "dst", type: "address"},
+      {internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "move",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "name",
+    outputs: [{internalType: "string", name: "", type: "string"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [{internalType: "address", name: "", type: "address"}],
+    name: "nonces",
+    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "holder", type: "address"},
+      {internalType: "address", name: "spender", type: "address"},
+      {internalType: "uint256", name: "nonce", type: "uint256"},
+      {internalType: "uint256", name: "expiry", type: "uint256"},
+      {internalType: "bool", name: "allowed", type: "bool"},
+      {internalType: "uint8", name: "v", type: "uint8"},
+      {internalType: "bytes32", name: "r", type: "bytes32"},
+      {internalType: "bytes32", name: "s", type: "bytes32"}
+    ],
+    name: "permit",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "usr", type: "address"},
+      {internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "pull",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "usr", type: "address"},
+      {internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "push",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [{internalType: "address", name: "guy", type: "address"}],
+    name: "rely",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "symbol",
+    outputs: [{internalType: "string", name: "", type: "string"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "dst", type: "address"},
+      {internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "transfer",
+    outputs: [{internalType: "bool", name: "", type: "bool"}],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      {internalType: "address", name: "src", type: "address"},
+      {internalType: "address", name: "dst", type: "address"},
+      {internalType: "uint256", name: "wad", type: "uint256"}
+    ],
+    name: "transferFrom",
+    outputs: [{internalType: "bool", name: "", type: "bool"}],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "version",
+    outputs: [{internalType: "string", name: "", type: "string"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [{internalType: "address", name: "", type: "address"}],
+    name: "wards",
+    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
+    payable: false,
+    stateMutability: "view",
+    type: "function"
+  }
+];
+
 module.exports = {
   getWeb3,
   getDeployGas,
@@ -204,5 +523,13 @@ module.exports = {
   KYC_MAINNET,
   UNISWAP_FACTORY_ADDRESS,
   UNISWAP_EXCHANGE_BYTECODE,
-  UNISWAP_FACTORY_BYTECODE
+  UNISWAP_FACTORY_BYTECODE,
+  mintTokens,
+  setMetadata,
+  writeMetadataTemp,
+  metadataFactory,
+  contractIsDeployed,
+  NEW_METADATA,
+  PRIOR_METADATA,
+  MCD_DAI_ABI
 };

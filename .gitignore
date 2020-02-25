@@ -3,7 +3,8 @@ node_modules
 /build
 .secret
 private.key
-contracts*.json
+*metadata*.json
+*contracts*.json
 contracts.json
 coverage*/
 coverage/
