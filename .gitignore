@@ -14,3 +14,4 @@ coverage/
 # buidler files
 cache/
 artifacts/
+.env
