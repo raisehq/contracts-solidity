@@ -17,6 +17,9 @@ const KYCContract = artifacts.require("KYCRegistry");
 const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
 
+const DoubleSwapMock = artifacts.require("DoubleSwapMock");
+const SwapFactoryMock = artifacts.require("SwapFactoryMock");
+
 const {getWeb3} = require("../scripts/helpers.js");
 
 const {initializeUniswap} = require("./uniswap.utils");
@@ -376,6 +379,111 @@ contract("SwapAndDeposit", accounts => {
       // User have deposit inside the DepositRegistry
       const deposited = await DepositRegistry.hasDeposited(lender);
       expect(deposited).to.equal(true);
+    });
+
+    it("Expects to prevent reentrancy after swap", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      await DAIToken.mintTokens(doubleSwap.address, {from: owner});
+      const doubleSwapBalancePrior = await DAIToken.balanceOf(DAIToken.address);
+      await truffleAssert.fails(
+        doubleSwap.tryDoubleSwap(SwapFactory.address, DAIToken.address, {from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "this contract will selfdestruct"
+      );
+      const doubleSwapBalanceAfter = await DAIToken.balanceOf(DAIToken.address);
+
+      // DAI Balance for doubleSwap contract should be the same due revert
+      expect(doubleSwapBalanceAfter).to.be.eq.BN(doubleSwapBalancePrior);
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+    it("Expects to be destroyed if called from a contract", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      await DAIToken.mintTokens(doubleSwap.address, {from: owner});
+      const doubleSwapBalancePrior = await DAIToken.balanceOf(DAIToken.address);
+      await truffleAssert.fails(
+        doubleSwap.tryDoubleSwap(SwapFactory.address, DAIToken.address, {from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "this contract will selfdestruct"
+      );
+      const doubleSwapBalanceAfter = await DAIToken.balanceOf(DAIToken.address);
+
+      // DAI Balance for doubleSwap contract should be the same due revert
+      expect(doubleSwapBalanceAfter).to.be.eq.BN(doubleSwapBalancePrior);
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+    it("Getter isDestroyed should return true if called after selfdestruct in same transaction", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      await DAIToken.mintTokens(doubleSwap.address, {from: owner});
+      await truffleAssert.passes(
+        doubleSwap.checkDestroyed(SwapFactory.address, DAIToken.address, {from: lender})
+      );
+
+      // User should have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(true);
+    });
+    it("Should not init twice by deposit", async () => {
+      const swapFactoryMock = await SwapFactoryMock.new(
+        SwapAndDepositTemplate.address,
+        Auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      await truffleAssert.fails(
+        swapFactoryMock.deployDoubleInitDeposit({from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "deposit already init"
+      );
+    });
+    it("Should not init twice by uniswap", async () => {
+      const swapFactoryMock = await SwapFactoryMock.new(
+        SwapAndDepositTemplate.address,
+        Auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      await truffleAssert.fails(
+        swapFactoryMock.deployDoubleInitUniswap({from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "factory already init"
+      );
+    });
+    xit("Should revert if missing exchange", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      const anotherToken = await DAITokenContract.new();
+      await anotherToken.mintTokens(doubleSwap.address, {from: owner});
+      await truffleAssert.fails(
+        doubleSwap.checkMissingExchange(SwapFactory.address, anotherToken.address, {from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "deposit already init"
+      );
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+    xit("Should revert if no tokens", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      const anotherToken = await DAITokenContract.new();
+      await truffleAssert.fails(
+        doubleSwap.checkMissingExchange(SwapFactory.address, anotherToken.address, {from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "asdasdasdasd"
+      );
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
     });
   });
 });
