@@ -9,6 +9,7 @@ import "./interfaces/IKYCRegistry.sol";
 
 contract DepositRegistry is IDepositRegistry, Ownable {
     mapping(address => Deposit) deposits;
+    mapping(address => address) userToDepositRegistry;
     address public admin;
     uint256 constant DEPOSIT_AMNT = 200e18; //200000000000000000000;
     bool public migrationAllowed;
@@ -63,6 +64,7 @@ contract DepositRegistry is IDepositRegistry, Ownable {
                 "Depositor does not have deposit in old Registry"
             );
             deposits[depositors[i]].deposited = true;
+            userToDepositRegistry[depositors[i]] = oldDeposit;
             emit UserDepositCompleted(address(this), depositors[i]);
         }
     }
@@ -71,6 +73,13 @@ contract DepositRegistry is IDepositRegistry, Ownable {
         require(migrationAllowed, "Migration already done");
         migrationAllowed = false;
         emit MigrationFinished(address(this));
+    }
+
+    function _deposit(address user) internal returns (bool) {
+        deposits[user].deposited = true;
+        userToDepositRegistry[user] = address(this);
+        emit UserDepositCompleted(address(this), user);
+        return true;
     }
 
     function depositFor(address from) external returns (bool) {
@@ -82,10 +91,7 @@ contract DepositRegistry is IDepositRegistry, Ownable {
 
         require(token.transferFrom(from, address(this), DEPOSIT_AMNT), "Deposit transfer failed");
 
-        deposits[from].deposited = true;
-
-        emit UserDepositCompleted(address(this), from);
-        return true;
+        return _deposit(from);
     }
 
     function depositForWithReferral(address from, address referrer) external returns (bool) {
@@ -105,10 +111,7 @@ contract DepositRegistry is IDepositRegistry, Ownable {
             "Deposit referal transfer failed"
         );
 
-        deposits[from].deposited = true;
-
-        emit UserDepositCompleted(address(this), from);
-        return true;
+        return _deposit(from);
     }
 
     function delegateDeposit(address to) external returns (bool) {
@@ -123,14 +126,15 @@ contract DepositRegistry is IDepositRegistry, Ownable {
             "Deposit transfer failed"
         );
 
-        deposits[to].deposited = true;
-
-        emit UserDepositCompleted(address(this), to);
-        return true;
+        return _deposit(to);
     }
 
     function withdraw(address to) external {
         require(deposits[msg.sender].deposited, "address not deposited");
+        require(
+            userToDepositRegistry[msg.sender] == address(this),
+            "run getDepositRegistryByUser to get the deposit address to withdraw"
+        );
         require(
             deposits[msg.sender].unlockedForWithdrawal || kyc.isConfirmed(msg.sender),
             "cannot withdraw without KYC or unlocked"
@@ -157,5 +161,9 @@ contract DepositRegistry is IDepositRegistry, Ownable {
 
     function getERC20Token() external view returns (address) {
         return address(token);
+    }
+
+    function getDepositRegistryByUser(address user) external view returns (address) {
+        return userToDepositRegistry[user];
     }
 }
