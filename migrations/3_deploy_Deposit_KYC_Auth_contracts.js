@@ -115,8 +115,8 @@ const migrationInt = async (deployer, network, accounts) => {
       try {
         await deployer.deploy(
           Auth,
-          contracts.address[netId].KYC.address,
-          contracts.address[netId].Deposit.address,
+          contracts.address[netId].KYC,
+          contracts.address[netId].Deposit,
           deployOptions
         );
         contractMetadata = setMetadata(contractMetadata, netId, AUTH_ID, Auth);
