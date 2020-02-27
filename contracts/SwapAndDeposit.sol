@@ -52,15 +52,13 @@ contract SwapAndDeposit {
     ) internal returns (bool) {
         require(
             IERC20(inputTokenAddress).transferFrom(msg.sender, address(this), inputTokenAmount),
-            "Transfer failed"
+            "error transfer input token to swap"
         );
         IUniswapExchange exchange = IUniswapExchange(
             IUniswapFactory(factoryAddress).getExchange(inputTokenAddress)
         );
-        require(
-            IERC20(inputTokenAddress).approve(address(exchange), inputTokenAmount),
-            "fail to approve"
-        );
+        require(address(exchange) != address(0), "exchange can not be 0 address");
+        IERC20(inputTokenAddress).approve(address(exchange), inputTokenAmount);
         uint256 inputTokenSpent = exchange.tokenToTokenSwapOutput(
             outputTokenAmount,
             inputTokenAmount, // at least prevent to consume more input tokens than the transfer
@@ -71,7 +69,7 @@ contract SwapAndDeposit {
         require(inputTokenSpent > 0, "Swap not spent input token");
         require(
             IERC20(inputTokenAddress).transfer(depositor, inputTokenAmount.sub(inputTokenSpent)),
-            "transfered"
+            "error transfer remaining input"
         );
         require(IERC20(inputTokenAddress).balanceOf(address(this)) == 0, "input token still here");
         return true;
@@ -87,7 +85,8 @@ contract SwapAndDeposit {
         uint256 outputTokenAmount
     ) internal returns (bool) {
         IERC20(outputTokenAddress).approve(depositAddress, outputTokenAmount);
-        require(IDepositRegistry(depositAddress).delegateDeposit(depositor), "Error while deposit");
+        require(IDepositRegistry(depositAddress).delegateDeposit(depositor), "error while deposit");
+        require(IDepositRegistry(depositAddress).hasDeposited(depositor), "should be depositor");
         require(
             IERC20(outputTokenAddress).balanceOf(address(this)) == 0,
             "output token still here"
@@ -100,26 +99,27 @@ contract SwapAndDeposit {
         address inputTokenAddress,
         uint256 inputTokenAmount
     ) external notTemplate {
+        require(depositor != address(0), "depositor address can not be 0");
+        require(inputTokenAddress != address(0), "input address can not be 0");
+        require(inputTokenAmount > 0, "input token amount can not be 0");
         require(depositAddress != address(0) && factoryAddress != address(0), "not init");
+        require(
+            IDepositRegistry(depositAddress).hasDeposited(depositor) == false,
+            "already depositor"
+        );
         address outputTokenAddress = IDepositRegistry(depositAddress).getERC20Token();
-        require(outputTokenAddress != address(0), "output token is 0");
-        require(
-            swapTokenToTokenOutput(
-                depositor,
-                inputTokenAddress,
-                outputTokenAddress,
-                inputTokenAmount,
-                DEPOSIT_AMOUNT
-            ),
-            "error while swapping"
+        require(outputTokenAddress != address(0), "output token can not be 0");
+        swapTokenToTokenOutput(
+            depositor,
+            inputTokenAddress,
+            outputTokenAddress,
+            inputTokenAmount,
+            DEPOSIT_AMOUNT
         );
-        require(
-            delegateDeposit(depositor, outputTokenAddress, DEPOSIT_AMOUNT),
-            "error while deposit"
-        );
+        delegateDeposit(depositor, outputTokenAddress, DEPOSIT_AMOUNT);
         emit SwapDeposit(msg.sender, depositor);
-        // mark this contract as destroyed, so external contract can know this contract is being selfdestruct after the tx
-        // also prevents to call this function again
+        // mark this contract as destroyed, so external contract can know this contract is being selfdestruct
+        // during this tx, also prevents to call this function during the transaction
         destroyed = true;
         // Self destruct this contract
         selfdestruct(depositor);
