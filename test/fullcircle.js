@@ -117,8 +117,8 @@ contract("Integration", accounts => {
         }
       );
       await LoanDispatcher.setAdministrator(admin, {from: owner});
-      await LoanDispatcher.addTokenToAcceptedList(DAIToken, {from: admin});
-      await LoanDispatcher.addTokenToAcceptedList(USDCToken, {from: admin});
+      await LoanDispatcher.addTokenToAcceptedList(DAIToken.address, {from: admin});
+      await LoanDispatcher.addTokenToAcceptedList(USDCToken.address, {from: admin});
 
       // Setup DAI amounts
 

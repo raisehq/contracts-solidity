@@ -35,7 +35,7 @@ contract("DAIProxy Contract", function(accounts) {
       await DAIToken.transferFakeHeroTokens(user, {from: owner});
       await DAIToken.transferFakeHeroTokens(other_kyc_user_no_deposit, {from: owner});
       await DAIToken.transferFakeHeroTokens(other_user, {from: owner});
-      LoanContract = await MockLoanContract.new({from: owner});
+      LoanContract = await MockLoanContract.new(DAIToken.address, {from: owner});
       KYCRegistry = await KYCContract.new();
       await KYCRegistry.setAdministrator(admin);
       DepositRegistry = await DepositRegistryContract.new(
@@ -44,7 +44,7 @@ contract("DAIProxy Contract", function(accounts) {
         {from: owner}
       );
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-      DAIProxy = await DAIProxyContract.new(Auth.address, DAIToken.address);
+      DAIProxy = await DAIProxyContract.new(Auth.address);
       await DAIProxy.setAdministrator(admin, {from: owner});
 
       // user one

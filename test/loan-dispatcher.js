@@ -59,7 +59,7 @@ contract("LoanContractDispatcher", accounts => {
 
         // initialize proxies for lender and borrower
         Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-        DAIProxy = await DAIProxyContract.new(Auth.address, DAIToken.address, {from: owner});
+        DAIProxy = await DAIProxyContract.new(Auth.address, {from: owner});
 
         // check KYC and Deposit
         borrowerKYC = await Auth.isKYCConfirmed(borrower);
@@ -74,7 +74,6 @@ contract("LoanContractDispatcher", accounts => {
         // initialize loan contract dispatcher
         LoanDispatcher = await LoanContractDispatcherContract.new(
           Auth.address,
-          DAIToken.address,
           DAIProxy.address,
           SwapFactory.address,
           {
@@ -111,7 +110,6 @@ contract("LoanContractDispatcher", accounts => {
         // initialize loan contract dispatcher
         LoanDispatcher = await LoanContractDispatcherContract.new(
           Auth.address,
-          DAIToken.address,
           DAIProxy.address,
           SwapFactory.address,
           {
@@ -122,6 +120,7 @@ contract("LoanContractDispatcher", accounts => {
       it("Expects to deploy loan contract when conditions are correct", async () => {
         try {
           await LoanDispatcher.setAdministrator(admin, {from: owner});
+          await LoanDispatcher.addTokenToAcceptedList(DAIToken.address, {from: admin});
 
           const minAmount = "1000000000000000000000";
           const maxAmount = "2500000000000000000000000";
@@ -136,6 +135,7 @@ contract("LoanContractDispatcher", accounts => {
             maxInterestRate,
             termLength,
             auctionLength,
+            DAIToken.address,
             {from: borrower}
           );
           const loanEventHistory = await LoanDispatcher.getPastEvents("LoanContractCreated"); // {fromBlock: 0, toBlock: "latest"} put this to get all
@@ -147,6 +147,7 @@ contract("LoanContractDispatcher", accounts => {
       });
       it("Expects not to deploy loan contract when admin is not set", async () => {
         try {
+
           const minAmount = "1000000000000000000000";
           const maxAmount = "2500000000000000000000000";
           const maxInterestRate = 1500;
@@ -158,6 +159,7 @@ contract("LoanContractDispatcher", accounts => {
             maxInterestRate,
             termLength,
             auctionLength,
+            DAIToken.address,
             {from: borrower}
           );
         } catch (error) {
