@@ -71,6 +71,7 @@ contract DAIProxy is IDAIProxy, Ownable {
         internal
         returns (bool)
     {
+        // checkear el token address si es usdt si es esta usar el wrapper para hacer el transfer from :D. EASY.
         IERC20 ERC20Token = IERC20(tokenAddress);
 
         require(ERC20Token.allowance(msg.sender, address(this)) >= amount, "funding not approved");

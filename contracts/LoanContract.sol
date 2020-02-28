@@ -468,4 +468,9 @@ contract LoanContract is ILoanContract {
         );
         return true;
     }
+
+    function transfer(address to, uint256 amount ) internal returns (bool) {
+
+    }
+
 }
