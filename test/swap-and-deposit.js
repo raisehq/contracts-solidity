@@ -709,7 +709,7 @@ contract("SwapAndDeposit", accounts => {
       // Mint output tokens to proxyAddress
       await RaiseToken.transfer(proxyAddress, INPUT_AMOUNT, {from: owner});
 
-      truffleAssert.fails(
+      await truffleAssert.fails(
         swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
         truffleAssert.ErrorType.REVERT,
         "output token still here"
