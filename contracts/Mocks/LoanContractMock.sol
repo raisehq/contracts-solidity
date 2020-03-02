@@ -6,12 +6,14 @@ import "../interfaces/ILoanContract.sol";
 contract LoanContractMock is ILoanContract {
     uint256 auctionBalance;
     uint256 maxAmount = 100;
-    ERC20 DAIToken;
+    ERC20 ERC20Token;
     mapping(address => uint256) lenderBidAmount;
     enum LoanPhase {Active, Finished, Repaid, Failed}
     LoanPhase currentPhase;
 
-    constructor() public {}
+    constructor(address tokenAddress) public {
+        ERC20Token = ERC20(tokenAddress);
+    }
 
     function getFundedAmount() public view returns (uint256) {
         return auctionBalance;
@@ -33,6 +35,9 @@ contract LoanContractMock is ILoanContract {
         from;
         amount;
         return true;
+    }
+    function getTokenAddress() external view returns (address) {
+        return address(ERC20Token);
     }
 
     function getInterestRate() public view returns (uint256) {

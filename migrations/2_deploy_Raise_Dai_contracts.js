@@ -22,7 +22,6 @@ const DAI_CONTRACT_ID = "DAI";
 const RAISE_CONTRACT_ID = "RaiseToken";
 
 const DAI_ADDRESSES = {
-  42: "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa", // v.1.0.2
   1: "0x6B175474E89094C44Da98b954EedeAC495271d0F" // v.1.0.2
 };
 const migrationKovan = async (deployer, network, accounts) => {
@@ -47,7 +46,7 @@ const migrationKovan = async (deployer, network, accounts) => {
       await mintTokens(raiseFakeInstance, IntAccounts, TOKENS_PER_ACCOUNT, deployerAddress);
       contractMetadata = setMetadata(contractMetadata, netId, RAISE_CONTRACT_ID, RaiseFakeToken);
     }
-    if (!daiDeployed() && !network.includes("kovan")) {
+    if (!daiDeployed()) {
       console.log("Deploying DAI Fake token.");
       const daiFakeInstance = await deployer.deploy(DAIFake, {
         from: deployerAddress,
@@ -57,14 +56,6 @@ const migrationKovan = async (deployer, network, accounts) => {
       console.log("Sending DAI fake tokens to", IntAccounts.length, "accounts");
       await mintTokens(daiFakeInstance, IntAccounts, TOKENS_PER_ACCOUNT, deployerAddress);
       contractMetadata = setMetadata(contractMetadata, netId, DAI_CONTRACT_ID, DAIFake);
-    }
-    if (!daiDeployed() && network.includes("kovan") && DAI_ADDRESSES[netId]) {
-      console.log(`Set KOVAN Dai address: ${DAI_ADDRESSES[netId]}`);
-
-      contractMetadata = setMetadata(contractMetadata, netId, DAI_CONTRACT_ID, {
-        address: DAI_ADDRESSES[netId],
-        abi: MCD_DAI_ABI
-      });
     }
 
     console.log(contractMetadata.address);
@@ -107,7 +98,7 @@ const mainnetMigration = async (deployer, network, accounts) => {
 
 module.exports = async (deployer, network, accounts) => {
   // Skip migrations for coverage, due is very slow and error prone, not needed due tests also do deployments
-  if (network.includes("coverage")) {
+  if (network.includes("coverage") || network.includes("test")) {
     return;
   }
   console.log(`Deploying in network: ${network}`);

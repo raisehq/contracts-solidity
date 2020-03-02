@@ -3,11 +3,11 @@ pragma solidity 0.5.12;
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
-import "./interfaces/IDepositRegistry.sol";
-import "./interfaces/IReferralTracker.sol";
-import "./interfaces/IKYCRegistry.sol";
+import "../interfaces/IDepositRegistry.sol";
+import "../interfaces/IReferralTracker.sol";
+import "../interfaces/IKYCRegistry.sol";
 
-contract DepositRegistry is IDepositRegistry, Ownable {
+contract DepositNoToken is IDepositRegistry, Ownable {
     mapping(address => Deposit) deposits;
     mapping(address => address) userToDepositRegistry;
     address public admin;
@@ -58,7 +58,7 @@ contract DepositRegistry is IDepositRegistry, Ownable {
         require(migrationAllowed, "Migration already done");
         for (uint256 i = 0; i < depositors.length; i++) {
             require(deposits[depositors[i]].deposited == false, "Depositor already deposited");
-            DepositRegistry oldDepositRegistry = DepositRegistry(oldDeposit);
+            IDepositRegistry oldDepositRegistry = IDepositRegistry(oldDeposit);
             require(
                 oldDepositRegistry.hasDeposited(depositors[i]),
                 "Depositor does not have deposit in old Registry"
@@ -79,7 +79,7 @@ contract DepositRegistry is IDepositRegistry, Ownable {
         deposits[user].deposited = true;
         userToDepositRegistry[user] = address(this);
         emit UserDepositCompleted(address(this), user);
-        return true;
+        return false;
     }
 
     function depositFor(address from) external returns (bool) {
@@ -160,7 +160,7 @@ contract DepositRegistry is IDepositRegistry, Ownable {
     }
 
     function getERC20Token() external view returns (address) {
-        return address(token);
+        return address(0);
     }
 
     function getDepositRegistryByUser(address user) external view returns (address) {

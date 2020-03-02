@@ -39,4 +39,5 @@ interface IDepositRegistry {
 
     function getERC20Token() external view returns (address);
 
+    function getDepositRegistryByUser(address user) external view returns (address);
 }

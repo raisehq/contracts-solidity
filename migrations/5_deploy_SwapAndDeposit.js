@@ -51,6 +51,7 @@ const migration = async (deployer, network, accounts) => {
     await uniswapFactory.methods.initializeFactory(uniswapExchange.options.address);
 
     uniswapAddress = await uniswapFactory.options.address;
+    console.log("UNISWAP ADDRRESS", uniswapAddress);
   }
   if (swapTemplateHasUpdated() && swapFactoryHasUpdated()) {
     console.log("|============ deploying SwapTemplate and SwapFactory ==============|");
@@ -98,7 +99,7 @@ const migration = async (deployer, network, accounts) => {
 };
 
 module.exports = async (deployer, network, accounts) => {
-  if (network.includes("coverage")) {
+  if (network.includes("coverage") || network.includes("test")) {
     return;
   }
   try {

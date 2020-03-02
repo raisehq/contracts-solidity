@@ -17,6 +17,15 @@ const KYCContract = artifacts.require("KYCRegistry");
 const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
 
+const DoubleSwapMock = artifacts.require("DoubleSwapMock");
+const SwapFactoryMock = artifacts.require("SwapFactoryMock");
+const DepositBadDelegate = artifacts.require("DepositBadDelegate");
+const DepositNoTransfer = artifacts.require("DepositNoTransfer");
+const DepositNoDepositor = artifacts.require("DepositNoDepositor");
+const DepositNoToken = artifacts.require("DepositNoToken");
+const NonERC20Token = artifacts.require("HeroOrigenToken");
+const UniswapFactoryMock = artifacts.require("UniswapFactoryMock");
+
 const {getWeb3} = require("../scripts/helpers.js");
 
 const {initializeUniswap} = require("./uniswap.utils");
@@ -376,6 +385,454 @@ contract("SwapAndDeposit", accounts => {
       // User have deposit inside the DepositRegistry
       const deposited = await DepositRegistry.hasDeposited(lender);
       expect(deposited).to.equal(true);
+    });
+
+    it("Expects to prevent reentrancy after swap", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      await DAIToken.mintTokens(doubleSwap.address, {from: owner});
+      const doubleSwapBalancePrior = await DAIToken.balanceOf(DAIToken.address);
+      await truffleAssert.fails(
+        doubleSwap.tryDoubleSwap(SwapFactory.address, DAIToken.address, {from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "this contract will selfdestruct"
+      );
+      const doubleSwapBalanceAfter = await DAIToken.balanceOf(DAIToken.address);
+
+      // DAI Balance for doubleSwap contract should be the same due revert
+      expect(doubleSwapBalanceAfter).to.be.eq.BN(doubleSwapBalancePrior);
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+    it("Expects to be destroyed if called from a contract", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      await DAIToken.mintTokens(doubleSwap.address, {from: owner});
+      const doubleSwapBalancePrior = await DAIToken.balanceOf(DAIToken.address);
+      await truffleAssert.fails(
+        doubleSwap.tryDoubleSwap(SwapFactory.address, DAIToken.address, {from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "this contract will selfdestruct"
+      );
+      const doubleSwapBalanceAfter = await DAIToken.balanceOf(DAIToken.address);
+
+      // DAI Balance for doubleSwap contract should be the same due revert
+      expect(doubleSwapBalanceAfter).to.be.eq.BN(doubleSwapBalancePrior);
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+    it("Getter isDestroyed should return true if called after selfdestruct in same transaction", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      await DAIToken.mintTokens(doubleSwap.address, {from: owner});
+      await truffleAssert.passes(
+        doubleSwap.checkDestroyed(SwapFactory.address, DAIToken.address, {from: lender})
+      );
+
+      // User should have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(true);
+    });
+    it("Should not init twice by deposit", async () => {
+      const swapFactoryMock = await SwapFactoryMock.new(
+        SwapAndDepositTemplate.address,
+        Auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      await truffleAssert.fails(
+        swapFactoryMock.deployDoubleInitDeposit({from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "deposit already init"
+      );
+    });
+
+    it("Should not swap if not init", async () => {
+      const swapFactoryMock = await SwapFactoryMock.new(
+        SwapAndDepositTemplate.address,
+        Auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+
+      const tx = await swapFactoryMock.deployNoInit({from: owner});
+      const {proxyAddress} = tx.logs[0].args;
+      const swapAndDeposit = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapAndDeposit.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {
+          from: owner
+        }),
+        truffleAssert.ErrorType.REVERT,
+        "not init"
+      );
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+
+    it("Should not init twice by uniswap", async () => {
+      const swapFactoryMock = await SwapFactoryMock.new(
+        SwapAndDepositTemplate.address,
+        Auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      await truffleAssert.fails(
+        swapFactoryMock.deployDoubleInitUniswap({from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "factory already init"
+      );
+    });
+
+    it("Should revert if missing exchange", async () => {
+      const doubleSwap = await DoubleSwapMock.new();
+      const anotherToken = await DAITokenContract.new();
+      await anotherToken.mintTokens(doubleSwap.address, {from: owner});
+      await truffleAssert.fails(
+        doubleSwap.checkMissingExchange(SwapFactory.address, anotherToken.address, {from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "exchange can not be 0 address"
+      );
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+
+    it("Should revert if NO input tokens inside contract", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+      const swapAndDeposit = await SwapAndDeposit.at(proxyAddress);
+
+      await truffleAssert.fails(
+        swapAndDeposit.swapAndDeposit(lender, DAIToken.address, web3.utils.toWei("1"), {
+          from: other
+        }),
+        truffleAssert.ErrorType.REVERT
+      );
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+
+    it("Should revert if input token is 0 address", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+      const swapAndDeposit = await SwapAndDeposit.at(proxyAddress);
+
+      await truffleAssert.fails(
+        swapAndDeposit.swapAndDeposit(lender, zeroAddress, web3.utils.toWei("1"), {
+          from: other
+        }),
+        truffleAssert.ErrorType.REVERT,
+        "input address can not be 0"
+      );
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+
+    it("Should revert if wrong token input token address", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+      const swapAndDeposit = await SwapAndDeposit.at(proxyAddress);
+      const wrongAddress = "0x0000000000000000000000000000000000000011";
+
+      await truffleAssert.fails(
+        swapAndDeposit.swapAndDeposit(lender, wrongAddress, web3.utils.toWei("1"), {from: lender}),
+        truffleAssert.ErrorType.REVERT
+      );
+
+      // User should NOT have deposit inside the DepositRegistry due revert
+      const deposited = await DepositRegistry.hasDeposited(lender);
+      expect(deposited).to.equal(false);
+    });
+
+    it("Should revert if delegateDeposit returns false", async () => {
+      const kycRegistry = await KYCContract.new();
+
+      const depositRegistry = await DepositBadDelegate.new(
+        RaiseToken.address,
+        kycRegistry.address,
+        {
+          from: owner
+        }
+      );
+
+      const auth = await AuthContract.new(kycRegistry.address, depositRegistry.address);
+
+      const swapFactory = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      const tx = await swapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        "error while deposit"
+      );
+    });
+    it("Should revert if user does not become a depositor", async () => {
+      const kycRegistry = await KYCContract.new();
+
+      const depositRegistry = await DepositNoDepositor.new(
+        RaiseToken.address,
+        kycRegistry.address,
+        {
+          from: owner
+        }
+      );
+
+      const auth = await AuthContract.new(kycRegistry.address, depositRegistry.address);
+
+      const swapFactory = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      const tx = await swapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        "should be depositor"
+      );
+    });
+
+    it("Should revert if deposit token is zero", async () => {
+      const kycRegistry = await KYCContract.new();
+
+      const depositRegistry = await DepositNoToken.new(RaiseToken.address, kycRegistry.address, {
+        from: owner
+      });
+
+      const auth = await AuthContract.new(kycRegistry.address, depositRegistry.address);
+
+      const swapFactory = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+      const tx = await swapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        "output token can not be 0"
+      );
+    });
+
+    it("Should revert if Deposit does not transferFrom funds from SwapAndDeposit", async () => {
+      const kycRegistry = await KYCContract.new();
+
+      const depositRegistry = await DepositNoTransfer.new(RaiseToken.address, kycRegistry.address, {
+        from: owner
+      });
+
+      const auth = await AuthContract.new(kycRegistry.address, depositRegistry.address);
+
+      const swapFactory = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        auth.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+
+      const tx = await swapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        "output token still here"
+      );
+    });
+
+    it("Should revert if SwapAndDeposit has extra output tokens", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      // Mint output tokens to proxyAddress
+      await RaiseToken.transfer(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "output token still here"
+      );
+    });
+
+    it("Should revert if SwapAndDeposit has extra input tokens", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      // Send extra tokens prior the tx
+      await DAIToken.transfer(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "input token still here"
+      );
+    });
+
+    it("Should revert if depositor is 0 address", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(zeroAddress, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "depositor address can not be 0"
+      );
+    });
+
+    it("Should revert if input tokenAmount is 0 ", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, "0", {from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "input token amount can not be 0"
+      );
+    });
+
+    it("Should revert if lender is already depositor ", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+      await RaiseToken.mint(lender, INPUT_AMOUNT, {from: owner});
+      await RaiseToken.approve(DepositRegistry.address, INPUT_AMOUNT, {from: lender});
+      await DepositRegistry.depositFor(lender);
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "already depositor"
+      );
+    });
+
+    it("Should revert if lender is already depositor ", async () => {
+      const tx = await SwapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+      await RaiseToken.mint(lender, INPUT_AMOUNT, {from: owner});
+      await RaiseToken.approve(DepositRegistry.address, INPUT_AMOUNT, {from: lender});
+      await DepositRegistry.depositFor(lender);
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        truffleAssert.ErrorType.REVERT,
+        "already depositor"
+      );
+    });
+    it("Should revert if swap does not return remaining funds", async () => {
+      const uniswapFactoryMock = await UniswapFactoryMock.new();
+      await uniswapFactoryMock.createExchange(DAIToken.address, {from: owner});
+
+      const swapFactory = await SwapFactoryContract.new(
+        SwapAndDepositTemplate.address,
+        Auth.address,
+        uniswapFactoryMock.address,
+        {
+          from: owner
+        }
+      );
+
+      const tx = await swapFactory.deploy();
+      const {proxyAddress} = tx.logs[0].args;
+
+      // Load proxy interface
+      const swapProxy = await SwapAndDeposit.at(proxyAddress);
+
+      // User approves the swap
+      await DAIToken.approve(proxyAddress, INPUT_AMOUNT, {from: owner});
+
+      await truffleAssert.fails(
+        swapProxy.swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT, {from: owner}),
+        "Swap not spent input token"
+      );
     });
   });
 });

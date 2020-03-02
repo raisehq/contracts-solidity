@@ -117,8 +117,10 @@ contract("Integration", accounts => {
         }
       );
       await LoanDispatcher.setAdministrator(admin, {from: owner});
-      await LoanDispatcher.addTokenToAcceptedList(DAIToken, {from: admin});
-      await LoanDispatcher.addTokenToAcceptedList(USDCToken, {from: admin});
+      await LoanDispatcher.setMinTermLength(0, {from: admin});
+      await LoanDispatcher.setMinAuctionLength(0, {from: admin});
+      await LoanDispatcher.addTokenToAcceptedList(DAIToken.address, {from: admin});
+      await LoanDispatcher.addTokenToAcceptedList(USDCToken.address, {from: admin});
 
       // Setup DAI amounts
 
@@ -137,7 +139,7 @@ contract("Integration", accounts => {
       const minInterestRate = 0;
       const maxInterestRate = 5000;
       auctionLength = 60 * 60;
-      console.log("token address =======================================> ", DAIToken.address);
+      
       await LoanDispatcher.deploy(
         loanMinAmount,
         loanMaxAmount,

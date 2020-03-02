@@ -45,18 +45,18 @@ const migration = async (deployer, network, accounts) => {
       from: deployerAddress,
       gas: DAIProxyGas
     });
-    console.log("deployed dai proxy********************");
+    
     const LoanGas = await getDeployGas(web3, LoanDispatcher, [
       authAddress,
       DAIProxy.address,
       swapFactoryAddress
     ]);
-    console.log("******************: loan dispatcher gas");
+    
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxy.address, swapFactoryAddress, {
       from: deployerAddress,
       gas: LoanGas
     });
-    console.log("********* loan dispatcher deployed");
+    
     // Update contracts
     contractsMetadata = setMetadata(contractsMetadata, netId, DAI_PROXY_ID, DAIProxy);
     contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
@@ -64,7 +64,6 @@ const migration = async (deployer, network, accounts) => {
       abi: LoanContract.abi,
       bytecode: LoanContract.bytecode
     });
-    console.log("---------------------------------||||||||||||||||||--------------------------");
   } else if (loandispatcherHasBeenUpdated()) {
     console.log("|============ DAIProxy: no changes to deploy ==============|");
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
@@ -108,7 +107,7 @@ const migration = async (deployer, network, accounts) => {
 };
 
 module.exports = async (deployer, network, accounts) => {
-  if (network.includes("coverage")) {
+  if (network.includes("coverage") || network.includes("test")) {
     return;
   }
   try {

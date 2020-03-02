@@ -15,6 +15,9 @@ async function jsondiff(files) {
 const SUPPORTED_NETWORKS = [42, 1];
 
 module.exports = async (deployer, network, accounts) => {
+  if (network.includes("coverage") || network.includes("test")) {
+    return;
+  }
   const netId = await web3.eth.net.getId();
 
   console.log("\n\nCompare last version and new version:\n");

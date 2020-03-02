@@ -28,7 +28,7 @@
     "migration:reset": "truffle migration --reset --network development",
     "migration:cypress": "truffle migration --reset --network cypress",
     "console": "truffle console --network kovan",
-    "tests": "env-cmd .env npm run test",
+    "tests": "env-cmd npm run test",
     "test": "bash scripts/test.sh",
     "coverage": "truffle run coverage --solcoverjs ./.solcover.js",
     "solhint": "./node_modules/.bin/solhint -f table contracts/*.sol",
