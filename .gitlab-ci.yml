@@ -100,7 +100,7 @@ Artifacts:
       - package.json
   before_script:
     - pip install awscli
-    - apt update && apt install jq
+    - apt-get update && apt-get -y install jq
     - export VERSION=$(cat package.json | jq -r .version)
   script:
     - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts/${VERSION}/
@@ -117,7 +117,7 @@ Coverage:
       - coverage/
   before_script:
     - pip install awscli
-    - apt update && apt install jq
+    - apt-get update && apt-get -y install jq
     - export VERSION=$(cat package.json | jq -r .version)
   script:
     - aws s3 sync coverage s3://${BUCKET_NAME}/coverage/${VERSION}/
