@@ -115,6 +115,7 @@ Coverage:
     paths:
       - package.json
       - coverage/
+      - metadata/
   before_script:
     - pip install awscli
     - apt-get update && apt-get -y install jq
