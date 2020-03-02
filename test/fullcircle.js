@@ -117,6 +117,8 @@ contract("Integration", accounts => {
         }
       );
       await LoanDispatcher.setAdministrator(admin, {from: owner});
+      await LoanDispatcher.setMinTermLength(0, {from: admin});
+      await LoanDispatcher.setMinAuctionLength(0, {from: admin});
       await LoanDispatcher.addTokenToAcceptedList(DAIToken.address, {from: admin});
       await LoanDispatcher.addTokenToAcceptedList(USDCToken.address, {from: admin});
 
