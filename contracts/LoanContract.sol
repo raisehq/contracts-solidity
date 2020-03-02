@@ -1,11 +1,13 @@
 pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./interfaces/IDAIProxy.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/ISwapAndDepositFactory.sol";
+import "./ERC20Wrapper.sol";
 
 contract LoanContract is ILoanContract {
     using SafeMath for uint256;
@@ -52,7 +54,7 @@ contract LoanContract is ILoanContract {
 
     LoanState public currentState;
 
-    IERC20 public ERC20Token;
+    ERC20Wrapper public ERC20Token;
     IDAIProxy public proxy;
 
     bool public loanWithdrawn;
@@ -166,7 +168,7 @@ contract LoanContract is ILoanContract {
     ) public {
         tokenAddress = ERC20TokenAddress;
         proxyContractAddress = proxyAddress;
-        ERC20Token = IERC20(tokenAddress);
+        ERC20Token = ERC20Wrapper(tokenAddress);
         proxy = IDAIProxy(proxyContractAddress);
         originator = _originator;
         administrator = _administrator;
@@ -468,9 +470,4 @@ contract LoanContract is ILoanContract {
         );
         return true;
     }
-
-    function transfer(address to, uint256 amount ) internal returns (bool) {
-
-    }
-
 }

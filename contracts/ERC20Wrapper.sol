@@ -14,82 +14,62 @@
     limitations under the License.
 */
 
-pragma solidity 0.5.7;
+pragma solidity 0.5.12;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
 
-/**
- * @title ERC20Wrapper
- * @author Set Protocol
- *
- * This library contains functions for interacting wtih ERC20 tokens, even those not fully compliant.
- * For all functions we will only accept tokens that return a null or true value, any other values will
- * cause the operation to revert.
- */
-library ERC20Wrapper is IERC20 {
+contract ERC20Wrapper is IERC20 {
     // ============ Internal Functions ============
-    /**
-     * Check balance owner's balance of ERC20 token
-     *
-     * @param  _owner          The owner who's balance is being checked
-     * @return  uint256        The _owner's amount of tokens
-     */
-    function balanceOf(address _owner) external view returns (uint256) {
-        return this.balanceOf(_owner);
+    ERC20Detailed public ERC20Token;
+    address token;
+    constructor(address tokenAddress) public {
+        ERC20Token = ERC20Detailed(tokenAddress);
+    }
+    function totalSupply() public view returns (uint256) {
+        return ERC20Token.totalSupply();
+    }
+    function balanceOf(address _owner) public view returns (uint256) {
+        return ERC20Token.balanceOf(_owner);
     }
 
-    /**
-     * Checks spender's allowance to use token's on owner's behalf.
-     *
-     * @param  _owner          The token owner address
-     * @param  _spender        The address the allowance is being checked on
-     * @return  uint256        The spender's allowance on behalf of owner
-     */
-    function allowance(address _owner, address _spender) internal view returns (uint256) {
-        return this.allowance(_owner, _spender);
+    function allowance(address _owner, address _spender) external view returns (uint256) {
+        return ERC20Token.allowance(_owner, _spender);
     }
 
-    /**
-     * Transfers tokens from an address. Handle's tokens that return true or null.
-     * If other value returned, reverts.
-     *
-     * @param  _to             The address to transfer to
-     * @param  _quantity       The amount of tokens to transfer
-     */
-    function transfer(address _to, uint256 _quantity) external {
-        this.transfer(_to, _quantity);
-
-        // Check that transfer returns true or null
-        require(checkSuccess(), "ERC20Wrapper.transfer: Bad return value");
+    function transfer(address _to, uint256 _quantity) external returns (bool) {
+        if (isIssuedToken()) {
+            ERC20Token.transfer(_to, _quantity);
+            // Check that transfer returns true or null
+            require(checkSuccess(), "ERC20Wrapper.transfer: Bad return value");
+        } else {
+            return ERC20Token.transfer(_to, _quantity);
+        }
     }
 
-    /**
-     * Transfers tokens from an address (that has set allowance on the proxy).
-     * Handle's tokens that return true or null. If other value returned, reverts.
-     *
-     * @param  _from           The address to transfer from
-     * @param  _to             The address to transfer to
-     * @param  _quantity       The number of tokens to transfer
-     */
-    function transferFrom(address _from, address _to, uint256 _quantity) external {
-        this.transferFrom(_from, _to, _quantity);
-
-        // Check that transferFrom returns true or null
-        require(checkSuccess(), "ERC20Wrapper.transferFrom: Bad return value");
+    function transferFrom(address _from, address _to, uint256 _quantity) external returns (bool) {
+        if (isIssuedToken()) {
+            ERC20Token.transferFrom(_from, _to, _quantity);
+            // Check that transferFrom returns true or null
+            require(checkSuccess(), "ERC20Wrapper.transferFrom: Bad return value");
+        } else {
+            return ERC20Token.transferFrom(_from, _to, _quantity);
+        }
     }
 
-    /**
-     * Grants spender ability to spend on owner's behalf.
-     * Handle's tokens that return true or null. If other value returned, reverts.
-     *
-     * @param  _spender        The address to approve for transfer
-     * @param  _quantity       The amount of tokens to approve spender for
-     */
-    function approve(address _spender, uint256 _quantity) internal {
-        this.approve(_spender, _quantity);
+    function approve(address _spender, uint256 _quantity) external returns (bool) {
+        if (isIssuedToken()) {
+            ERC20Token.approve(_spender, _quantity);
+            // Check that approve returns true or null
+            require(checkSuccess(), "ERC20Wrapper.approve: Bad return value");
+        } else {
+            return ERC20Token.approve(_spender, _quantity);
+        }
+    }
 
-        // Check that approve returns true or null
-        require(checkSuccess(), "ERC20Wrapper.approve: Bad return value");
+    function isIssuedToken() private returns (bool) {
+        return (keccak256(abi.encodePacked((ERC20Token.symbol()))) ==
+            keccak256(abi.encodePacked(("USDT"))));
     }
 
     // ============ Private Functions ============

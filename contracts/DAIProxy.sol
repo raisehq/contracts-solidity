@@ -1,10 +1,12 @@
 pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./interfaces/IAuthorization.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/IDAIProxy.sol";
+import "./ERC20Wrapper.sol";
 
 contract DAIProxy is IDAIProxy, Ownable {
     // IERC20 private DAIToken;
@@ -71,13 +73,19 @@ contract DAIProxy is IDAIProxy, Ownable {
         internal
         returns (bool)
     {
-        // checkear el token address si es usdt si es esta usar el wrapper para hacer el transfer from :D. EASY.
-        IERC20 ERC20Token = IERC20(tokenAddress);
+        ERC20Wrapper wrapperToken = ERC20Wrapper(tokenAddress);
 
-        require(ERC20Token.allowance(msg.sender, address(this)) >= amount, "funding not approved");
-        uint256 balance = ERC20Token.balanceOf(msg.sender);
+        require(
+            wrapperToken.allowance(msg.sender, address(this)) >= amount,
+            "funding not approved"
+        );
+        uint256 balance = wrapperToken.balanceOf(msg.sender);
         require(balance >= amount, "Not enough funds");
-        require(ERC20Token.transferFrom(msg.sender, loanAddress, amount), "failed at transferFrom");
+        require(
+            wrapperToken.transferFrom(msg.sender, loanAddress, amount),
+            "failed at transferFrom"
+        );
+
         return true;
     }
 
@@ -97,4 +105,5 @@ contract DAIProxy is IDAIProxy, Ownable {
         require(msg.sender == administrator, "Caller is not an administrator");
         _;
     }
+
 }
