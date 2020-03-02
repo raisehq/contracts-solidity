@@ -75,6 +75,7 @@ Kovan:
   when: manual
   only:
     - integration
+  allow_failure: false
 
 Contracts:
   image: "python:latest"
