@@ -139,7 +139,7 @@ contract("Integration", accounts => {
       const minInterestRate = 0;
       const maxInterestRate = 5000;
       auctionLength = 60 * 60;
-      console.log("token address =======================================> ", DAIToken.address);
+      
       await LoanDispatcher.deploy(
         loanMinAmount,
         loanMaxAmount,

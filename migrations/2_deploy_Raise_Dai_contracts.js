@@ -98,7 +98,7 @@ const mainnetMigration = async (deployer, network, accounts) => {
 
 module.exports = async (deployer, network, accounts) => {
   // Skip migrations for coverage, due is very slow and error prone, not needed due tests also do deployments
-  if (network.includes("coverage")) {
+  if (network.includes("coverage") || network.includes("test")) {
     return;
   }
   console.log(`Deploying in network: ${network}`);
