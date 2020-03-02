@@ -446,7 +446,7 @@ contract("LoanContractDispatcher", accounts => {
       });
       it('Expects not to deploy loan when term length is to samll', async () => {
         await LoanDispatcher.setAdministrator(admin, {from: owner});
-        await LoanDispatcher.setMinTermLength(10, {from: admin}); // TODO: there is no minimum set as default
+        await LoanDispatcher.setMinTermLength(10, {from: admin});
 
         const minAmount = "1000000000000000000000";
         const maxAmount = "2500000000000000000000000";
@@ -471,7 +471,7 @@ contract("LoanContractDispatcher", accounts => {
       });
       it('Expects not to deploy loan when auction length is to samll', async () => {
         await LoanDispatcher.setAdministrator(admin, {from: owner});
-        await LoanDispatcher.setMinAuctionLength(10, {from: admin});  // TODO: there is no minimum set
+        await LoanDispatcher.setMinAuctionLength(10, {from: admin});
         const minAmount = "1000000000000000000000";
         const maxAmount = "2500000000000000000000000";
         const minInterestRate = 0;

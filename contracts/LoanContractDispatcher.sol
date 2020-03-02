@@ -74,6 +74,9 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         maxInterestRate = 20e18; //20000000000000000000; // Max default MiR 20% / 240% APR
         minInterestRate = 0e18;
         operatorFee = 1e18; //1000000000000000000; // 1 % operator fee, expressed in wei
+
+        minAuctionLength = 604800;
+        minTermLength = 2592000;
     }
 
     function isTokenAccepted(address tokenAddress) external view returns (bool) {
