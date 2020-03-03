@@ -58,7 +58,12 @@ contract DAIProxy is IDAIProxy, Ownable {
         );
         require(transfer(loanAddress, newFundingAmount, tokenAddress), "erc20 transfer failed");
     }
-
+    function checkAllowance(address tokenAddress) external view returns (uint256) {
+        return ERC20Wrapper.allowance(tokenAddress, msg.sender, address(this));
+    }
+    function checkBalance(address tokenAddress) external view returns (uint256) {
+        return ERC20Wrapper.balanceOf(tokenAddress, msg.sender);
+    }
     function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
         ILoanContract loanContract = ILoanContract(loanAddress);
         address tokenAddress = loanContract.getTokenAddress();
@@ -73,16 +78,14 @@ contract DAIProxy is IDAIProxy, Ownable {
         internal
         returns (bool)
     {
-        ERC20Wrapper wrapperToken = ERC20Wrapper(tokenAddress);
-
         require(
-            wrapperToken.allowance(msg.sender, address(this)) >= amount,
+            ERC20Wrapper.allowance(tokenAddress, msg.sender, address(this)) >= amount,
             "funding not approved"
         );
-        uint256 balance = wrapperToken.balanceOf(msg.sender);
+        uint256 balance = ERC20Wrapper.balanceOf(tokenAddress, msg.sender);
         require(balance >= amount, "Not enough funds");
         require(
-            wrapperToken.transferFrom(msg.sender, loanAddress, amount),
+            ERC20Wrapper.transferFrom(tokenAddress, msg.sender, loanAddress, amount),
             "failed at transferFrom"
         );
 

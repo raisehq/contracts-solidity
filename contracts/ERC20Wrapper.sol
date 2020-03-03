@@ -1,40 +1,65 @@
 pragma solidity 0.5.12;
+// import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
+interface IERC20Wrapper {
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address _owner) external view returns (uint256);
+    function allowance(address _owner, address _spender) external view returns (uint256);
+    function transfer(address _to, uint256 _quantity) external returns (bool);
+    function transferFrom(address _from, address _to, uint256 _quantity) external returns (bool);
+    function approve(address _spender, uint256 _quantity) external returns (bool);
+    function symbol() external view returns (string memory);
+}
 
-contract ERC20Wrapper is ERC20Detailed {
-    function transfer(address _to, uint256 _quantity) external returns (bool) {
-        if (isIssuedToken()) {
-            this.transfer(_to, _quantity);
-            // Check that transfer returns true or null
+library ERC20Wrapper {
+    function balanceOf(address _token, address _owner) external view returns (uint256) {
+        return IERC20Wrapper(_token).balanceOf(_owner);
+    }
+
+    function transfer(address _token, address _to, uint256 _quantity) external returns (bool) {
+        if (isIssuedToken(_token)) {
+            IERC20Wrapper(_token).transfer(_to, _quantity);
+
             require(checkSuccess(), "ERC20Wrapper.transfer: Bad return value");
         } else {
-            return this.transfer(_to, _quantity);
+            return IERC20Wrapper(_token).transfer(_to, _quantity);
         }
     }
 
-    function transferFrom(address _from, address _to, uint256 _quantity) external returns (bool) {
-        if (isIssuedToken()) {
-            this.transferFrom(_from, _to, _quantity);
+    function allowance(address _token, address owner, address spender)
+        external
+        view
+        returns (uint256)
+    {
+        return IERC20Wrapper(_token).allowance(owner, spender);
+    }
+
+    function transferFrom(address _token, address _from, address _to, uint256 _quantity)
+        external
+        returns (bool)
+    {
+        if (isIssuedToken(_token)) {
+            IERC20Wrapper(_token).transferFrom(_from, _to, _quantity);
             // Check that transferFrom returns true or null
             require(checkSuccess(), "ERC20Wrapper.transferFrom: Bad return value");
+            return true;
         } else {
-            return this.transferFrom(_from, _to, _quantity);
+            return IERC20Wrapper(_token).transferFrom(_from, _to, _quantity);
         }
     }
 
-    function approve(address _spender, uint256 _quantity) external returns (bool) {
-        if (isIssuedToken()) {
-            this.approve(_spender, _quantity);
+    function approve(address _token, address _spender, uint256 _quantity) external returns (bool) {
+        if (isIssuedToken(_token)) {
+            IERC20Wrapper(_token).approve(_spender, _quantity);
             // Check that approve returns true or null
             require(checkSuccess(), "ERC20Wrapper.approve: Bad return value");
+            return true;
         } else {
-            return this.approve(_spender, _quantity);
+            return IERC20Wrapper(_token).approve(_spender, _quantity);
         }
     }
-
-    function isIssuedToken() private returns (bool) {
-        return (keccak256(abi.encodePacked((this.symbol()))) ==
+    function isIssuedToken(address _token) private returns (bool) {
+        return (keccak256(abi.encodePacked((IERC20Wrapper(_token).symbol()))) ==
             keccak256(abi.encodePacked(("USDT"))));
     }
 

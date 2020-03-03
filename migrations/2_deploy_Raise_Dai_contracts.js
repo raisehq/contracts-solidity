@@ -3,7 +3,6 @@ const RaiseFakeToken = artifacts.require("RaiseFake");
 const RaiseToken = artifacts.require("RaiseTokenContract");
 const DAIFake = artifacts.require("DAIFake");
 const devAccounts = require("../int.accounts.json");
-
 const {
   getContracts,
   contractIsDeployed,
