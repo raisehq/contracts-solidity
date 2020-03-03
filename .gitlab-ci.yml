@@ -106,7 +106,7 @@ Artifacts:
     - ls
     - ls metadata/
     - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts/${VERSION}/
-    - aws s3 sync metadata s3://${BUCKET_NAME}/
+    - aws s3 sync metadata s3://${BUCKET_NAME}/metadata/
   only:
     - integration
 
