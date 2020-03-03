@@ -105,8 +105,9 @@ Artifacts:
   script:
     - ls
     - ls metadata/
-    - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts/${VERSION}/
-    - aws s3 sync metadata s3://${BUCKET_NAME}/metadata/
+    - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts/${VERSION}_${CI_COMMIT_SHORT_SHA}/
+    - aws s3 cp metadata/contracts_${VERSION}.json s3://${BUCKET_NAME}/metadata/contracts_${VERSION}.json
+    - aws s3 cp metadata/contracts_${VERSION}.json s3://${BUCKET_NAME}/metadata/contracts_${VERSION}_${${CI_COMMIT_SHORT_SHA}}.json
   only:
     - integration
 
