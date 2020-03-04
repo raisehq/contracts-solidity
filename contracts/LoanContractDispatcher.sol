@@ -54,6 +54,8 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     event MaxAmountUpdated(uint256 maxAmount, address loanDispatcher);
     event MinInterestRateUpdated(uint256 minInterestRate, address loanDispatcher);
     event MaxInterestRateUpdated(uint256 maxInterestRate, address loanDispatcher);
+    event MinTermLengthUpdated(uint256 minTermLength, address loanDispatcher);
+    event MinAuctionLengthUpdated(uint256 minAuctionLength, address loanDispatcher);
     event OperatorFeeUpdated(uint256 operatorFee, address loanDispatcher, address administrator);
 
     event AuthAddressUpdated(address newAuthAddress, address administrator);
@@ -64,6 +66,20 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     event AddTokenToAcceptedList(address tokenAddress);
     event RemoveTokenFromAcceptedList(address tokenAddress);
 
+    event LoanDispatcherCreated(
+        address loanDispatcher,
+        address auth,
+        address DAIProxyAddress,
+        address swapFactory,
+        uint256 minAmount,
+        uint256 maxAmount,
+        uint256 maxInterestRate,
+        uint256 minInterestRate,
+        uint256 operaterFee,
+        uint256 minAuctionLength,
+        uint256 minTermLength
+    );
+
     constructor(address authAddress, address _DAIProxyAddress, address _swapFactory) public {
         auth = authAddress;
         DAIProxyAddress = _DAIProxyAddress;
@@ -73,10 +89,24 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
 
         maxInterestRate = 20e18; //20000000000000000000; // Max default MiR 20% / 240% APR
         minInterestRate = 0e18;
-        operatorFee = 1e18; //1000000000000000000; // 1 % operator fee, expressed in wei
+        operatorFee = 2e18; //1000000000000000000; // 2 % operator fee, expressed in wei
 
         minAuctionLength = 604800;
         minTermLength = 2592000;
+
+        emit LoanDispatcherCreated(
+            address(this),
+            auth,
+            DAIProxyAddress,
+            swapFactory,
+            minAmount,
+            maxAmount,
+            maxInterestRate,
+            minInterestRate,
+            operatorFee,
+            minAuctionLength,
+            minTermLength
+        );
     }
 
     function isTokenAccepted(address tokenAddress) external view returns (bool) {
@@ -157,10 +187,12 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
 
     function setMinTermLength(uint256 requestedMinTermLength) external onlyAdmin {
         minTermLength = requestedMinTermLength;
+        emit MinTermLengthUpdated(minTermLength, address(this));
     }
 
     function setMinAuctionLength(uint256 requestedMinAuctionLength) external onlyAdmin {
         minAuctionLength = requestedMinAuctionLength;
+        emit MinAuctionLengthUpdated(minAuctionLength, address(this));
     }
 
     function deploy(
