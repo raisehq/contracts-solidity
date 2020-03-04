@@ -84,7 +84,7 @@ const migration = async (deployer, network, accounts) => {
     await deployer.deploy(SwapAndDeposit, {
       from: deployerAddress
     });
-    const swapFactoryInstance = SwapAndDepositFactory.at(swapFactoryAddress);
+    const swapFactoryInstance = await SwapAndDepositFactory.at(swapFactoryAddress);
     await swapFactoryInstance.setLibraryAddress(SwapAndDeposit.address);
 
     // Update contracts
