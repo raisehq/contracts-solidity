@@ -45,18 +45,18 @@ const migration = async (deployer, network, accounts) => {
       from: deployerAddress,
       gas: DAIProxyGas
     });
-    
+
     const LoanGas = await getDeployGas(web3, LoanDispatcher, [
       authAddress,
       DAIProxy.address,
       swapFactoryAddress
     ]);
-    
+
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxy.address, swapFactoryAddress, {
       from: deployerAddress,
       gas: LoanGas
     });
-    
+
     // Update contracts
     contractsMetadata = setMetadata(contractsMetadata, netId, DAI_PROXY_ID, DAIProxy);
     contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
@@ -69,7 +69,7 @@ const migration = async (deployer, network, accounts) => {
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
     const LoanGas = await getDeployGas(web3, LoanDispatcher, [
       authAddress,
-      DAIProxy.address,
+      DAIProxyAddress,
       swapFactoryAddress
     ]);
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxyAddress, swapFactoryAddress, {
