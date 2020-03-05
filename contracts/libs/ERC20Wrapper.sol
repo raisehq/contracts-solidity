@@ -1,5 +1,4 @@
 pragma solidity 0.5.12;
-// import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 interface IERC20Wrapper {
     function totalSupply() external view returns (uint256);
@@ -16,22 +15,23 @@ library ERC20Wrapper {
         return IERC20Wrapper(_token).balanceOf(_owner);
     }
 
-    function transfer(address _token, address _to, uint256 _quantity) external returns (bool) {
-        if (isIssuedToken(_token)) {
-            IERC20Wrapper(_token).transfer(_to, _quantity);
-
-            require(checkSuccess(), "ERC20Wrapper.transfer: Bad return value");
-        } else {
-            return IERC20Wrapper(_token).transfer(_to, _quantity);
-        }
-    }
-
     function allowance(address _token, address owner, address spender)
         external
         view
         returns (uint256)
     {
         return IERC20Wrapper(_token).allowance(owner, spender);
+    }
+
+    function transfer(address _token, address _to, uint256 _quantity) external returns (bool) {
+        if (isIssuedToken(_token)) {
+            IERC20Wrapper(_token).transfer(_to, _quantity);
+
+            require(checkSuccess(), "ERC20Wrapper.transfer: Bad return value");
+            return true;
+        } else {
+            return IERC20Wrapper(_token).transfer(_to, _quantity);
+        }
     }
 
     function transferFrom(address _token, address _from, address _to, uint256 _quantity)
@@ -58,6 +58,7 @@ library ERC20Wrapper {
             return IERC20Wrapper(_token).approve(_spender, _quantity);
         }
     }
+
     function isIssuedToken(address _token) private returns (bool) {
         return (keccak256(abi.encodePacked((IERC20Wrapper(_token).symbol()))) ==
             keccak256(abi.encodePacked(("USDT"))));

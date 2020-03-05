@@ -7,7 +7,7 @@ import "./interfaces/IDAIProxy.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/ISwapAndDepositFactory.sol";
-import "./ERC20Wrapper.sol";
+import "./libs/ERC20Wrapper.sol";
 
 contract LoanContract is ILoanContract {
     using SafeMath for uint256;
@@ -158,16 +158,16 @@ contract LoanContract is ILoanContract {
         uint256 _minInterestRate,
         uint256 _maxInterestRate,
         address _originator,
-        address ERC20TokenAddress,
-        address proxyAddress,
+        address _tokenAddress,
+        address _proxyAddress,
         address _administrator,
         uint256 _operatorFee,
         uint256 _auctionLength,
         address _swapFactory
     ) public {
-        tokenAddress = ERC20TokenAddress;
-        proxyContractAddress = proxyAddress;
-        proxy = IDAIProxy(proxyContractAddress);
+        tokenAddress = _tokenAddress;
+        proxyContractAddress = _proxyAddress;
+        proxy = IDAIProxy(_proxyAddress);
         originator = _originator;
         administrator = _administrator;
         swapFactory = _swapFactory;

@@ -6,7 +6,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./interfaces/IAuthorization.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/IDAIProxy.sol";
-import "./ERC20Wrapper.sol";
+import "./libs/ERC20Wrapper.sol";
 
 contract DAIProxy is IDAIProxy, Ownable {
     // IERC20 private DAIToken;
@@ -57,12 +57,6 @@ contract DAIProxy is IDAIProxy, Ownable {
             "funding failed at loan contract"
         );
         require(transfer(loanAddress, newFundingAmount, tokenAddress), "erc20 transfer failed");
-    }
-    function checkAllowance(address tokenAddress) external view returns (uint256) {
-        return ERC20Wrapper.allowance(tokenAddress, msg.sender, address(this));
-    }
-    function checkBalance(address tokenAddress) external view returns (uint256) {
-        return ERC20Wrapper.balanceOf(tokenAddress, msg.sender);
     }
     function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
         ILoanContract loanContract = ILoanContract(loanAddress);
