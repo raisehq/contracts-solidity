@@ -13,6 +13,7 @@ const HeroFakeTokenContract = artifacts.require("HeroFakeToken");
 const LoanContract = artifacts.require("LoanContract");
 const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
+const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
 const KYCContract = artifacts.require("KYCRegistry");
 
 const LoanContractDispatcherContract = artifacts.require("LoanContractDispatcher");
@@ -64,6 +65,11 @@ contract("Integration", accounts => {
     const daiBalance = web3.utils.toWei(new BN(100, 10));
 
     beforeEach(async () => {
+      ERC20Wrapper = await ERC20WrapperContract.new();
+      await LoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
+      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
+      await LoanContractDispatcherContract.link("ERC20Wrapper", ERC20Wrapper.address);
+
       DAIToken = await HeroFakeTokenContract.new({from: owner});
       USDCToken = await HeroFakeTokenContract.new({from: owner});
       HeroToken = await HeroFakeTokenContract.new({from: owner});
@@ -139,7 +145,7 @@ contract("Integration", accounts => {
       const minInterestRate = 0;
       const maxInterestRate = 5000;
       auctionLength = 60 * 60;
-      
+
       await LoanDispatcher.deploy(
         loanMinAmount,
         loanMaxAmount,
