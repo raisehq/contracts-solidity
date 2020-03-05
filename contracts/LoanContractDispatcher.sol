@@ -75,7 +75,7 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         uint256 maxAmount,
         uint256 maxInterestRate,
         uint256 minInterestRate,
-        uint256 operaterFee,
+        uint256 operatorFee,
         uint256 minAuctionLength,
         uint256 minTermLength
     );
