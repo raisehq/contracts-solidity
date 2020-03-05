@@ -44,6 +44,7 @@ const migration = async (deployer, network, accounts) => {
     });
     // Link the contracts
     deployer.link(ERC20Wrapper, DAIProxy);
+    deployer.link(ERC20Wrapper, LoanDispatcher);
     deployer.link(ERC20Wrapper, LoanContract);
   }
   if (daiproxyHasBeenUpdated()) {
