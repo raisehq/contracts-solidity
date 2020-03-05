@@ -9,7 +9,6 @@ contract DAIFake is ERC20Mintable {
     string public constant symbol = "DAIF";
     uint8 public constant decimals = 18;
 
-    // 1000 tokens == 1000000000000000000000 in 18 decimal (Like wei)
     constructor() public {
         super.mint(msg.sender, 1000000000 ether);
     }

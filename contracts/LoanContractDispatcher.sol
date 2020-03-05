@@ -54,29 +54,67 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     event MaxAmountUpdated(uint256 maxAmount, address loanDispatcher);
     event MinInterestRateUpdated(uint256 minInterestRate, address loanDispatcher);
     event MaxInterestRateUpdated(uint256 maxInterestRate, address loanDispatcher);
+    event MinTermLengthUpdated(uint256 minTermLength, address loanDispatcher);
+    event MinAuctionLengthUpdated(uint256 minAuctionLength, address loanDispatcher);
     event OperatorFeeUpdated(uint256 operatorFee, address loanDispatcher, address administrator);
 
-    event AuthAddressUpdated(address newAuthAddress, address administrator);
-    event DaiProxyAddressUpdated(address newDaiProxyAddress, address administrator);
-    event SwapFactoryAddressUpdated(address newSwapFactory, address administrator);
+    event AuthAddressUpdated(address newAuthAddress, address administrator, address loanDispatcher);
+    event DaiProxyAddressUpdated(
+        address newDaiProxyAddress,
+        address administrator,
+        address loanDispatcher
+    );
+    event SwapFactoryAddressUpdated(
+        address newSwapFactory,
+        address administrator,
+        address loanDispatcher
+    );
 
-    event AdministratorUpdated(address newAdminAddress);
-    event AddTokenToAcceptedList(address tokenAddress);
-    event RemoveTokenFromAcceptedList(address tokenAddress);
+    event AdministratorUpdated(address newAdminAddress, address loanDispatcher);
+    event AddTokenToAcceptedList(address tokenAddress, address loanDispatcher);
+    event RemoveTokenFromAcceptedList(address tokenAddress, address loanDispatcher);
+
+    event LoanDispatcherCreated(
+        address loanDispatcher,
+        address auth,
+        address DAIProxyAddress,
+        address swapFactory,
+        uint256 minAmount,
+        uint256 maxAmount,
+        uint256 maxInterestRate,
+        uint256 minInterestRate,
+        uint256 operatorFee,
+        uint256 minAuctionLength,
+        uint256 minTermLength
+    );
 
     constructor(address authAddress, address _DAIProxyAddress, address _swapFactory) public {
         auth = authAddress;
         DAIProxyAddress = _DAIProxyAddress;
         swapFactory = _swapFactory;
-        minAmount = 1e18; //1000000000000000000; // Minimum 1 DAI
-        maxAmount = 2500000e18; //2500000000000000000000000; // Maximum 2.5 Million DAI
+        minAmount = 1e18;
+        maxAmount = 2500000e18;
 
-        maxInterestRate = 20e18; //20000000000000000000; // Max default MiR 20% / 240% APR
+        maxInterestRate = 20e18;
         minInterestRate = 0e18;
-        operatorFee = 1e18; //1000000000000000000; // 1 % operator fee, expressed in wei
+        operatorFee = 2e18;
 
         minAuctionLength = 604800;
         minTermLength = 2592000;
+
+        emit LoanDispatcherCreated(
+            address(this),
+            auth,
+            DAIProxyAddress,
+            swapFactory,
+            minAmount,
+            maxAmount,
+            maxInterestRate,
+            minInterestRate,
+            operatorFee,
+            minAuctionLength,
+            minTermLength
+        );
     }
 
     function isTokenAccepted(address tokenAddress) external view returns (bool) {
@@ -85,33 +123,33 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
 
     function addTokenToAcceptedList(address tokenAddress) external onlyAdmin {
         acceptedTokens[tokenAddress] = true;
-        emit AddTokenToAcceptedList(tokenAddress);
+        emit AddTokenToAcceptedList(tokenAddress, address(this));
 
     }
 
     function removeTokenFromAcceptedList(address tokenAddress) external onlyAdmin {
         acceptedTokens[tokenAddress] = false;
-        emit RemoveTokenFromAcceptedList(tokenAddress);
+        emit RemoveTokenFromAcceptedList(tokenAddress, address(this));
     }
 
     function setAuthAddress(address authAddress) external onlyAdmin {
         auth = authAddress;
-        emit AuthAddressUpdated(authAddress, administrator);
+        emit AuthAddressUpdated(authAddress, administrator, address(this));
     }
 
     function setDaiProxyAddress(address daiProxyAddress) external onlyAdmin {
         DAIProxyAddress = daiProxyAddress;
-        emit DaiProxyAddressUpdated(DAIProxyAddress, administrator);
+        emit DaiProxyAddressUpdated(DAIProxyAddress, administrator, address(this));
     }
 
     function setSwapFactory(address _swapFactory) external onlyAdmin {
         swapFactory = _swapFactory;
-        emit SwapFactoryAddressUpdated(swapFactory, administrator);
+        emit SwapFactoryAddressUpdated(swapFactory, administrator, address(this));
     }
 
     function setAdministrator(address admin) external onlyOwner {
         administrator = admin;
-        emit AdministratorUpdated(administrator);
+        emit AdministratorUpdated(administrator, address(this));
     }
 
     function setOperatorFee(uint256 newFee) external onlyAdmin {
@@ -157,10 +195,12 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
 
     function setMinTermLength(uint256 requestedMinTermLength) external onlyAdmin {
         minTermLength = requestedMinTermLength;
+        emit MinTermLengthUpdated(minTermLength, address(this));
     }
 
     function setMinAuctionLength(uint256 requestedMinAuctionLength) external onlyAdmin {
         minAuctionLength = requestedMinAuctionLength;
+        emit MinAuctionLengthUpdated(minAuctionLength, address(this));
     }
 
     function deploy(

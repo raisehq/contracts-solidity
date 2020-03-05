@@ -79,7 +79,7 @@ const migration = async (deployer, network, accounts) => {
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
     const LoanGas = await getDeployGas(web3, LoanDispatcher, [
       authAddress,
-      DAIProxy.address,
+      DAIProxyAddress,
       swapFactoryAddress
     ]);
 

@@ -27,7 +27,7 @@ contract LoanContract is ILoanContract {
     uint256 public termLength;
     uint256 public auctionBalance;
     uint256 public loanWithdrawnAmount;
-    uint256 public borrowerDebt; // Amount borrower need to repay == principal + interests
+    uint256 public borrowerDebt;
     uint256 public minInterestRate;
     uint256 public maxInterestRate;
     uint256 public operatorFee;

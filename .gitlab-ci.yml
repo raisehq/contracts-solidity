@@ -44,9 +44,10 @@ Check_Coverage:
     - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y netcat && apt-get clean && rm -rf /var/lib/apt/lists/*
   artifacts:
     paths:
+      - build/
       - coverage/
   script:
-    - npm run coverage
+    - npm run compile && npm run coverage
   only:
     - integration
     - master
@@ -74,6 +75,7 @@ Kovan:
   when: manual
   only:
     - integration
+  allow_failure: false
 
 Contracts:
   image: "python:latest"
@@ -98,11 +100,14 @@ Artifacts:
       - package.json
   before_script:
     - pip install awscli
-    - apt update && apt install jq
+    - apt-get update && apt-get -y install jq
     - export VERSION=$(cat package.json | jq -r .version)
   script:
-    - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts/${VERSION}/
-    - aws s3 sync metadata/contracts_${VERSION}.json s3://${BUCKET_NAME}/metadata/
+    - ls
+    - ls metadata/
+    - aws s3 sync build/contracts s3://${BUCKET_NAME}/artifacts/${VERSION}_${CI_COMMIT_SHORT_SHA}/
+    - aws s3 cp metadata/contracts_${VERSION}.json s3://${BUCKET_NAME}/metadata/contracts_${VERSION}.json
+    - aws s3 cp metadata/contracts_${VERSION}.json s3://${BUCKET_NAME}/metadata/contracts_${VERSION}_${CI_COMMIT_SHORT_SHA}.json
   only:
     - integration
 
@@ -113,9 +118,10 @@ Coverage:
     paths:
       - package.json
       - coverage/
+      - metadata/
   before_script:
     - pip install awscli
-    - apt update && apt install jq
+    - apt-get update && apt-get -y install jq
     - export VERSION=$(cat package.json | jq -r .version)
   script:
     - aws s3 sync coverage s3://${BUCKET_NAME}/coverage/${VERSION}/
