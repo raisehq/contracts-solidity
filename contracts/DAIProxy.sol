@@ -7,7 +7,6 @@ import "./interfaces/ILoanContract.sol";
 import "./interfaces/IDAIProxy.sol";
 
 contract DAIProxy is IDAIProxy, Ownable {
-    // IERC20 private DAIToken;
     IAuthorization auth;
     address public administrator;
     bool public hasToDeposit;

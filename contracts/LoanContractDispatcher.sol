@@ -92,12 +92,12 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         auth = authAddress;
         DAIProxyAddress = _DAIProxyAddress;
         swapFactory = _swapFactory;
-        minAmount = 1e18; //1000000000000000000; // Minimum 1 DAI
-        maxAmount = 2500000e18; //2500000000000000000000000; // Maximum 2.5 Million DAI
+        minAmount = 1e18;
+        maxAmount = 2500000e18;
 
-        maxInterestRate = 20e18; //20000000000000000000; // Max default MiR 20% / 240% APR
+        maxInterestRate = 20e18;
         minInterestRate = 0e18;
-        operatorFee = 2e18; //1000000000000000000; // 2 % operator fee, expressed in wei
+        operatorFee = 2e18;
 
         minAuctionLength = 604800;
         minTermLength = 2592000;
