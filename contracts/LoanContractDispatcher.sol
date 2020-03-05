@@ -58,13 +58,21 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     event MinAuctionLengthUpdated(uint256 minAuctionLength, address loanDispatcher);
     event OperatorFeeUpdated(uint256 operatorFee, address loanDispatcher, address administrator);
 
-    event AuthAddressUpdated(address newAuthAddress, address administrator);
-    event DaiProxyAddressUpdated(address newDaiProxyAddress, address administrator);
-    event SwapFactoryAddressUpdated(address newSwapFactory, address administrator);
+    event AuthAddressUpdated(address newAuthAddress, address administrator, address loanDispatcher);
+    event DaiProxyAddressUpdated(
+        address newDaiProxyAddress,
+        address administrator,
+        address loanDispatcher
+    );
+    event SwapFactoryAddressUpdated(
+        address newSwapFactory,
+        address administrator,
+        address loanDispatcher
+    );
 
-    event AdministratorUpdated(address newAdminAddress);
-    event AddTokenToAcceptedList(address tokenAddress);
-    event RemoveTokenFromAcceptedList(address tokenAddress);
+    event AdministratorUpdated(address newAdminAddress, address loanDispatcher);
+    event AddTokenToAcceptedList(address tokenAddress, address loanDispatcher);
+    event RemoveTokenFromAcceptedList(address tokenAddress, address loanDispatcher);
 
     event LoanDispatcherCreated(
         address loanDispatcher,
@@ -115,33 +123,33 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
 
     function addTokenToAcceptedList(address tokenAddress) external onlyAdmin {
         acceptedTokens[tokenAddress] = true;
-        emit AddTokenToAcceptedList(tokenAddress);
+        emit AddTokenToAcceptedList(tokenAddress, address(this));
 
     }
 
     function removeTokenFromAcceptedList(address tokenAddress) external onlyAdmin {
         acceptedTokens[tokenAddress] = false;
-        emit RemoveTokenFromAcceptedList(tokenAddress);
+        emit RemoveTokenFromAcceptedList(tokenAddress, address(this));
     }
 
     function setAuthAddress(address authAddress) external onlyAdmin {
         auth = authAddress;
-        emit AuthAddressUpdated(authAddress, administrator);
+        emit AuthAddressUpdated(authAddress, administrator, address(this));
     }
 
     function setDaiProxyAddress(address daiProxyAddress) external onlyAdmin {
         DAIProxyAddress = daiProxyAddress;
-        emit DaiProxyAddressUpdated(DAIProxyAddress, administrator);
+        emit DaiProxyAddressUpdated(DAIProxyAddress, administrator, address(this));
     }
 
     function setSwapFactory(address _swapFactory) external onlyAdmin {
         swapFactory = _swapFactory;
-        emit SwapFactoryAddressUpdated(swapFactory, administrator);
+        emit SwapFactoryAddressUpdated(swapFactory, administrator, address(this));
     }
 
     function setAdministrator(address admin) external onlyOwner {
         administrator = admin;
-        emit AdministratorUpdated(administrator);
+        emit AdministratorUpdated(administrator, address(this));
     }
 
     function setOperatorFee(uint256 newFee) external onlyAdmin {
