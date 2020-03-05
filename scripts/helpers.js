@@ -210,6 +210,8 @@ const setMetadata = (metadata, netId, contractId, {address, abi, bytecode}) => {
     _.set(clonedMetadata, `address.${netId}.${contractId}`, address);
   }
   if (!!abi) {
+    console.log("metId: ", netId, " contractId: ", contractId);
+    _.set(clonedMetadata, `abi.${netId}.${contractId}`, null);
     _.set(clonedMetadata, `abi.${netId}.${contractId}`, abi);
   }
   if (!!bytecode) {
