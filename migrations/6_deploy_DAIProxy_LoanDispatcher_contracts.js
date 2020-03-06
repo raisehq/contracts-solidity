@@ -72,9 +72,9 @@ const migration = async (deployer, network, accounts) => {
     contractsMetadata = setMetadata(contracts, netId, DAI_PROXY_ID, DAIProxy);
     contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
     contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, {
-    //   abi: LoanContract.abi,
-    //   bytecode: LoanContract.bytecode
-    // });
+      abi: LoanContract.abi,
+      bytecode: LoanContract.bytecode
+    });
   } else if (loandispatcherHasBeenUpdated()) {
     console.log("|============ DAIProxy: no changes to deploy ==============|");
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
