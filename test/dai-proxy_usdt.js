@@ -6,6 +6,7 @@ const DAIProxyContract = artifacts.require("DAIProxy");
 const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
 const HeroFakeTokenContract = artifacts.require("HeroFakeToken");
+const USDTTokenContract = artifacts.require("USDT");
 const KYCContract = artifacts.require("KYCRegistry");
 const MockLoanContract = artifacts.require("LoanContractMock");
 const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
@@ -32,7 +33,7 @@ contract("DAIProxy Contract", function(accounts) {
   const migrate = async () => {
     try {
       HeroFakeToken = await HeroFakeTokenContract.new({from: owner});
-      DAIToken = await HeroFakeTokenContract.new({from: owner});
+      DAIToken = await USDTTokenContract.new({from: owner});
       await DAIToken.transferFakeHeroTokens(user, {from: owner});
       await DAIToken.transferFakeHeroTokens(other_kyc_user_no_deposit, {from: owner});
       await DAIToken.transferFakeHeroTokens(other_user, {from: owner});

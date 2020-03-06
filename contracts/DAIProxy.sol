@@ -1,10 +1,12 @@
 pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./interfaces/IAuthorization.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/IDAIProxy.sol";
+import "./libs/ERC20Wrapper.sol";
 
 contract DAIProxy is IDAIProxy, Ownable {
     IAuthorization auth;
@@ -55,7 +57,6 @@ contract DAIProxy is IDAIProxy, Ownable {
         );
         require(transfer(loanAddress, newFundingAmount, tokenAddress), "erc20 transfer failed");
     }
-
     function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
         ILoanContract loanContract = ILoanContract(loanAddress);
         address tokenAddress = loanContract.getTokenAddress();
@@ -70,12 +71,17 @@ contract DAIProxy is IDAIProxy, Ownable {
         internal
         returns (bool)
     {
-        IERC20 ERC20Token = IERC20(tokenAddress);
-
-        require(ERC20Token.allowance(msg.sender, address(this)) >= amount, "funding not approved");
-        uint256 balance = ERC20Token.balanceOf(msg.sender);
+        require(
+            ERC20Wrapper.allowance(tokenAddress, msg.sender, address(this)) >= amount,
+            "funding not approved"
+        );
+        uint256 balance = ERC20Wrapper.balanceOf(tokenAddress, msg.sender);
         require(balance >= amount, "Not enough funds");
-        require(ERC20Token.transferFrom(msg.sender, loanAddress, amount), "failed at transferFrom");
+        require(
+            ERC20Wrapper.transferFrom(tokenAddress, msg.sender, loanAddress, amount),
+            "failed at transferFrom"
+        );
+
         return true;
     }
 
@@ -95,4 +101,5 @@ contract DAIProxy is IDAIProxy, Ownable {
         require(msg.sender == administrator, "Caller is not an administrator");
         _;
     }
+
 }

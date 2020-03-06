@@ -3,6 +3,8 @@ const DAIProxy = artifacts.require("DAIProxy");
 const LoanDispatcher = artifacts.require("LoanContractDispatcher");
 const LoanContract = artifacts.require("LoanContract");
 const {writeFileSync} = require("fs");
+
+const ERC20Wrapper = artifacts.require("ERC20Wrapper");
 const {
   getContracts,
   contractIsUpdated,
@@ -14,7 +16,6 @@ const {
   writeMetadataTemp
 } = require("../scripts/helpers");
 const {BN} = require("web3-utils");
-
 const DAI_ID = "DAI";
 const DAI_PROXY_ID = "DAIProxy";
 const DISPATCHER_ID = "LoanDispatcher";
@@ -37,10 +38,19 @@ const migration = async (deployer, network, accounts) => {
   const daiproxyHasBeenUpdated = () => contractIsUpdated(contracts, netId, DAI_PROXY_ID, DAIProxy);
   const loandispatcherHasBeenUpdated = () =>
     contractIsUpdated(contracts, netId, DISPATCHER_ID, LoanDispatcher);
-
+  if (loandispatcherHasBeenUpdated() || daiproxyHasBeenUpdated()) {
+    await deployer.deploy(ERC20Wrapper, {
+      from: deployerAddress
+    });
+    // Link the contracts
+    deployer.link(ERC20Wrapper, DAIProxy);
+    deployer.link(ERC20Wrapper, LoanDispatcher);
+    deployer.link(ERC20Wrapper, LoanContract);
+  }
   if (daiproxyHasBeenUpdated()) {
     console.log("|============ deploying DAIProxy and LoanDispatcher ==============|");
     const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress]);
+
     await deployer.deploy(DAIProxy, authAddress, {
       from: deployerAddress,
       gas: DAIProxyGas
@@ -72,6 +82,7 @@ const migration = async (deployer, network, accounts) => {
       DAIProxyAddress,
       swapFactoryAddress
     ]);
+
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxyAddress, swapFactoryAddress, {
       from: deployerAddress,
       gas: LoanGas

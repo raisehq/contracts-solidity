@@ -1,11 +1,13 @@
 pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./interfaces/IDAIProxy.sol";
 import "./interfaces/ILoanContract.sol";
 import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/ISwapAndDepositFactory.sol";
+import "./libs/ERC20Wrapper.sol";
 
 contract LoanContract is ILoanContract {
     using SafeMath for uint256;
@@ -52,7 +54,6 @@ contract LoanContract is ILoanContract {
 
     LoanState public currentState;
 
-    IERC20 public ERC20Token;
     IDAIProxy public proxy;
 
     bool public loanWithdrawn;
@@ -157,17 +158,16 @@ contract LoanContract is ILoanContract {
         uint256 _minInterestRate,
         uint256 _maxInterestRate,
         address _originator,
-        address ERC20TokenAddress,
-        address proxyAddress,
+        address _tokenAddress,
+        address _proxyAddress,
         address _administrator,
         uint256 _operatorFee,
         uint256 _auctionLength,
         address _swapFactory
     ) public {
-        tokenAddress = ERC20TokenAddress;
-        proxyContractAddress = proxyAddress;
-        ERC20Token = IERC20(tokenAddress);
-        proxy = IDAIProxy(proxyContractAddress);
+        tokenAddress = _tokenAddress;
+        proxyContractAddress = _proxyAddress;
+        proxy = IDAIProxy(_proxyAddress);
         originator = _originator;
         administrator = _administrator;
         swapFactory = _swapFactory;
@@ -278,7 +278,7 @@ contract LoanContract is ILoanContract {
         require(operatorBalance > 0, "no funds to withdraw");
         uint256 allFees = operatorBalance;
         operatorBalance = 0;
-        require(ERC20Token.transfer(msg.sender, allFees), "transfer failed");
+        require(ERC20Wrapper.transfer(tokenAddress, msg.sender, allFees), "transfer failed");
         emit OperatorWithdrawn(allFees, msg.sender);
         return true;
     }
@@ -293,7 +293,7 @@ contract LoanContract is ILoanContract {
         loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
 
         require(
-            ERC20Token.transfer(msg.sender, lenderPosition[msg.sender].bidAmount),
+            ERC20Wrapper.transfer(tokenAddress, msg.sender, lenderPosition[msg.sender].bidAmount),
             "error while transfer"
         );
 
@@ -320,7 +320,7 @@ contract LoanContract is ILoanContract {
         emit RefundWithdrawn(address(this), msg.sender, lenderPosition[msg.sender].bidAmount);
 
         require(
-            ERC20Token.transfer(msg.sender, lenderPosition[msg.sender].bidAmount),
+            ERC20Wrapper.transfer(tokenAddress, msg.sender, lenderPosition[msg.sender].bidAmount),
             "error while transfer"
         );
 
@@ -337,7 +337,7 @@ contract LoanContract is ILoanContract {
         lenderPosition[msg.sender].withdrawn = true;
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
-        require(ERC20Token.transfer(msg.sender, amount), "error while transfer");
+        require(ERC20Wrapper.transfer(tokenAddress, msg.sender, amount), "error while transfer");
 
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
         if (loanWithdrawnAmount == borrowerDebt) {
@@ -355,7 +355,7 @@ contract LoanContract is ILoanContract {
         loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
         address swapAddress = ISwapAndDepositFactory(swapFactory).deploy();
         require(swapAddress != address(0), "error swap deploy");
-        ERC20Token.approve(swapAddress, amount);
+        ERC20Wrapper.approve(tokenAddress, swapAddress, amount);
         ISwapAndDeposit(swapAddress).swapAndDeposit(msg.sender, tokenAddress, amount);
         require(
             ISwapAndDeposit(swapAddress).isDestroyed(),
@@ -372,7 +372,10 @@ contract LoanContract is ILoanContract {
         require(!loanWithdrawn, "Already withdrawn");
         loanWithdrawn = true;
         emit LoanFundsWithdrawn(address(this), msg.sender, auctionBalance);
-        require(ERC20Token.transfer(msg.sender, auctionBalance), "error while transfer");
+        require(
+            ERC20Wrapper.transfer(tokenAddress, msg.sender, auctionBalance),
+            "error while transfer"
+        );
     }
 
     function onRepaymentReceived(address from, uint256 amount)
