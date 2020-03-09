@@ -1,6 +1,6 @@
 {
   "name": "herotoken-contracts-solidity",
-  "version": "0.6.6",
+  "version": "0.7.1",
   "description": "Herotoken solidity contracts",
   "private": false,
   "watch": {
