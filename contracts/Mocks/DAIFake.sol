@@ -6,7 +6,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract DAIFake is ERC20Mintable {
     using SafeMath for uint256;
     string public constant name = "DAI Fake Token";
-    string public constant symbol = "DAIF";
+    string public constant symbol = "DAIFake";
     uint8 public constant decimals = 18;
 
     constructor() public {

@@ -8,7 +8,6 @@ const DepositRegistryContract = artifacts.require("DepositRegistry");
 const HeroFakeTokenContract = artifacts.require("HeroFakeToken");
 const KYCContract = artifacts.require("KYCRegistry");
 const MockLoanContract = artifacts.require("LoanContractMock");
-const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
 const truffleAssert = require("truffle-assertions");
 
 const HeroAmount = "200000000000000000000";
@@ -45,9 +44,6 @@ contract("DAIProxy Contract", function(accounts) {
         {from: owner}
       );
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-
-      ERC20Wrapper = await ERC20WrapperContract.new();
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
       DAIProxy = await DAIProxyContract.new(Auth.address);
       await DAIProxy.setAdministrator(admin, {from: owner});
 

@@ -16,7 +16,6 @@ const RaiseTokenContract = artifacts.require("RaiseFake");
 const KYCContract = artifacts.require("KYCRegistry");
 const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
-const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
 const {initializeUniswap} = require('./uniswap.utils');
 const helpers = require('./helpers.js');
 const { calculateNetLoan, increaseTime } = helpers;
@@ -49,10 +48,6 @@ contract('LoanContract', (accounts) => {
         let DepositRegistry;
         const operatorPercentFee = toWei(new BN(5));
         beforeEach(async () => {
-            ERC20Wrapper = await ERC20WrapperContract.new();
-            await LoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
-            await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-            
             DAIToken = await DAITokenContract.new({from: owner});
             await DAIToken.transferAmountToAddress(otherLender, web3.utils.toWei('3000'), {from: owner});
             await DAIToken.transferAmountToAddress(lender, 150, {from: owner});

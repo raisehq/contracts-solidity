@@ -4,6 +4,7 @@ const RaiseToken = artifacts.require("RaiseTokenContract");
 const DAIFake = artifacts.require("DAIFake");
 const MockERC20 = artifacts.require("MockERC20");
 const devAccounts = require("../int.accounts.json");
+
 const {
   getContracts,
   contractIsDeployed,
