@@ -24,9 +24,9 @@ const SWAP_FACTORY_ID = "SwapAndDepositFactory";
 const LOAN_ID = "LoanContract";
 
 const migration = async (deployer, network, accounts) => {
-  let contractsMetadata = metadataFactory();
   const web3One = getWeb3(web3);
   const contracts = await getContracts();
+  let contractsMetadata = _.cloneDeep(contracts);
   const netId = await web3One.eth.net.getId();
   const deployerAddress = accounts[0];
   const admin = network.includes("mainnet") ? process.env.ADMIN_ADDRESS : accounts[1];
@@ -49,22 +49,13 @@ const migration = async (deployer, network, accounts) => {
   }
   if (daiproxyHasBeenUpdated()) {
     console.log("|============ deploying DAIProxy and LoanDispatcher ==============|");
-    // const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress]);
-
     await deployer.deploy(DAIProxy, authAddress, {
-      from: deployerAddress,
-      // gas: DAIProxyGas
+      from: deployerAddress
     });
 
-    // const LoanGas = await getDeployGas(web3, LoanDispatcher, [
-    //   authAddress,
-    //   DAIProxy.address,
-    //   swapFactoryAddress
-    // ]);
 
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxy.address, swapFactoryAddress, {
-      from: deployerAddress,
-      // gas: LoanGas
+      from: deployerAddress
     });
 
     // Update contracts
@@ -77,15 +68,9 @@ const migration = async (deployer, network, accounts) => {
   } else if (loandispatcherHasBeenUpdated()) {
     console.log("|============ DAIProxy: no changes to deploy ==============|");
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
-    const LoanGas = await getDeployGas(web3, LoanDispatcher, [
-      authAddress,
-      DAIProxyAddress,
-      swapFactoryAddress
-    ]);
 
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxyAddress, swapFactoryAddress, {
-      from: deployerAddress,
-      gas: LoanGas
+      from: deployerAddress
     });
     // Update contracts
     contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
@@ -113,8 +98,8 @@ const migration = async (deployer, network, accounts) => {
       network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, {from: admin}));
     }
   }
-  const metadata = _.merge(contracts, contractsMetadata);
-  writeMetadataTemp(metadata);
+  // const metadata = _.merge(contracts, contractsMetadata);
+  writeMetadataTemp(contractsMetadata);
 };
 
 module.exports = async (deployer, network, accounts) => {

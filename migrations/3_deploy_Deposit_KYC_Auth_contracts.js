@@ -66,8 +66,8 @@ const RAISE_ID = "RaiseToken";
 
 const migrationInt = async (deployer, network, accounts) => {
   try {
-    let contractMetadata = metadataFactory();
     const contracts = await getContracts();
+    let contractMetadata = _.cloneDeep(contracts);
     const deployerAddress = accounts[0];
     const admin = network === "mainnet" ? process.env.ADMIN_ADDRESS : accounts[1];
     const netId = await web3.eth.net.getId();
@@ -193,8 +193,8 @@ const migrationInt = async (deployer, network, accounts) => {
         }
       }
     }
-    const metadata = _.merge(contracts, contractMetadata);
-    writeMetadataTemp(metadata);
+    
+    writeMetadataTemp(contractMetadata);
   } catch (err) {
     console.error("ERROR MINT AND SEND ", err);
   }

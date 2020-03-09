@@ -1,3 +1,4 @@
+const _ = require("lodash");
 const merge = require("lodash/merge");
 const RaiseFakeToken = artifacts.require("RaiseFake");
 const RaiseToken = artifacts.require("RaiseTokenContract");
@@ -27,11 +28,11 @@ const USDC_CONTRACT_ID = "USDC";
 
 const migrationKovan = async (deployer, network, accounts) => {
   try {
-    let contractMetadata = metadataFactory();
     const IntAccounts = [...new Set([...accounts, ...devAccounts])]; // unique accounts not repeated
     const deployerAddress = accounts[0];
     const netId = await web3.eth.net.getId();
     let contracts = await getContracts();
+    let contractMetadata = _.cloneDeep(contracts);
 
     const daiDeployed = () => contractIsDeployed(contracts, netId, DAI_CONTRACT_ID);
     const raiseDeployed = () => contractIsDeployed(contracts, netId, RAISE_CONTRACT_ID);
@@ -97,8 +98,7 @@ const migrationKovan = async (deployer, network, accounts) => {
     console.log(contractMetadata.address);
     console.log("Writting artifacts...");
 
-    const metadata = merge(contracts, contractMetadata);
-    writeMetadataTemp(metadata);
+    writeMetadataTemp(contractMetadata);
   } catch (err) {
     throw err;
   }

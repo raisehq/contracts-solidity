@@ -21,9 +21,9 @@ const SwapAndDepositId = "SwapAndDeposit";
 const SwapAndDepositFactoryId = "SwapAndDepositFactory";
 
 const migration = async (deployer, network, accounts) => {
-  let contractMetadata = metadataFactory();
   const web3One = getWeb3(web3);
   const contracts = await getContracts();
+  let contractMetadata = _.cloneDeep(contracts);
   const netId = await web3One.eth.net.getId();
   const deployerAddress = accounts[0];
 
@@ -94,8 +94,8 @@ const migration = async (deployer, network, accounts) => {
       "|============ SwapAndDeposit and SwapAndFactory: no changes to deploy ==============|"
     );
   }
-  const metadata = _.merge(contracts, contractMetadata);
-  writeMetadataTemp(metadata);
+  
+  writeMetadataTemp(contractMetadata);
 };
 
 module.exports = async (deployer, network, accounts) => {
