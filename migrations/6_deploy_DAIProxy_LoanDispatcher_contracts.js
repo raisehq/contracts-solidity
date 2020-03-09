@@ -68,13 +68,12 @@ const migration = async (deployer, network, accounts) => {
     });
 
     // Update contracts
-
-    contractsMetadata = setMetadata(contracts, netId, DAI_PROXY_ID, DAIProxy);
+    contractsMetadata = setMetadata(contractsMetadata, netId, DAI_PROXY_ID, DAIProxy);
     contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
     contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, {
-    //   abi: LoanContract.abi,
-    //   bytecode: LoanContract.bytecode
-    // });
+      abi: LoanContract.abi,
+      bytecode: LoanContract.bytecode
+    });
   } else if (loandispatcherHasBeenUpdated()) {
     console.log("|============ DAIProxy: no changes to deploy ==============|");
     const DAIProxyAddress = _.get(contracts, `address.${netId}.DAIProxy`);
@@ -89,7 +88,7 @@ const migration = async (deployer, network, accounts) => {
       gas: LoanGas
     });
     // Update contracts
-    contractsMetadata = setMetadata(contracts, netId, DISPATCHER_ID, LoanDispatcher);
+    contractsMetadata = setMetadata(contractsMetadata, netId, DISPATCHER_ID, LoanDispatcher);
     contractsMetadata = setMetadata(contractsMetadata, netId, LOAN_ID, {
       abi: LoanContract.abi,
       bytecode: LoanContract.bytecode
@@ -114,8 +113,8 @@ const migration = async (deployer, network, accounts) => {
       network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, {from: admin}));
     }
   }
-  // const metadata = _.merge(contracts, contractsMetadata);
-  writeMetadataTemp(contractsMetadata);
+  const metadata = _.merge(contracts, contractsMetadata);
+  writeMetadataTemp(metadata);
 };
 
 module.exports = async (deployer, network, accounts) => {
