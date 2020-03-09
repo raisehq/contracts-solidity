@@ -44,27 +44,27 @@ const migration = async (deployer, network, accounts) => {
     });
     // Link the contracts
     deployer.link(ERC20Wrapper, DAIProxy);
-    deployer.link(ERC20Wrapper, LoanDispatcher);
     deployer.link(ERC20Wrapper, LoanContract);
+    deployer.link(ERC20Wrapper, LoanDispatcher);
   }
   if (daiproxyHasBeenUpdated()) {
     console.log("|============ deploying DAIProxy and LoanDispatcher ==============|");
-    const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress]);
+    // const DAIProxyGas = await getDeployGas(web3, DAIProxy, [authAddress]);
 
     await deployer.deploy(DAIProxy, authAddress, {
       from: deployerAddress,
-      gas: DAIProxyGas
+      // gas: DAIProxyGas
     });
 
-    const LoanGas = await getDeployGas(web3, LoanDispatcher, [
-      authAddress,
-      DAIProxy.address,
-      swapFactoryAddress
-    ]);
+    // const LoanGas = await getDeployGas(web3, LoanDispatcher, [
+    //   authAddress,
+    //   DAIProxy.address,
+    //   swapFactoryAddress
+    // ]);
 
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxy.address, swapFactoryAddress, {
       from: deployerAddress,
-      gas: LoanGas
+      // gas: LoanGas
     });
 
     // Update contracts
