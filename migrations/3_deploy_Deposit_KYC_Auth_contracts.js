@@ -153,7 +153,8 @@ const migrationInt = async (deployer, network, accounts) => {
 
         // Do deposit migration if found a prior contract
         const priorDepositAddress = _.get(contracts, ["address", netId, DEPOSIT_ID]);
-        const newDepositAddress = _.get(contractMetadata[("address", netId, DEPOSIT_ID)]);
+        const newDepositAddress = _.get(contractMetadata, ["address", netId, DEPOSIT_ID]);
+        
         if (
           process.env.ETHSCAN_API_KEY &&
           priorDepositAddress &&
