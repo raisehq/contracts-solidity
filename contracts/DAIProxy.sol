@@ -25,6 +25,7 @@ contract DAIProxy is IDAIProxy, Ownable {
         hasToDeposit = value;
         emit HasToDeposit(value, administrator);
     }
+
     function setAdministrator(address admin) external onlyOwner {
         administrator = admin;
         emit AdministratorUpdated(administrator);
@@ -57,6 +58,7 @@ contract DAIProxy is IDAIProxy, Ownable {
         );
         require(transfer(loanAddress, newFundingAmount, tokenAddress), "erc20 transfer failed");
     }
+
     function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
         ILoanContract loanContract = ILoanContract(loanAddress);
         address tokenAddress = loanContract.getTokenAddress();
@@ -101,5 +103,4 @@ contract DAIProxy is IDAIProxy, Ownable {
         require(msg.sender == administrator, "Caller is not an administrator");
         _;
     }
-
 }

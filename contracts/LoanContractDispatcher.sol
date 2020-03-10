@@ -124,7 +124,6 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     function addTokenToAcceptedList(address tokenAddress) external onlyAdmin {
         acceptedTokens[tokenAddress] = true;
         emit AddTokenToAcceptedList(tokenAddress, address(this));
-
     }
 
     function removeTokenFromAcceptedList(address tokenAddress) external onlyAdmin {
@@ -278,5 +277,4 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     function checkLoanContract(address loanAddress) external view returns (bool) {
         return isLoanContract[loanAddress];
     }
-
 }

@@ -222,6 +222,7 @@ contract LoanContract is ILoanContract {
     function getTokenAddress() external view returns (address) {
         return tokenAddress;
     }
+
     // Notes:
     // - This function does not track if real IERC20 balance has changed. Needs to blindly "trust" DaiProxy.
     function onFundingReceived(address lender, uint256 amount)
