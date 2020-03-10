@@ -56,6 +56,12 @@ interface ILoanContractDispatcher {
 
     function checkLoanContract(address loanAddress) external view returns (bool);
 
+    function isTokenAccepted(address tokenAddress) external view returns (bool);
+
+    function addTokenToAcceptedList(address tokenAddress) external;
+
+    function removeTokenFromAcceptedList(address tokenAddress) external;
+    
     function setAuthAddress(address authAddress) external;
 
     function setDaiProxyAddress(address daiProxyAddress) external;

@@ -86,16 +86,13 @@ const migration = async (deployer, network, accounts) => {
     if (loandispatcherHasBeenUpdated()) {
       // set administrator
       const dispatcherDeployed = await LoanDispatcher.deployed();
-      const setAdminGas = await getMethodGas(
-        web3,
-        LoanDispatcher,
-        dispatcherDeployed.address,
-        "setAdministrator",
-        [admin],
-        {from: deployerAddress}
-      );
-      await dispatcherDeployed.setAdministrator(admin, {from: deployerAddress, gas: setAdminGas});
+      
+      await dispatcherDeployed.setAdministrator(admin, {from: deployerAddress});
       network === "cypress" && (await dispatcherDeployed.setMinTermLength(300, {from: admin}));
+
+      await dispatcherDeployed.addTokenToAcceptedList(contracts.address[netId].DAI, {from:admin});
+      await dispatcherDeployed.addTokenToAcceptedList(contracts.address[netId].USDC, {from:admin});
+      await dispatcherDeployed.addTokenToAcceptedList(contracts.address[netId].USDT, {from:admin});
     }
   }
   // const metadata = _.merge(contracts, contractsMetadata);
