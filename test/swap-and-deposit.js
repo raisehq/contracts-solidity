@@ -254,18 +254,13 @@ contract("SwapAndDeposit", accounts => {
         SwapAndDepositTemplate.abi,
         swapTemplateTruffle.address
       );
-
-      try {
-        await swapTemplate.methods
+      await truffleAssert.fails(
+        swapTemplate.methods
           .init(DepositRegistry.address, uniswapAddress)
-          .send({from: lender});
-
-        assert.fail("Tx should not success");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "is template contract");
-        assert(error.message.includes("reverted"));
-      }
+          .send({from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "is template contract"
+      );
     });
     it("Expects to SwapAndDeposit Template to not be able to swap", async () => {
       const swapTemplateTruffle = await SwapAndDeposit.new({from: owner});
@@ -275,16 +270,13 @@ contract("SwapAndDeposit", accounts => {
       );
 
       await DAIToken.approve(swapTemplateTruffle.address, INPUT_AMOUNT, {from: lender});
-      try {
-        await swapTemplate.methods
+      await truffleAssert.fails(
+        swapTemplate.methods
           .swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT)
-          .send({from: lender, gas: 6000000});
-        assert.fail("Tx should not success");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "is template contract");
-        assert(error.message.includes("reverted"));
-      }
+          .send({from: lender, gas: 6000000}),
+        truffleAssert.ErrorType.REVERT,
+        "is template contract"
+      );
     });
   });
   describe("SwapAndDeposit Minimal Proxy", () => {

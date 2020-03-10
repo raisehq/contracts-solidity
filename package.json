@@ -46,9 +46,9 @@
     "@0x/subproviders": "^5.0.4",
     "@babel/polyfill": "^7.4.4",
     "@deconet/truffle-ledger-provider": "git+https://github.com/deconet/truffle-ledger-provider.git#2525cbaabcce6c2489dc2c2183c2043883ba2187",
-    "@ledgerhq/hw-app-eth": "^4.70.0",
-    "@ledgerhq/hw-transport-node-hid": "^4.70.0",
-    "@ledgerhq/web3-subprovider": "^4.68.2",
+    "@ledgerhq/hw-app-eth": "4.70.0",
+    "@ledgerhq/hw-transport-node-hid": "4.70.0",
+    "@ledgerhq/web3-subprovider": "4.68.2",
     "axios": "^0.18.0",
     "bignumber.js": "^9.0.0",
     "bluebird": "^3.5.5",
@@ -64,22 +64,22 @@
     "jsondiffpatch": "^0.4.1",
     "openzeppelin-solidity": "2.4.0",
     "raise-token": "git+https://git@gitlab.com/raisehq/raise-token.git",
-    "truffle": "^5.1.13",
-    "truffle-assertions": "^0.9.1",
-    "truffle-hdwallet-provider": "^1.0.13",
-    "truffle-ledger-provider": "^1.0.1",
-    "web3-utils": "^1.2.6"
+    "truffle": "5.1.13",
+    "truffle-assertions": "0.9.1",
+    "truffle-hdwallet-provider": "1.0.13",
+    "truffle-ledger-provider": "1.0.1",
+    "web3-utils": "1.2.6"
   },
   "devDependencies": {
-    "@nomiclabs/buidler": "^1.1.2",
-    "@nomiclabs/buidler-truffle5": "^1.1.2",
-    "@nomiclabs/buidler-web3": "^1.1.2",
+    "@nomiclabs/buidler": "1.1.2",
+    "@nomiclabs/buidler-truffle5": "1.1.2",
+    "@nomiclabs/buidler-web3": "1.1.2",
     "npm-watch": "^0.6.0",
     "prettier": "^1.18.2",
     "prettier-plugin-solidity": "^1.0.0-alpha.27",
     "solhint": "^2.1.0",
     "solhint-plugin-prettier": "0.0.3",
     "solidity-coverage": "^0.7.2",
-    "web3": "^1.2.6"
+    "web3": "1.2.6"
   }
 }
