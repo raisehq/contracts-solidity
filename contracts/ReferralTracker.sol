@@ -5,6 +5,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
+
 contract ReferralTracker is Ownable, Pausable {
     using SafeMath for uint256;
     uint256 public REFERRAL_BONUS = 100000000000000000000;

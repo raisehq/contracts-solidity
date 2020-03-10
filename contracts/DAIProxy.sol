@@ -8,6 +8,7 @@ import "./interfaces/ILoanContract.sol";
 import "./interfaces/IDAIProxy.sol";
 import "./libs/ERC20Wrapper.sol";
 
+
 contract DAIProxy is IDAIProxy, Ownable {
     IAuthorization auth;
     address public administrator;
