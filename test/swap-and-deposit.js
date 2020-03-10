@@ -131,11 +131,14 @@ contract("SwapAndDeposit", accounts => {
       const swapFactory = new web3One.eth.Contract(SwapFactoryContract.abi, SwapFactory.address);
       const currentAddress = await SwapFactory.authAddress();
       const randomAddress = "0xda8e883e03F077666B164AA90075BEbf56d9455e";
-      await truffleAssert.fails(
-        swapFactory.methods.setAuthAddress(randomAddress).send({from: other}),
-        truffleAssert.ErrorType.REVERT,
-        "caller is not the owner"
-      );
+      try {
+        await swapFactory.methods.setAuthAddress(randomAddress).send({from: other});
+        assert.fail("Other user should not be alllowed to set");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "Ownable: caller is not the owner");
+        assert(error.message.includes("reverted"));
+      }
       const newAddress = await SwapFactory.authAddress();
       expect(newAddress).to.not.be.equals(randomAddress);
       expect(newAddress).to.be.equals(currentAddress);
@@ -144,11 +147,14 @@ contract("SwapAndDeposit", accounts => {
       const swapFactory = new web3One.eth.Contract(SwapFactoryContract.abi, SwapFactory.address);
       const currentAddress = await SwapFactory.uniswapAddress();
       const randomAddress = "0xda6494Ed9cfED40f2321adcFbcca8f80fD764ed2";
-      await truffleAssert.fails(
-          swapFactory.methods.setUniswapAddress(randomAddress).send({from: other}),
-          truffleAssert.ErrorType.REVERT,
-          "caller is not the owner"
-        );
+      try {
+        await swapFactory.methods.setUniswapAddress(randomAddress).send({from: other});
+        assert.fail("Other user should not be alllowed to set");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "Ownable: caller is not the owner");
+        assert(error.message.includes("reverted"));
+      }
       const newAddress = await SwapFactory.uniswapAddress();
       expect(newAddress).to.not.be.equals(randomAddress);
       expect(newAddress).to.be.equals(currentAddress);
@@ -158,11 +164,14 @@ contract("SwapAndDeposit", accounts => {
       const swapFactory = new web3One.eth.Contract(SwapFactoryContract.abi, SwapFactory.address);
       const currentAddress = await SwapFactory.libraryAddress();
       const randomAddress = "0xda9B6bE048aEaA333290226F07BD6B0A7AFE4B49";
-      await truffleAssert.fails(
-          swapFactory.methods.setLibraryAddress(randomAddress).send({from: other}),
-          truffleAssert.ErrorType.REVERT,
-          "caller is not the owner"
-        );
+      try {
+        await swapFactory.methods.setLibraryAddress(randomAddress).send({from: other});
+        assert.fail("Other user should not be alllowed to set");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "Ownable: caller is not the owner");
+        assert(error.message.includes("reverted"));
+      }
       const newAddress = await SwapFactory.libraryAddress();
       expect(newAddress).to.not.be.equals(randomAddress);
       expect(newAddress).to.be.equals(currentAddress);
@@ -181,11 +190,16 @@ contract("SwapAndDeposit", accounts => {
         SwapFactoryContract.abi,
         swapFactoryTrufle.address
       );
-      await truffleAssert.fails(
-          swapFactory.methods.deploy().send({from: owner}),
-          truffleAssert.ErrorType.REVERT,
-          "library must be set"
-        );
+
+      try {
+        await swapFactory.methods.deploy().send({from: owner});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "library must be set");
+        assert(error.message.includes("reverted"));
+      }
     });
     it("Expects to NOT deploy if uniswap factory is not set", async () => {
       const swapFactoryTrufle = await SwapFactoryContract.new(
@@ -200,11 +214,15 @@ contract("SwapAndDeposit", accounts => {
         SwapFactoryContract.abi,
         swapFactoryTrufle.address
       );
-      await truffleAssert.fails(
-          swapFactory.methods.deploy().send({from: owner}),
-          truffleAssert.ErrorType.REVERT,
-          "uniswap must be set"
-        );
+      try {
+        await swapFactory.methods.deploy().send({from: owner});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "uniswap must be set");
+        assert(error.message.includes("reverted"));
+      }
     });
     it("Expects to NOT deploy if deposit is not set", async () => {
       const AuthTruffle = await AuthContract.new(KYCRegistry.address, zeroAddress);
@@ -220,11 +238,16 @@ contract("SwapAndDeposit", accounts => {
         SwapFactoryContract.abi,
         swapFactoryTrufle.address
       );
-      await truffleAssert.fails(
-          swapFactory.methods.deploy().send({from: owner}),
-          truffleAssert.ErrorType.REVERT,
-          "deposit must be set"
-        );
+
+      try {
+        await swapFactory.methods.deploy().send({from: owner});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "deposit must be set");
+        assert(error.message.includes("reverted"));
+      }
     });
     it("Expects to NOT deploy if auth is not set", async () => {
       const swapFactoryTrufle = await SwapFactoryContract.new(
@@ -239,11 +262,16 @@ contract("SwapAndDeposit", accounts => {
         SwapFactoryContract.abi,
         swapFactoryTrufle.address
       );
-      await truffleAssert.fails(
-        swapFactory.methods.deploy().send({from: owner}),
-        truffleAssert.ErrorType.REVERT,
-        "auth must be set"
-      );
+
+      try {
+        await swapFactory.methods.deploy().send({from: owner});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "auth must be set");
+        assert(error.message.includes("reverted"));
+      }
     });
   });
   describe("SwapAndDeposit Master Template", () => {
@@ -254,13 +282,18 @@ contract("SwapAndDeposit", accounts => {
         SwapAndDepositTemplate.abi,
         swapTemplateTruffle.address
       );
-      await truffleAssert.fails(
-        swapTemplate.methods
+
+      try {
+        await swapTemplate.methods
           .init(DepositRegistry.address, uniswapAddress)
-          .send({from: lender}),
-        truffleAssert.ErrorType.REVERT,
-        "is template contract"
-      );
+          .send({from: lender});
+
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "is template contract");
+        assert(error.message.includes("reverted"));
+      }
     });
     it("Expects to SwapAndDeposit Template to not be able to swap", async () => {
       const swapTemplateTruffle = await SwapAndDeposit.new({from: owner});
@@ -270,13 +303,16 @@ contract("SwapAndDeposit", accounts => {
       );
 
       await DAIToken.approve(swapTemplateTruffle.address, INPUT_AMOUNT, {from: lender});
-      await truffleAssert.fails(
-        swapTemplate.methods
+      try {
+        await swapTemplate.methods
           .swapAndDeposit(lender, DAIToken.address, INPUT_AMOUNT)
-          .send({from: lender, gas: 6000000}),
-        truffleAssert.ErrorType.REVERT,
-        "is template contract"
-      );
+          .send({from: lender, gas: 6000000});
+        assert.fail("Tx should not success");
+      } catch (error) {
+        assert.equal(error.signature, "Error(String)");
+        assert.equal(error.reason, "is template contract");
+        assert(error.message.includes("reverted"));
+      }
     });
   });
   describe("SwapAndDeposit Minimal Proxy", () => {
