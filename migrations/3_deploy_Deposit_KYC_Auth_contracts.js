@@ -95,7 +95,24 @@ const migrationInt = async (deployer, network, accounts) => {
         console.error("[kycHasBeenUpdated] ERROR KYC ", error);
         throw error;
       }
-    } else if (depositHasBeenUpdated()) {
+    } else if (depositHasBeenUpdated() && !authHasBeenUpdated()) {
+      // deploy all contracts that depend on deposit contract if deposit changed
+      try {
+        console.log("|============ Deposit and Auth deployment ==============|");
+        const kycAdd = _.get(contracts, `address.${netId}.${KYC_ID}`);
+        const newDeposit = await deployer.deploy(Deposit, raiseTokenAddress, kycAdd, deployOptions);
+
+        // Set new deposit at Auth
+        const authTokenAddress = _.get(contracts, `address.${netId}.${RAISE_ID}`);
+        const authInstance = await Auth.at(authTokenAddress);
+        authInstance.setDepositRegistry(newDeposit.address, {from: deployerAddress});
+        // Update contracts
+        contractMetadata = setMetadata(contractMetadata, netId, DEPOSIT_ID, Deposit);
+      } catch (error) {
+        console.error("ERROR: Deposit and Auth ", error);
+        throw error;
+      }
+    } else if (depositHasBeenUpdated() && authHasBeenUpdated()) {
       // deploy all contracts that depend on deposit contract if deposit changed
       try {
         console.log("|============ Deposit and Auth deployment ==============|");
@@ -154,7 +171,7 @@ const migrationInt = async (deployer, network, accounts) => {
         // Do deposit migration if found a prior contract
         const priorDepositAddress = _.get(contracts, ["address", netId, DEPOSIT_ID]);
         const newDepositAddress = _.get(contractMetadata, ["address", netId, DEPOSIT_ID]);
-        
+
         if (
           process.env.ETHSCAN_API_KEY &&
           priorDepositAddress &&
@@ -164,10 +181,14 @@ const migrationInt = async (deployer, network, accounts) => {
           console.log("Process with Deposit migration");
           const events = await getDeployedBlock(priorDepositAddress, netId);
           const depositInstance = await Deposit.deployed();
-          await depositInstance.migrate(events.map(({user}) => user), priorDepositAddress, {
-            from: deployerAddress,
-            gas: 7000000
-          });
+          await depositInstance.migrate(
+            events.map(({user}) => user),
+            priorDepositAddress,
+            {
+              from: deployerAddress,
+              gas: 7000000
+            }
+          );
           await depositInstance.finishMigration({from: deployerAddress});
           console.log("Finished Deposit Migration:", events.length, "migrated");
         }
@@ -194,7 +215,7 @@ const migrationInt = async (deployer, network, accounts) => {
         }
       }
     }
-    
+
     writeMetadataTemp(contractMetadata);
   } catch (err) {
     console.error("ERROR MINT AND SEND ", err);
