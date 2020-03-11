@@ -5,6 +5,7 @@ const RaiseToken = artifacts.require("RaiseTokenContract");
 const DAIFake = artifacts.require("DAIFake");
 const MockERC20 = artifacts.require("MockERC20");
 const devAccounts = require("../int.accounts.json");
+const version = require("../package.json").version;
 const {
   getContracts,
   contractIsDeployed,
@@ -13,6 +14,7 @@ const {
   metadataFactory,
   writeMetadataTemp,
   PRIOR_METADATA,
+  NEW_METADATA,
   MCD_DAI_ABI
 } = require("../scripts/helpers");
 const USDT_ABI = require("../abis/USDT-abi.json");
@@ -148,12 +150,22 @@ module.exports = async (deployer, network, accounts) => {
   const currentContracts = await getContracts();
 
   try {
+    if (currentContracts.version === version) {
+      console.error(
+        "Exiting... current metadata version can not be equal to past metadata version. Bump the version at package.json to continue."
+      );
+      return exit(2);
+    }
     // Copying prior contracts to last.contracts.json to do JSON diff at the end of migrations
     console.log("Writting prior metadata to ", `${process.env.PWD}/${PRIOR_METADATA}`);
     writeFileSync(
       `${process.env.PWD}/${PRIOR_METADATA}`,
       JSON.stringify(currentContracts, null, 2)
     );
+    // Copying prior contracts to new.contracts.json and set version
+    console.log("Writting new metadata to ", `${process.env.PWD}/${NEW_METADATA}`);
+    currentContracts.version = version;
+    writeFileSync(`${process.env.PWD}/${NEW_METADATA}`, JSON.stringify(currentContracts, null, 2));
     // Start migrations
     if (network.includes("mainnet")) {
       await mainnetMigration(deployer, network, accounts);
