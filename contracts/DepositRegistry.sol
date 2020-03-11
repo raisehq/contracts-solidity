@@ -7,7 +7,6 @@ import "./interfaces/IDepositRegistry.sol";
 import "./interfaces/IReferralTracker.sol";
 import "./interfaces/IKYCRegistry.sol";
 
-
 contract DepositRegistry is IDepositRegistry, Ownable {
     mapping(address => Deposit) deposits;
     mapping(address => address) userToDepositRegistry;
@@ -153,6 +152,12 @@ contract DepositRegistry is IDepositRegistry, Ownable {
     }
 
     function hasDeposited(address user) external view returns (bool) {
+        if (userToDepositRegistry[user] == address(0)) {
+            return false;
+        }
+        if (userToDepositRegistry[user] != address(this)) {
+            return DepositRegistry(userToDepositRegistry[user]).hasDeposited(user);
+        }
         return deposits[user].deposited;
     }
 

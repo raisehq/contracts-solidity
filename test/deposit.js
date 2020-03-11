@@ -45,6 +45,9 @@ contract("Deposit Contract", function(accounts) {
           from: owner
         });
 
+        DepositRegistryOld.setAdministrator(admin, {from: owner});
+        DepositRegistry.setAdministrator(admin, {from: owner});
+
         await HeroToken.transferFakeHeroTokens(user);
         await HeroToken.approve(DepositRegistryOld.address, HeroAmount, {from: user});
         await DepositRegistryOld.depositFor(user);
@@ -86,7 +89,9 @@ contract("Deposit Contract", function(accounts) {
       });
       it("Expects to fail migration when migrating addresses do not exist in old contract", async () => {
         await truffleAssert.fails(
-          DepositRegistry.migrate([other, other, other], DepositRegistryOld.address, {from: owner}),
+          DepositRegistry.migrate([other, other, other], DepositRegistryOld.address, {
+            from: owner
+          }),
           truffleAssert.ErrorType.REVERT,
           "Depositor does not have deposit in old Registry"
         );
@@ -98,6 +103,26 @@ contract("Deposit Contract", function(accounts) {
           truffleAssert.ErrorType.REVERT,
           "Depositor already deposited"
         );
+      });
+      it("Expects hasDeposit to return false if withdraw from old registry", async () => {
+        await DepositRegistry.migrate([user], DepositRegistryOld.address, {from: owner});
+
+        const priorDepositedNewRegistry = await DepositRegistry.hasDeposited(user);
+        const priorDepositedOldRegistry = await DepositRegistryOld.hasDeposited(user);
+
+        expect(priorDepositedNewRegistry).to.equal(true);
+        expect(priorDepositedOldRegistry).to.equal(true);
+
+        // Unlock and withdraw
+        await DepositRegistryOld.unlockAddressForWithdrawal(user, {from: admin});
+        await DepositRegistryOld.withdraw(user, {from: user});
+
+        const depositedNewRegistry = await DepositRegistry.hasDeposited(user);
+        const depositedOldRegistry = await DepositRegistryOld.hasDeposited(user);
+        console.log("de", depositedNewRegistry, depositedOldRegistry);
+
+        expect(depositedNewRegistry).to.equal(false);
+        expect(depositedOldRegistry).to.equal(false);
       });
     });
     describe("method setAdministrator", () => {
@@ -309,10 +334,19 @@ contract("Deposit Contract", function(accounts) {
     });
     describe("method withdraw", () => {
       beforeEach(async () => {
+        DepositRegistryOld = await DepositRegistryOldContract.new(HeroToken.address, KYC.address, {
+          from: owner
+        });
         DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address, {
           from: owner
         });
+
+        DepositRegistryOld.setAdministrator(admin, {from: owner});
+        DepositRegistry.setAdministrator(admin, {from: owner});
+
         await HeroToken.transferFakeHeroTokens(user);
+        await HeroToken.approve(DepositRegistryOld.address, HeroAmount, {from: user});
+        await DepositRegistryOld.depositFor(user);
       });
       it("Expect to fail if funds have not been previously deposited", async () => {
         await truffleAssert.fails(
@@ -393,8 +427,10 @@ contract("Deposit Contract", function(accounts) {
         await truffleAssert.passes(oldDepositTruffle.withdraw(user, {from: user}));
 
         const deposit = await DepositRegistry.hasDeposited(user);
+        const oldDeposit = await oldDepositTruffle.hasDeposited(user);
 
-        expect(deposit).to.equal(true);
+        expect(deposit).to.equal(false);
+        expect(oldDeposit).to.equal(false);
       });
     });
     describe("Setters", () => {
