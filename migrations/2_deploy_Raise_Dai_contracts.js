@@ -150,7 +150,7 @@ module.exports = async (deployer, network, accounts) => {
   const currentContracts = await getContracts();
 
   try {
-    if (currentContracts.version === version) {
+    if (!process.env.BYPASS_VERSION_CHECK && currentContracts.version === version) {
       console.error(
         "Exiting... current metadata version can not be equal to past metadata version. Bump the version at package.json to continue."
       );
