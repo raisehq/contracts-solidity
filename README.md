@@ -6,7 +6,7 @@ This repo contains the set of smart contracts that provide the foundations for t
 
 Contracts are currently only available on the Kovan testnet. The latest addresses are available here: 
 
-http://blockchain-definitions.s3-website-eu-west-1.amazonaws.com/v1/contracts.json
+http://blockchain-definitions.s3-website-eu-west-1.amazonaws.com/v4/contracts.json
 
 The Kovan migration script will also deploy fake DAI and HERO tokens to support testing. 
 
@@ -49,6 +49,11 @@ First migrate contracts in your local blockchain:
 
 Once migrated run the script via truffle, by default creates 10 loans, you can set the number of loans with `NUMBER_LOANS` env variable:
 `NUMBER_LOANS=200 npx truffle exec scripts/loan-generator/main.js --network ganache`
+
+## Ledger Nano S migration guide
+
+Follow the next guide in HeroHQ Notion:
+https://www.notion.so/herohq/Build-and-Deployment-4a34f11e65504a8babde16e484fcaa4a
 
 ## Known issues and remaining work
 

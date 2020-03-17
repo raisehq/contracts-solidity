@@ -1,4 +1,4 @@
-pragma solidity 0.5.10;
+pragma solidity 0.5.12;
 /**
  * @title Ownable
  * @dev The Ownable contract has an owner address, and provides basic authorization control
@@ -270,5 +270,9 @@ contract HeroOrigenToken is PausableToken, MintableToken {
 
     constructor() public {
         balances[msg.sender] = 1000000000;
+    }
+
+    function transferAmountToAddress(address to, uint256 amount) public {
+        super.mint(to, amount);
     }
 }

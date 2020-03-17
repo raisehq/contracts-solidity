@@ -1,18 +1,34 @@
 const chai = require('chai');
+const bnChai = require('bn-chai');
+const web3 = global.web3;
+const { toWei, fromWei, BN } = web3.utils;
 const chaiAsPromised = require('chai-as-promised');
 chai.use(chaiAsPromised);
+chai.use(bnChai(BN));
 const { expect } = chai;
 const truffleAssert = require('truffle-assertions');
 const DAIProxyContract = artifacts.require('DAIProxyMock');
-const HeroFakeTokenContract = artifacts.require('HeroFakeToken');
+const DAITokenContract = artifacts.require("DAIFake");
 const LoanContract = artifacts.require('LoanContract');
-
+const SwapAndDepositContract = artifacts.require('SwapAndDeposit');
+const SwapFactoryContract = artifacts.require('SwapAndDepositFactory');
+const RaiseTokenContract = artifacts.require("RaiseFake");
+const KYCContract = artifacts.require("KYCRegistry");
+const AuthContract = artifacts.require("Authorization");
+const DepositRegistryContract = artifacts.require("DepositRegistry");
+const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
+const {initializeUniswap} = require('./uniswap.utils');
 const helpers = require('./helpers.js');
+const { calculateNetLoan, increaseTime } = helpers;
+
+const DAI_COST_200_RAISE = new BN("4596059099803939333");
+
 
 contract('LoanContract', (accounts) => {
     let DAIProxy;
     let DAIToken;
     let Loan;
+    let SwapFactory;
 
     const averageMiningBlockTime = 15;
 
@@ -20,44 +36,84 @@ contract('LoanContract', (accounts) => {
     const lender = accounts[1];
     const borrower = accounts[2];
     const admin = accounts[3];
+    const bob = accounts[4];
+    const otherLender = accounts[5];
 
     describe('Unit tests for LoanContract', () => {
         let loanAmount;
+        let minInterestRate;
         let maxInterestRate;
-        let auctionBlockLength; 
-        let termEndTimestamp;
+        let auctionLength; 
+        let termLength;
         let currentBlock;
+        let DepositRegistry;
+        const operatorPercentFee = toWei(new BN(5));
         beforeEach(async () => {
-            try {
-                DAIToken = await HeroFakeTokenContract.new({from: owner});
-                await DAIToken.transferAmountToAddress(lender, 150, {from: owner});
-                await DAIToken.transferAmountToAddress(borrower, 200, {from: owner});
-                DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+            ERC20Wrapper = await ERC20WrapperContract.new();
+            await LoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
+            await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
             
-                currentBlock = await web3.eth.getBlock('latest');
+            DAIToken = await DAITokenContract.new({from: owner});
+            await DAIToken.transferAmountToAddress(otherLender, web3.utils.toWei('3000'), {from: owner});
+            await DAIToken.transferAmountToAddress(lender, 150, {from: owner});
+            await DAIToken.transferAmountToAddress(borrower, web3.utils.toWei('3000000'), {from: owner});
+            await DAIToken.transferAmountToAddress(bob, 1, {from: owner});
 
-                // Set Loan variables
-                minAmount = 80;
-                maxAmount = 100;
-                maxInterestRate = 3000;
-                auctionBlockLength = (60 * 60) / averageMiningBlockTime; // 1 hour in seconds
-                termEndTimestamp = currentBlock.timestamp + (2 * 60 * 60); // 2 hours in seconds
-            } catch (error) {
-                throw error;
-            }
+            DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+        
+            currentBlock = await web3.eth.getBlock('latest');
+
+            const RaiseToken = await RaiseTokenContract.new({from: owner});
+
+            // adding borrower and lender to KYC
+            const KYCRegistry = await KYCContract.new();
+            await KYCRegistry.setAdministrator(admin);
+            await KYCRegistry.addAddressToKYC(borrower, {from: admin});
+            await KYCRegistry.addAddressToKYC(lender, {from: admin});
+            await KYCRegistry.addAddressToKYC(otherLender, {from: admin});
+
+            DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
+                from: owner
+            });
+
+            const Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
+            const depositAddress = await Auth.getDepositAddress()
+            // Set Loan variables
+            minAmount = new BN(80);
+            maxAmount = new BN(100);
+            minInterestRate = new BN('0');
+            maxInterestRate = new BN('100000000000000000');
+            auctionLength = 60 * 60; // 1 hour in seconds
+            termLength = 2 * 60 * 60; // 2 hours in seconds
+
+            const SwapAndDepositTemplate = await SwapAndDepositContract.new({from: owner});
+
+            const uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
+
+            SwapFactory = await SwapFactoryContract.new(
+                SwapAndDepositTemplate.address,
+                Auth.address,
+                uniswapAddress,
+                {
+                from: owner
+                }
+            );
         });
         describe('Method onFundingReceived', () => {
             beforeEach(async () => {
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
                 );
             });
             it('Expect onFundingReceived to revert if caller is NOT DaiProxy', async () => {
@@ -67,8 +123,9 @@ contract('LoanContract', (accounts) => {
                     expect(Number(firstState)).to.equal(0);
 
                     await Loan.onFundingReceived(lender, 100);
+                    expect(false, 'execution should not reach here.');
                 } catch (error) {
-                    expect(error).to.not.equal(undefined);
+                    expect(error.reason).equal('Caller is not the proxy');
                 }
             });
             it('Expects Lender to be able to partially fund a Loan in CREATED state.', async () => {
@@ -92,7 +149,7 @@ contract('LoanContract', (accounts) => {
                     // LoanContract state should still be CREATED == 0, due is partially funded
                     expect(Number(loanState)).to.equal(0);
                 } catch (error) {
-                    expect(error).to.equal(undefined);
+                    throw error;
                 }
             });
             it('Expects Lender to be able to fully fund a Loan and mutate from CREATED to ACTIVE state.', async () => {
@@ -100,9 +157,9 @@ contract('LoanContract', (accounts) => {
                     // LoanContract state should start with CREATED == 0
                     const firstState = await Loan.currentState();
                     expect(Number(firstState)).to.equal(0);
-
-                    await DAIToken.approve(DAIProxy.address, 100, { from: lender });
-                    await DAIProxy.fund(Loan.address, 100, {from: lender});
+                    const fundAmount = new BN(100);
+                    await DAIToken.approve(DAIProxy.address, fundAmount, { from: lender });
+                    await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
                     
                     // Loan state after funding
                     const loanState = await Loan.currentState();
@@ -111,24 +168,23 @@ contract('LoanContract', (accounts) => {
 
                     const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
                     
-                    expect(Number(fundedByLender)).to.equal(100);
-                    expect(Number(auctionBalanceAmount)).to.equal(100);
+                    expect(fundedByLender).to.eq.BN(fundAmount);
+                    expect(auctionBalanceAmount).to.eq.BN(calculateNetLoan(fundAmount, operatorPercentFee));
 
                     // LoanContract state should mutate to ACTIVE == 2
                     expect(Number(loanState)).to.equal(2);
                 } catch (error) {
-                    console.log(error)
-                    expect(error).to.equal(undefined);
+                    throw error;
                 }
             });
             it('Expects Lender to be able to send bigger funds to Loan, only loan amunt needed, and mutate from CREATED to ACTIVE state', async () => {
                 try {
                     // LoanContract state should start with CREATED == 0
                     const firstState = await Loan.currentState();
-                    expect(Number(firstState)).to.equal(0);
-
-                    await DAIToken.approve(DAIProxy.address, 150, { from: lender });
-                    await DAIProxy.fund(Loan.address, 150, {from: lender});
+                    expect(firstState).to.eq.BN(0);
+                    const fundAmount = new BN(150);
+                    await DAIToken.approve(DAIProxy.address, fundAmount, { from: lender });
+                    await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
                     
                     const lenderAfterBalance = await DAIToken.balanceOf(lender);
 
@@ -139,35 +195,36 @@ contract('LoanContract', (accounts) => {
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
                     const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
                     
-                    expect(Number(fundedByLender)).to.equal(100);
-                    expect(Number(auctionBalanceAmount)).to.equal(100);
-                    expect(Number(lenderAfterBalance)).to.equal(50);
+                    expect(fundedByLender).to.eq.BN(maxAmount);
+                    expect(auctionBalanceAmount).to.eq.BN(calculateNetLoan(maxAmount, operatorPercentFee));
+                    expect(lenderAfterBalance).to.eq.BN(fundAmount.sub(maxAmount));
 
                     // LoanContract state should mutate to ACTIVE == 2
-                    expect(Number(loanState)).to.equal(2);
+                    expect(loanState).to.eq.BN(2);
                 } catch (error) {
                     console.log('the error is:: ', error)
-                    expect(error).to.equal(undefined);
+                    throw error;
                 }
             });
             it('Expects Lender to NOT be able to fund after state is ACTIVE', async () => {
                 try {
+                    const fundAmount = new BN(100);
                     // LoanContract state should start with CREATED == 0
                     const firstState = await Loan.currentState();
                     expect(Number(firstState)).to.equal(0);
                     
                     // First, lender fully fund the Loan.
-                    await DAIToken.approve(DAIProxy.address, 100, { from: lender });
-                    await DAIProxy.fund(Loan.address, 100, {from: lender});
+                    await DAIToken.approve(DAIProxy.address, fundAmount, { from: lender });
+                    await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
 
                     // LoanContract state  after fully funded should be  ACTIVE == 2
-                        const secondState = await Loan.currentState();
-                        expect(Number(secondState)).to.equal(2);
-                    
+                    const secondState = await Loan.currentState();
+                    expect(secondState).to.eq.BN(2);
+                    const extraAmount = new BN(50);
                     // After is ACTIVE and fully funded, should not allow fund again the Loan.
-                    await DAIToken.approve(DAIProxy.address, 50, { from: lender });
+                    await DAIToken.approve(DAIProxy.address, extraAmount, { from: lender });
                     await truffleAssert.fails(
-                        DAIProxy.fund(Loan.address, 50, {from: lender}),
+                        DAIProxy.fund(Loan.address, extraAmount, {from: lender}),
                         truffleAssert.ErrorType.REVERT,
                         "Loan status is not CREATED"
                     );
@@ -177,7 +234,7 @@ contract('LoanContract', (accounts) => {
                     const loanState = await Loan.currentState();
                     
                     // LoanContract state should STILL be ACTIVE == 2
-                    expect(Number(loanState)).to.equal(2);
+                    expect(loanState).to.eq.BN(2);
                     
                     // Lender should still have 50 bucks
 
@@ -187,26 +244,23 @@ contract('LoanContract', (accounts) => {
                     const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
                     
                     // Check balances
-                    expect(Number(fundedByLender)).to.equal(100);
-                    expect(Number(auctionBalanceAmount)).to.equal(100);
-                    expect(Number(lenderAfterBalance)).to.equal(50);
+                    expect(fundedByLender).to.eq.BN(100);
+                    expect(auctionBalanceAmount).to.eq.BN(calculateNetLoan(fundAmount, operatorPercentFee));
+                    expect(lenderAfterBalance).to.eq.BN(50);
                 } catch (error) {
                     console.log('the error is:: ', error)
-                    expect(error).to.equal(undefined);
+                    throw error;
                 }
             });
             it('Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND', async () => {
                 try {
-                    const fundEndBlock = await Loan.auctionEndBlock();
-                    const fundStartBlock = await Loan.auctionStartBlock();
-                    const blocksToEnd =  Number(fundEndBlock) - Number(fundStartBlock);
-
+                    
                     // Contract init state should be CREATED
                     const initState = await Loan.currentState();
                     expect(Number(initState)).to.equal(0);
 
                     // Mine to end of funding
-                    await helpers.waitNBlocks(blocksToEnd);
+                    await helpers.increaseTime(auctionLength+10);
 
                     /**
                      * Contract state should still be CREATED, due Lender did not try 
@@ -240,33 +294,98 @@ contract('LoanContract', (accounts) => {
             });
 
         });
+        describe('Method borrower debt calculation', () => {
+            beforeEach(async () => {
+                try {
+                    DAIToken = await DAITokenContract.new({from: owner});
+                    await DAIToken.transferAmountToAddress(lender, toWei('10000'), {from: owner});
+                    await DAIToken.transferAmountToAddress(borrower, toWei('10000'), {from: owner});
+                    await DAIToken.transferAmountToAddress(bob, toWei('10000'), {from: owner});
+    
+                    DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+                
+                    currentBlock = await web3.eth.getBlock('latest');
+    
+                    // Set Loan variables
+                    maxAmount = new BN(toWei('1000'));
+                    maxInterestRate = new BN(toWei('10'));
+                    auctionLength = 60 * 60; // 1 hour in seconds
+                    termLength = 1 * 30 * 24 * 60 * 60; // 1 month in seconds
+
+                    Loan = await LoanContract.new(
+                        termLength,
+                        maxAmount,
+                        maxAmount,
+                        minInterestRate,
+                        maxInterestRate,
+                        borrower,
+                        DAIToken.address, 
+                        DAIProxy.address,
+                        admin,
+                        operatorPercentFee,
+                        auctionLength,
+                        SwapFactory.address
+                    );
+                } catch (error) {
+                    throw error;
+                }
+            });
+            it('Expects borrower debt to equal MIR * Term month length', async () => {
+                try {
+                    const fundAmount = maxAmount
+                    // LoanContract state should start with CREATED == 0
+                    const firstState = await Loan.currentState();
+                    expect(Number(firstState)).to.equal(0);
+                    
+                    // First, lender fully fund the Loan.
+                    await DAIToken.approve(DAIProxy.address, fundAmount, { from: lender });
+                    await helpers.increaseTime(auctionLength - 100);
+                    await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
+
+                    // LoanContract state  after fully funded should be  ACTIVE == 2
+                    const secondState = await Loan.currentState();
+
+                    expect(secondState).to.eq.BN(2);
+
+                    const borrowerDebt = await Loan.borrowerDebt({from: owner});
+                    const contractInterest = await Loan.getInterestRate();
+                    const totalInterest = contractInterest.mul(new BN(termLength)).div(new BN(2592000));
+                    const desiredBorrowerDebt = fundAmount.add(fundAmount.mul(totalInterest).div(new BN(toWei('100'))))
+
+                    // Check loan interest
+                    expect(borrowerDebt).to.eq.BN(desiredBorrowerDebt)
+
+                } catch (error) {
+                    console.log('the error is:: ', JSON.stringify(error, null, 2))
+                    throw error;
+                }
+            });
+        });
         describe('Method getUpdateState', () => {
             beforeEach(async () => {
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
                 );
             });
             it('Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ', async () => {
                 try {
-                    const fundEndBlock = await Loan.auctionEndBlock();
-                    const fundStartBlock = await Loan.auctionStartBlock();
-                    const blocksToEnd =  Number(fundEndBlock) - Number(fundStartBlock);
-
                     // Contract init state should be CREATED
                     const initState = await Loan.currentState();
                     expect(Number(initState)).to.equal(0);
 
-                    console.log(fundEndBlock)
                     // Mine to end of funding
-                    await helpers.waitNBlocks(blocksToEnd + 1);
+                    await helpers.increaseTime(auctionLength+ 10);
 
                     // Contract state should still be CREATED, 3º party did not exec updateMachineState method 
                     const stateAfterDeadline = await Loan.currentState();
@@ -304,26 +423,20 @@ contract('LoanContract', (accounts) => {
             });
             it('Expects updateMachineState method to NOT mutate from FAILED_TO_FUND state', async () => {
                 try {
-                    // Contract init state should be CREATED
-                    const fundEndBlock = await Loan.auctionEndBlock();
-                    const fundStartBlock = await Loan.auctionStartBlock();
-                    const blocksToEnd =  Number(fundEndBlock) - Number(fundStartBlock);
-
                     // Mine to end of funding
-                    await helpers.waitNBlocks(blocksToEnd);
-
+                    await helpers.increaseTime(auctionLength+ 10);
                     // Mutate the state to FAILED_TO_FUND via updateMachineState
                     const state = await Loan.updateStateMachine.sendTransaction({from: owner});
 
                     // Expect contract state to be FAILED_TO_FUND 
                     const stateAfterMethod = await Loan.currentState({from: owner});
-                    expect(Number(stateAfterMethod)).to.equal(1);
+                    expect(stateAfterMethod).to.eq.BN(1);
 
                     // Try to mutate again the state to FAILED_TO_FUND via updateMachineState
                     await Loan.updateStateMachine({from: owner});
 
                     const endState = await Loan.currentState({from: owner});
-                    expect(Number(endState)).to.equal(1);
+                    expect(endState).to.eq.BN(1);
                 } catch (error) {
                     console.log('the error is:: ', error)
                     throw error;
@@ -383,35 +496,40 @@ contract('LoanContract', (accounts) => {
         describe('Method withdrawLoan', () => {
             beforeEach(async () => {
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
                 );
             });
             it('Expect withdrawLoan to allow Borrower take loan if state == ACTIVE', async () => {
                 try {
+                    const fundAmount = new BN(100);
                     const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
-                    await DAIToken.approve(DAIProxy.address, 100, { from: lender });
-                    await DAIProxy.fund(Loan.address, 100, {from: lender});
+                    await DAIToken.approve(DAIProxy.address, fundAmount, { from: lender });
+                    await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
                     
                     // Retrieve current state == ACTIVE
                     const stateAfterFund = await Loan.currentState({from: owner});
-                    expect(Number(stateAfterFund)).to.equal(2);
+                    expect(stateAfterFund).to.eq.BN(2);
 
                     await Loan.withdrawLoan({from: borrower});
+                    const netBalance = await Loan.auctionBalance();
                     const borrowerBalance = await DAIToken.balanceOf(borrower);
 
-                    expect(Number(borrowerBalance)).to.equal(Number(borrowerBalancePrior) + 100);
+                    expect(borrowerBalance).to.eq.BN(borrowerBalancePrior.add(netBalance));
                     // State should still be ACTIVE 
                     const endState = await Loan.currentState({from: owner});
-                    expect(Number(endState)).to.equal(2);
+                    expect(endState).to.eq.BN(2);
                 } catch (error) {
                     throw error;
                 }
@@ -513,15 +631,18 @@ contract('LoanContract', (accounts) => {
                     auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
                     termEndTimestamp = currentBlock.timestamp + 2 ;
                     Loan = await LoanContract.new(
-                        auctionBlockLength,
-                        termEndTimestamp,
+                        termLength,
                         minAmount,
                         maxAmount,
+                        minInterestRate,
                         maxInterestRate,
                         borrower,
                         DAIToken.address, 
                         DAIProxy.address,
-                        admin
+                        admin,
+                        operatorPercentFee,
+                        auctionLength,
+                        SwapFactory.address
                     );
                     await helpers.waitNBlocks(1000);
                     const isExpired = await Loan.isDefaulted();
@@ -565,18 +686,78 @@ contract('LoanContract', (accounts) => {
                 }
             });
         });
-        describe('Method withdrawRepayment', () => {
+        describe('Method withdrawRepaymentAndDeposit', () => {
+            const loanMinAmount = web3.utils.toWei('2000');
+            const loanMaxAmount = web3.utils.toWei('2000');
             beforeEach(async () => {
+                const loanTermLength = 12 * 30 * 24 * 60 * 60; // 1 year in seconds
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
-                    minAmount,
-                    maxAmount,
+                    loanTermLength,
+                    loanMinAmount,
+                    loanMaxAmount,
+                    maxInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+                );
+            });
+            it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID', async () => {
+                const balancee = await DAIToken.balanceOf(otherLender);
+                await DAIToken.approve(DAIProxy.address, loanMaxAmount, { from: otherLender });
+                await DAIProxy.fund(Loan.address, loanMaxAmount, {from: otherLender});
+                const bidAmount = await Loan.getLenderBidAmount(otherLender);
+                const balancee2 = await DAIToken.balanceOf(otherLender);
+                // Retrieve current state == ACTIVE
+                const stateAfterFund = await Loan.currentState({from: owner});
+                expect(Number(stateAfterFund)).to.equal(2);
+
+                await Loan.withdrawLoan({from: borrower});
+
+                const amountToRepay = await Loan.borrowerDebt();
+                const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+
+                await DAIToken.approve(DAIProxy.address, amountToRepay, { from: borrower });
+                await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+                const borrowerBalanceAfter = await DAIToken.balanceOf(borrower);
+                // Fast way to check. TODO: Use BN.js to exact calc-
+                expect(borrowerBalanceAfter).to.be.eq.BN(borrowerBalancePrior.sub(amountToRepay));
+
+                // State should change to REPAID
+                const endState = await Loan.currentState({from: owner});
+                expect(Number(endState)).to.equal(4);
+                const lenderAmount = await Loan.getLenderBidAmount(otherLender);
+                const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+                const lenderBalanceBefore = await DAIToken.balanceOf(otherLender);
+                await Loan.withdrawRepaymentAndDeposit({ from: otherLender, gas: 6000000 });
+                const lenderBalanceAfter = await DAIToken.balanceOf(otherLender);
+                expect(lenderBalanceAfter).to.be.eq.BN(lenderBalanceBefore.add(lenderAmountWithInterest).sub(DAI_COST_200_RAISE));
+                // User have deposit inside the DepositRegistry
+                const deposited = await DepositRegistry.hasDeposited(otherLender);
+                expect(deposited).to.equal(true);
+            });
+        });
+        describe('Method withdrawRepayment', () => {
+            beforeEach(async () => {
+
+                Loan = await LoanContract.new(
+                    termLength,
+                    minAmount,
+                    maxAmount,
+                    minInterestRate,
+                    maxInterestRate,
+                    borrower,
+                    DAIToken.address, 
+                    DAIProxy.address,
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
                 );
             });
             it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID', async () => {
@@ -683,15 +864,19 @@ contract('LoanContract', (accounts) => {
                     auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
                     termEndTimestamp = currentBlock.timestamp + 2 ;
                     Loan = await LoanContract.new(
-                        auctionBlockLength,
-                        termEndTimestamp,
+                        termLength,
                         minAmount,
                         maxAmount,
+                        minInterestRate,
                         maxInterestRate,
                         borrower,
                         DAIToken.address, 
                         DAIProxy.address,
-                        admin
+                        admin,
+                        operatorPercentFee,
+                        auctionLength,
+                        SwapFactory.address
+
                     );
                     await helpers.waitNBlocks(1000);
                     const isExpired = await Loan.isDefaulted();
@@ -759,15 +944,19 @@ contract('LoanContract', (accounts) => {
                 auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
                 termEndTimestamp = currentBlock.timestamp + 2 ;
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expect withdrawRefund to allow Lender refund if state == FAILED_TO_FUND', async () => {
@@ -775,12 +964,9 @@ contract('LoanContract', (accounts) => {
                 await DAIToken.approve(DAIProxy.address, 50, { from: lender });
                 await DAIProxy.fund(Loan.address, 50, {from: lender});
 
-                // Mine to end of funding
-                const fundEndBlock = await Loan.auctionEndBlock();
-                const currentBlock = await web3.eth.getBlockNumber();
-                const blocksToEnd =  Number(fundEndBlock) - Number(currentBlock);
+                // Mine to end of funding\
             
-                await helpers.waitNBlocks(blocksToEnd + 100);
+                await helpers.increaseTime(auctionLength+10);
                 await Loan.updateStateMachine();
                 
                 const stateAfterDeadline = await Loan.currentState();
@@ -802,12 +988,8 @@ contract('LoanContract', (accounts) => {
                     await DAIToken.approve(DAIProxy.address, 50, { from: lender });
                     await DAIProxy.fund(Loan.address, 50, {from: lender});
 
-                    // Mine to end of funding
-                    const fundEndBlock = await Loan.auctionEndBlock();
-                    const currentBlock = await web3.eth.getBlockNumber();
-                    const blocksToEnd =  Number(fundEndBlock) - Number(currentBlock);
 
-                    await helpers.waitNBlocks(blocksToEnd + 100);
+                    await helpers.increaseTime(auctionLength+10);
                     await Loan.updateStateMachine();
                     
                     const stateAfterDeadline = await Loan.currentState();
@@ -907,15 +1089,19 @@ contract('LoanContract', (accounts) => {
         describe('Method onRepaymentReceived', () => {
             beforeEach(async () => {
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID', async () => {
@@ -950,23 +1136,23 @@ contract('LoanContract', (accounts) => {
         describe('Method isAuctionExpired', () => {
             beforeEach(async () => {
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects to return true when block number is greater than the auction end block', async() => {
-                const fundEndBlock = await Loan.auctionEndBlock();
-                const currentBlock = await web3.eth.getBlockNumber();
-                const blocksToEnd =  Number(fundEndBlock) - Number(currentBlock);
-            
-                await helpers.waitNBlocks(blocksToEnd);
+                await helpers.increaseTime(auctionLength+10);
                 const isExpired = await Loan.isAuctionExpired()
                 expect(isExpired).to.equal(true);
             });
@@ -977,22 +1163,26 @@ contract('LoanContract', (accounts) => {
         });
         describe('Method isDefaulted', () => {
             beforeEach(async () => {
-                auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
-                termEndTimestamp = currentBlock.timestamp + 2 ;
+                auctionLength = 30; // 1 min in seconds
+                termLength = 2 ;
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
-            xit('Expects to return true when block timestamp is greater than the termEndTimestamp', async() => {
-                await helpers.waitNBlocks(1000);
+            it('Expects to return true when block timestamp is greater than the termEndTimestamp', async() => {
+                await helpers.increaseTime(auctionLength+10);
                 const isExpired = await Loan.isDefaulted();
                 expect(isExpired).to.equal(true);
             });
@@ -1003,60 +1193,62 @@ contract('LoanContract', (accounts) => {
         });
         describe('Method getInterestRate', () => {
             beforeEach(async () => {
-                auctionBlockLength = 300 / averageMiningBlockTime; // 1 min in seconds
-                termEndTimestamp = currentBlock.timestamp + 20000 ;
+                auctionLength = 60; // 1 min in seconds
+                termLength =  60;
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects to calculate correctly the interest rate when loan is in state = CREATED', async () => {
                 await DAIToken.approve(DAIProxy.address, 50, { from: lender });
                 await DAIProxy.fund(Loan.address, 50, {from: lender});
 
-                // formula:: maxInterest * (currentBlockNumber - auctionStartBlock) / (auctionEndBlock - auctionStartBlock)
-                await helpers.waitNBlocks(100)
-                const calculatedInterest = Number(await Loan.getInterestRate());
+                await helpers.increaseTime(30);
+                const calculatedInterest = await Loan.getInterestRate();
 
-                expect(calculatedInterest).to.gt(0);
+                expect(calculatedInterest).to.gt.BN(0);
             });
             it('Expects to return different interest rates through time', async () => {
                 await DAIToken.approve(DAIProxy.address, 50, { from: lender });
                 await DAIProxy.fund(Loan.address, 50, {from: lender});
 
                 // formula:: maxInterest * (currentBlockNumber - auctionStartBlock) / (auctionEndBlock - auctionStartBlock)
-                await helpers.waitNBlocks(100)
-                const calculatedInterest = Number(await Loan.getInterestRate());
                 
-                await helpers.waitNBlocks(100);
+                await helpers.increaseTime(30);
+                const calculatedInterest = await Loan.getInterestRate();
+                
+                await helpers.increaseTime(10);
 
                 // formula:: maxInterest * (currentBlockNumber - auctionStartBlock) / (auctionEndBlock - auctionStartBlock)
-                const calculatedInterest2 = Number(await Loan.getInterestRate());
+                const calculatedInterest2 = await Loan.getInterestRate();
                 
-                expect(calculatedInterest).to.gt(0);
-                expect(calculatedInterest2).to.gt(calculatedInterest);
+                expect(calculatedInterest).to.gt.BN(0);
+                expect(calculatedInterest2).to.gt.BN(calculatedInterest);
             });
             it('Expects to return same interest rates once auction ended state= ACTIVE', async () => {
                 await DAIToken.approve(DAIProxy.address, 100, { from: lender });
                 await DAIProxy.fund(Loan.address, 100, {from: lender});
 
                 // formula:: maxInterest * (lastFundedBlock - auctionStartBlock) / (auctionEndBlock - auctionStartBlock)
-                await helpers.waitNBlocks(100)
+                await helpers.increaseTime(auctionLength +10);
                 const calculatedInterest = Number(await Loan.getInterestRate());
+                await helpers.increaseTime(10);
+                const calculatedInterest2 = Number(await Loan.getInterestRate());
                 
-                const lastFundedBlock = Number(await Loan.lastFundedBlock());
-                const auctionStartBlock = Number(await Loan.auctionStartBlock());
-                const auctionEndBlock = Number(await Loan.auctionEndBlock());
                 
-                const interest = maxInterestRate * ((lastFundedBlock - auctionStartBlock) / (auctionEndBlock - auctionStartBlock));
-                expect(calculatedInterest).to.equal(interest);
+                expect(calculatedInterest).to.equal(calculatedInterest2);
             });
         });
         describe('Method withdrawFundsUnlocked', async() => {
@@ -1064,15 +1256,19 @@ contract('LoanContract', (accounts) => {
                 auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
                 termEndTimestamp = currentBlock.timestamp + 2 ;
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects lender to withdraw funds after unlocked', async() => {
@@ -1106,15 +1302,19 @@ contract('LoanContract', (accounts) => {
                 auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
                 termEndTimestamp = currentBlock.timestamp + 2 ;
                 Loan = await LoanContract.new(
-                    auctionBlockLength,
-                    termEndTimestamp,
+                    termLength,
                     minAmount,
                     maxAmount,
+                    minInterestRate,
                     maxInterestRate,
                     borrower,
                     DAIToken.address, 
                     DAIProxy.address,
-                    admin
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+
                 );
             });
             it('Expects to unlock the funds if admin', async () => {
@@ -1130,5 +1330,145 @@ contract('LoanContract', (accounts) => {
                 }
             });
         });
+        describe('Tests for when withdrawn even if DAI is transfered [Community found]', () => {
+            beforeEach(async () => { 
+                try { 
+                    DAIToken = await DAITokenContract.new({from: owner});
+
+                    await DAIToken.transferAmountToAddress(lender, 150, {from: owner}); 
+                    await DAIToken.transferAmountToAddress(borrower, 200, {from: owner}); 
+                    //let´s give bob some DAI so he can fool around with a LoanContract 
+                    await DAIToken.transferAmountToAddress(bob, 1, {from: owner});
+
+                    DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+
+                    currentBlock = await web3.eth.getBlock('latest');
+
+                    // Set Loan variables 
+                    minAmount = 80; 
+                    maxAmount = 100; 
+                    minInterestRate = 0; 
+                    maxInterestRate = 3000; 
+                    auctionLength = 60 * 60; // 1 hour in seconds 
+                    termEndTimestamp = 2 * 60 * 60; // 2 hours in seconds 
+                    Loan = await LoanContract.new( 
+                        termLength,
+                        minAmount,
+                        maxAmount,
+                        minInterestRate,
+                        maxInterestRate,
+                        borrower,
+                        DAIToken.address, 
+                        DAIProxy.address,
+                        admin,
+                        operatorPercentFee,
+                        auctionLength,
+                        SwapFactory.address
+
+                    ); 
+                } catch (error) { 
+                    throw error; 
+                } 
+            });
+            it('Expects to get closed if an abritrary amount of DAI is sent to loan contract when withdrawn', async () => { 
+                const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+                const fundAmount = new BN(100);
+                await DAIToken.approve(DAIProxy.address, fundAmount, {from: lender}); 
+                await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
+
+                // Retrieve current state == ACTIVE 
+                const stateAfterFund = await Loan.currentState({from: owner}); 
+                expect(stateAfterFund).to.eq.BN(2);
+
+                await Loan.withdrawLoan({from: borrower}); 
+                const borrowerBalance = await DAIToken.balanceOf(borrower);
+                const netBalance = await Loan.auctionBalance();
+
+                expect(borrowerBalance).to.eq.BN(borrowerBalancePrior.add(netBalance)); 
+                // State should still be ACTIVE
+
+                const endState = await Loan.currentState({from: owner}); 
+                expect(endState).to.eq.BN(2);
+
+                const amountToRepay = await Loan.borrowerDebt(); 
+                await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower}); 
+                await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+                const stateAfterDeadline = await Loan.currentState(); 
+                expect(stateAfterDeadline).to.eq.BN(4);
+
+                //if bobs send an arbitrary amount of dai to the contract it will never go to "CLOSED" state 
+                await DAIToken.transfer(Loan.address, 1, {from: bob});
+
+                await Loan.withdrawRepayment({from: lender});
+
+                //will fail because state is still REPAID although all repayments where withdrawn 
+                expect(await Loan.currentState()).to.eq.BN(5); 
+            }); 
+        })
+        describe('Method withdrawFees', () => {
+            beforeEach(async () => {
+                auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
+                termEndTimestamp = currentBlock.timestamp + 2 ;
+                Loan = await LoanContract.new(
+                    termLength,
+                    minAmount,
+                    maxAmount,
+                    minInterestRate,
+                    maxInterestRate,
+                    borrower,
+                    DAIToken.address, 
+                    DAIProxy.address,
+                    admin,
+                    operatorPercentFee,
+                    auctionLength,
+                    SwapFactory.address
+
+                );
+            });
+            it('Expect operators to withdraw the loan operator fee if borrower has withdraw', async () => {
+                const adminBalancePrior = await DAIToken.balanceOf(admin);
+                const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+                await DAIToken.approve(DAIProxy.address, maxAmount, { from: lender });
+                await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+                await Loan.withdrawLoan({from: borrower});
+                await Loan.withdrawFees({from: admin});
+                const adminBalanceAfter = await DAIToken.balanceOf(admin)
+                expect(adminBalanceAfter).to.eq.BN(adminBalancePrior.add(expectedFee));
+            })
+            it('Expect operators to NOT withdraw the loan operator fee if borrower did NOT withdraw', async () => {
+                const adminBalancePrior = await DAIToken.balanceOf(admin);
+                const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+                await DAIToken.approve(DAIProxy.address, maxAmount, { from: lender });
+                await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+                await truffleAssert.fails(
+                    Loan.withdrawFees({from: admin}),
+                    truffleAssert.ErrorType.REVERT,
+                    'borrower didnt withdraw'
+                );
+
+                const adminBalanceAfter = await DAIToken.balanceOf(admin)
+                expect(adminBalanceAfter).to.eq.BN(adminBalancePrior);
+            })
+            it('Expect operators to NOT withdraw the loan operator fee if already done', async () => {
+                const adminBalancePrior = await DAIToken.balanceOf(admin);
+                const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+                await DAIToken.approve(DAIProxy.address, maxAmount, { from: lender });
+                await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+                await Loan.withdrawLoan({from: borrower});
+                await Loan.withdrawFees({from: admin});
+                const adminBalanceAfter = await DAIToken.balanceOf(admin)
+                expect(adminBalanceAfter).to.eq.BN(adminBalancePrior.add(expectedFee));
+
+                await truffleAssert.fails(
+                    Loan.withdrawFees({from: admin}),
+                    truffleAssert.ErrorType.REVERT,
+                    "no funds to withdraw"
+                );
+                const adminBalanceAfterError = await DAIToken.balanceOf(admin)
+                expect(adminBalanceAfterError).to.eq.BN(adminBalanceAfter);
+            })
+        })
     });
 });

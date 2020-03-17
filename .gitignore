@@ -1,5 +1,17 @@
 node_modules
 # production
 /build
+.secret
 private.key
+*metadata*.json
+*contracts*.json
 contracts.json
+coverage*/
+coverage/
+.coverage_artifacts/
+.coverage_contracts/
+
+# buidler files
+cache/
+artifacts/
+.env

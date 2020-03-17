@@ -1,6 +1,7 @@
-pragma solidity 0.5.10;
+pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+
 
 contract KYCRegistry is Ownable {
     mapping(address => bool) public KYCConfirmed;

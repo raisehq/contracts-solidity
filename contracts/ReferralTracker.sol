@@ -1,9 +1,10 @@
-pragma solidity 0.5.10;
+pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
+
 
 contract ReferralTracker is Ownable, Pausable {
     using SafeMath for uint256;
@@ -26,8 +27,9 @@ contract ReferralTracker is Ownable, Pausable {
         uint256 currentTrackerBalance
     );
     event FundsAdded(address referralAddress, address fundsDepositor, uint256 amount);
+    event FundsRemoved(address referralAddress, address fundsWithdrawer, uint256 amount);
 
-    constructor(address registryAddress_, address tokenAdress) public {
+    constructor(address registryAddress_, address tokenAdress) public PauserRole() {
         registryAddress = registryAddress_;
         token = ERC20(tokenAdress);
     }
@@ -46,15 +48,32 @@ contract ReferralTracker is Ownable, Pausable {
         admin = _admin;
     }
 
+    function setToken(address _token) public onlyOwner {
+        token = ERC20(_token);
+    }
+
     function addFunds(uint256 amount) public onlyAdmin whenNotPaused {
         token.transferFrom(msg.sender, address(this), amount);
         emit FundsAdded(address(this), msg.sender, amount);
     }
 
-    function registerReferral(address referrer, address user) public onlyRegistry whenNotPaused {
+    function removeFunds(address to) public onlyAdmin {
+        uint256 amount = token.balanceOf(address(this));
+        require(amount > 0, "ReferralTracker has no funds to withdraw");
+        token.transfer(to, amount);
+        emit FundsRemoved(address(this), msg.sender, amount);
+    }
+
+    function registerReferral(address referrer, address user)
+        public
+        onlyRegistry
+        whenNotPaused
+        returns (bool)
+    {
         unclaimedReferrals[referrer] = unclaimedReferrals[referrer].add(1);
 
         emit ReferralRegistered(address(this), referrer, user);
+        return true;
     }
 
     function withdraw(address to) public whenNotPaused {
@@ -68,5 +87,9 @@ contract ReferralTracker is Ownable, Pausable {
         token.transfer(to, amount);
 
         emit ReferralBonusWithdrawn(address(this), msg.sender, amount, trackerBalance);
+    }
+
+    function getTrackerBalance() public view returns (uint256) {
+        return token.balanceOf(address(this));
     }
 }

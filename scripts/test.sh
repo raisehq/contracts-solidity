@@ -20,7 +20,7 @@ ganache_running() {
 }
 
 start_ganache() {
-  npx ganache-cli --gasLimit 0xfffffffffff --port "$ganache_port" > /dev/null &
+  npx ganache-cli --noVMErrorsOnRPCResponse -e 10000000 --gasLimit 0xfffffffffff --port "$ganache_port" > /dev/null &
 
   ganache_pid=$!
 
@@ -51,5 +51,5 @@ else
     echo "Starting our own ganache instance"
     start_ganache
   fi
-  npx truffle test "$@"
+  npx truffle test --network test "$@"
 fi

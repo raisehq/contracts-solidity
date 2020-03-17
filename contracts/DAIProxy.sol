@@ -1,29 +1,50 @@
-pragma solidity 0.5.10;
+pragma solidity 0.5.12;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./Authorization.sol";
-import "./LoanContractInterface.sol";
-import "./DAIProxyInterface.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Detailed.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./interfaces/IAuthorization.sol";
+import "./interfaces/ILoanContract.sol";
+import "./interfaces/IDAIProxy.sol";
+import "./libs/ERC20Wrapper.sol";
 
-contract DAIProxy is DAIProxyInterface {
-    ERC20 DAIToken;
-    Authorization auth;
 
-    event LoanFunded(address indexed funder, address indexed loanAddress, uint256 amount);
-    event RepaymentReceived(address indexed repayer, address indexed loanAddress, uint256 amount);
+contract DAIProxy is IDAIProxy, Ownable {
+    IAuthorization auth;
+    address public administrator;
+    bool public hasToDeposit;
 
-    constructor(address authAddress, address DAIAddress) public {
-        auth = Authorization(authAddress);
-        DAIToken = ERC20(DAIAddress);
+    event AuthAddressUpdated(address newAuthAddress, address administrator);
+    event AdministratorUpdated(address newAdministrator);
+    event HasToDeposit(bool value, address administrator);
+
+    constructor(address authAddress) public {
+        auth = IAuthorization(authAddress);
+    }
+
+    function setDepositRequeriment(bool value) external onlyAdmin {
+        hasToDeposit = value;
+        emit HasToDeposit(value, administrator);
+    }
+
+    function setAdministrator(address admin) external onlyOwner {
+        administrator = admin;
+        emit AdministratorUpdated(administrator);
+    }
+
+    function setAuthAddress(address authAddress) external onlyAdmin {
+        auth = IAuthorization(authAddress);
+        emit AuthAddressUpdated(authAddress, administrator);
     }
 
     function fund(address loanAddress, uint256 fundingAmount)
-        public
-        onlyKYCanFund
+        external
         onlyHasDepositCanFund
+        onlyKYCCanFund
     {
         uint256 newFundingAmount = fundingAmount;
-        LoanContractInterface loanContract = LoanContractInterface(loanAddress);
+        ILoanContract loanContract = ILoanContract(loanAddress);
+        address tokenAddress = loanContract.getTokenAddress();
 
         uint256 auctionBalance = loanContract.getAuctionBalance();
         uint256 maxAmount = loanContract.getMaxAmount();
@@ -31,37 +52,56 @@ contract DAIProxy is DAIProxyInterface {
         if (auctionBalance + fundingAmount > maxAmount) {
             newFundingAmount = maxAmount - auctionBalance;
         }
-
-        bool canTransfer = loanContract.onFundingReceived(msg.sender, newFundingAmount);
-        if (canTransfer == true) {
-            transfer(loanAddress, newFundingAmount);
-        }
-
+        require(newFundingAmount > 0, "funding amount can not be zero");
+        require(
+            loanContract.onFundingReceived(msg.sender, newFundingAmount),
+            "funding failed at loan contract"
+        );
+        require(transfer(loanAddress, newFundingAmount, tokenAddress), "erc20 transfer failed");
     }
 
-    function repay(address loanAddress, uint256 repaymentAmount) public onlyKYCanFund {
-        LoanContractInterface loanContract = LoanContractInterface(loanAddress);
-        bool canTransfer = loanContract.onRepaymentReceived(msg.sender, repaymentAmount);
-
-        if (canTransfer == true) {
-            transfer(loanAddress, repaymentAmount);
-        }
+    function repay(address loanAddress, uint256 repaymentAmount) external onlyKYCCanFund {
+        ILoanContract loanContract = ILoanContract(loanAddress);
+        address tokenAddress = loanContract.getTokenAddress();
+        require(
+            loanContract.onRepaymentReceived(msg.sender, repaymentAmount),
+            "repayment failed at loan contract"
+        );
+        require(transfer(loanAddress, repaymentAmount, tokenAddress), "erc20 repayment failed");
     }
 
-    function transfer(address loanAddress, uint256 amount) internal {
-        require(DAIToken.allowance(msg.sender, address(this)) >= amount, "funding not approved");
-        uint256 balance = DAIToken.balanceOf(msg.sender);
+    function transfer(address loanAddress, uint256 amount, address tokenAddress)
+        internal
+        returns (bool)
+    {
+        require(
+            ERC20Wrapper.allowance(tokenAddress, msg.sender, address(this)) >= amount,
+            "funding not approved"
+        );
+        uint256 balance = ERC20Wrapper.balanceOf(tokenAddress, msg.sender);
         require(balance >= amount, "Not enough funds");
-        DAIToken.transferFrom(msg.sender, loanAddress, amount);
+        require(
+            ERC20Wrapper.transferFrom(tokenAddress, msg.sender, loanAddress, amount),
+            "failed at transferFrom"
+        );
+
+        return true;
     }
 
-    modifier onlyKYCanFund {
+    modifier onlyKYCCanFund {
         require(auth.isKYCConfirmed(msg.sender), "user does not have KYC");
         _;
     }
 
     modifier onlyHasDepositCanFund {
-        require(auth.hasDeposited(msg.sender), "user does not have a deposit");
+        if (hasToDeposit) {
+            require(auth.hasDeposited(msg.sender), "user does not have a deposit");
+        }
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == administrator, "Caller is not an administrator");
         _;
     }
 }

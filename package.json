@@ -1,51 +1,85 @@
 {
   "name": "herotoken-contracts-solidity",
-  "version": "0.1.0",
+  "version": "0.6.11",
   "description": "Herotoken solidity contracts",
   "private": false,
+  "watch": {
+    "test": {
+      "patterns": [
+        "contracts",
+        "test"
+      ],
+      "extensions": [
+        "sol",
+        "js"
+      ]
+    }
+  },
   "scripts": {
+    "watch": "npm-watch",
     "ganache": "ganache-cli",
     "compile": "truffle compile",
     "migration": "truffle migration --network development",
     "migration:kovan": "truffle migration --network kovan",
     "migration:kovan:reset": "truffle migration --reset --network kovan",
+    "migration:goerli": "truffle migration --network goerli",
+    "migration:goerli:reset": "truffle migration --reset --network goerli",
+    "migration:mainnet": "npx truffle@4.1.15 migration --network mainnet",
     "migration:reset": "truffle migration --reset --network development",
+    "migration:cypress": "truffle migration --reset --network cypress",
     "console": "truffle console --network kovan",
+    "tests": "env-cmd npm run test",
     "test": "bash scripts/test.sh",
-    "coverage": "./node_modules/.bin/solidity-coverage",
+    "coverage": "truffle run coverage --solcoverjs ./.solcover.js",
     "solhint": "./node_modules/.bin/solhint -f table contracts/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/*.sol"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run prettier:solidity && npm run solhint && SOLIDITY_COVERAGE=true bash scripts/test.sh && git add contracts && git add coverage*"
+      "pre-commit": "npm run prettier:solidity && npm run solhint && npm run compile"
     }
   },
   "author": "Hero Fintech",
   "license": "GPL-3.0-only",
   "repository": "https://gitlab.com/herohq/contracts-solidity.git",
   "dependencies": {
+    "@0x/subproviders": "^5.0.4",
+    "@babel/polyfill": "^7.4.4",
+    "@deconet/truffle-ledger-provider": "git+https://github.com/deconet/truffle-ledger-provider.git#2525cbaabcce6c2489dc2c2183c2043883ba2187",
+    "@ledgerhq/hw-app-eth": "4.70.0",
+    "@ledgerhq/hw-transport-node-hid": "4.70.0",
+    "@ledgerhq/web3-subprovider": "4.68.2",
     "axios": "^0.18.0",
     "bignumber.js": "^9.0.0",
     "bluebird": "^3.5.5",
+    "bn-chai": "^1.0.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "concurrently": "^4.1.0",
     "dotenv": "^6.2.0",
+    "env-cmd": "^10.1.0",
     "faker": "^4.1.0",
-    "ganache-cli": "^6.4.1",
-    "husky": "^2.7.0",
-    "openzeppelin-solidity": "^2.3.0",
-    "solidity-coverage": "git+https://github.com/sc-forks/solidity-coverage.git#d71c962f8636f53494f32bcbc05db2a36d05f8f8",
-    "truffle": "^5.0.26",
-    "truffle-assertions": "^0.9.1",
-    "truffle-hdwallet-provider": "^1.0.13",
-    "web3-utils": "^1.0.0-beta.55"
+    "ganache-cli": "^6.9.1",
+    "jsondiffpatch": "^0.4.1",
+    "openzeppelin-solidity": "2.4.0",
+    "raise-token": "git+https://git@gitlab.com/raisehq/raise-token.git",
+    "truffle": "5.1.13",
+    "truffle-assertions": "0.9.1",
+    "truffle-hdwallet-provider": "1.0.13",
+    "truffle-ledger-provider": "1.0.1",
+    "web3-utils": "1.2.6"
   },
   "devDependencies": {
-    "prettier": "^1.18.2",
-    "prettier-plugin-solidity": "^1.0.0-alpha.27",
+    "@nomiclabs/buidler": "1.1.2",
+    "@nomiclabs/buidler-truffle5": "1.1.2",
+    "@nomiclabs/buidler-web3": "1.1.2",
+    "husky": "^2.7.0",
+    "npm-watch": "^0.6.0",
+    "prettier": "^1.19.1",
+    "prettier-plugin-solidity": "^1.0.0-alpha.44",
     "solhint": "^2.1.0",
-    "solhint-plugin-prettier": "0.0.3"
+    "solhint-plugin-prettier": "0.0.3",
+    "solidity-coverage": "^0.7.2",
+    "web3": "1.2.6"
   }
 }
