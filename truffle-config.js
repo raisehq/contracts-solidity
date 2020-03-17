@@ -1,6 +1,5 @@
 require("@babel/polyfill");
 const fs = require("fs");
-const LedgerProvider = require("truffle-ledger-provider");
 
 /**
  * Use this file to configure your truffle project. It's seeded with some
@@ -34,12 +33,6 @@ const HDWalletProvider = require("truffle-hdwallet-provider");
 const ownerKey = process.env.PRIVATE_KEY || fs.readFileSync("./private.key").toString();
 const adminKey = process.env.PRIVATE_KEY || fs.readFileSync("./private.key").toString();
 const privateKeys = [ownerKey, adminKey];
-const ledgerDefaultConfig = {
-  //path: "44'/60'/0'/0/0", // ledger default derivation path
-  baseDerivationPath: "44'/60'/0'/0" // ledger default derivation path
-};
-
-const InfuraLedgerProvider = require("./rpc-ledger-provider");
 
 module.exports = {
   fixedContracts: {
@@ -114,24 +107,11 @@ module.exports = {
       network_id: "5" // Görli network id
     },
     mainnet: {
-      //gas: 9912788,
-      gasPrice: 3500000000,
+      networkCheckTimeout: 10000000,
+      gasPrice: 9100000000,
       network_id: "1", // mainnet
       provider: function() {
-        // return new HDWalletProvider(mnemonic, infuraApi("mainnet"));
-        return InfuraLedgerProvider(ledgerOptions, infuraApi("mainnet"));
-      }
-    },
-    ledgerMainnet: {
-      gas: 9994805,
-      gasPrice: 20000000000,
-      network_id: "1", // mainnet
-      provider: function() {
-        const ledgerOptions = {
-          ...ledgerDefaultConfig,
-          networkId: 1 // mainnet
-        };
-        return new LedgerProvider(ledgerOptions, infuraApi("mainnet"), true);
+        return new HDWalletProvider(privateKeys, infuraApi("mainnet"), 0, 2);
       }
     }
   },
