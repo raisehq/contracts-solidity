@@ -2,13 +2,14 @@ pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/IDepositRegistry.sol";
 import "./interfaces/IUniswapFactory.sol";
 import "./interfaces/IUniswapExchange.sol";
 import "@nomiclabs/buidler/console.sol";
 
 
-contract SwapAndDeposit {
+contract SwapAndDeposit is ISwapAndDeposit {
     using SafeMath for uint256;
 
     address depositAddress;
@@ -51,6 +52,9 @@ contract SwapAndDeposit {
         uint256 inputTokenAmount,
         uint256 outputTokenAmount
     ) internal returns (bool) {
+        // Prevent DDOS erc20 attack by calculating balance offset, so if one maliciuous user sends 1 WEI
+        // of ERC20 to a precomputed address, this method still works and attacker locks the funds forever
+        uint256 inputBalancePriorOps = IERC20(inputTokenAddress).balanceOf(address(this));
         require(
             IERC20(inputTokenAddress).transferFrom(msg.sender, address(this), inputTokenAmount),
             "error transfer input token to swap"
@@ -72,7 +76,10 @@ contract SwapAndDeposit {
             IERC20(inputTokenAddress).transfer(depositor, inputTokenAmount.sub(inputTokenSpent)),
             "error transfer remaining input"
         );
-        require(IERC20(inputTokenAddress).balanceOf(address(this)) == 0, "input token still here");
+        require(
+            IERC20(inputTokenAddress).balanceOf(address(this)) == inputBalancePriorOps,
+            "input token still here"
+        );
         return true;
     }
 
@@ -83,13 +90,14 @@ contract SwapAndDeposit {
     function delegateDeposit(
         address depositor,
         address outputTokenAddress,
-        uint256 outputTokenAmount
+        uint256 outputTokenAmount,
+        uint256 outputBalancePriorOps
     ) internal returns (bool) {
         IERC20(outputTokenAddress).approve(depositAddress, outputTokenAmount);
         require(IDepositRegistry(depositAddress).delegateDeposit(depositor), "error while deposit");
         require(IDepositRegistry(depositAddress).hasDeposited(depositor), "should be depositor");
         require(
-            IERC20(outputTokenAddress).balanceOf(address(this)) == 0,
+            IERC20(outputTokenAddress).balanceOf(address(this)) == outputBalancePriorOps,
             "output token still here"
         );
         return true;
@@ -110,6 +118,7 @@ contract SwapAndDeposit {
         );
         address outputTokenAddress = IDepositRegistry(depositAddress).getERC20Token();
         require(outputTokenAddress != address(0), "output token can not be 0");
+        uint256 outputBalancePriorOps = IERC20(outputTokenAddress).balanceOf(address(this));
         swapTokenToTokenOutput(
             depositor,
             inputTokenAddress,
@@ -117,7 +126,7 @@ contract SwapAndDeposit {
             inputTokenAmount,
             DEPOSIT_AMOUNT
         );
-        delegateDeposit(depositor, outputTokenAddress, DEPOSIT_AMOUNT);
+        delegateDeposit(depositor, outputTokenAddress, DEPOSIT_AMOUNT, outputBalancePriorOps);
         emit SwapDeposit(msg.sender, depositor);
         // mark this contract as destroyed, so external contract can know this contract is being selfdestruct
         // during this tx, also prevents to call this function during the transaction

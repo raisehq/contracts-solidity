@@ -7,7 +7,7 @@ private.key
 *contracts*.json
 contracts.json
 coverage*/
-coverage/
+coverage*
 .coverage_artifacts/
 .coverage_contracts/
 

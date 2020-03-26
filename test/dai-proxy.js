@@ -5,22 +5,25 @@ const {expect} = chai;
 const DAIProxyContract = artifacts.require("DAIProxy");
 const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
-const HeroFakeTokenContract = artifacts.require("HeroFakeToken");
+const RaiseContract = artifacts.require("RaiseFake");
+const DAIContract = artifacts.require("DAIFake");
 const KYCContract = artifacts.require("KYCRegistry");
 const MockLoanContract = artifacts.require("LoanContractMock");
 const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
 const truffleAssert = require("truffle-assertions");
+const {initializeUniswap} = require("./uniswap.utils");
 
 const HeroAmount = "200000000000000000000";
 
 contract("DAIProxy Contract", function(accounts) {
   let DAIProxy;
   let Auth;
-  let HeroFakeToken;
+  let RaiseToken;
   let DepositRegistry;
   let KYCRegistry;
   let DAIToken;
   let LoanContract;
+  let uniswapAddress;
 
   const owner = accounts[0];
   const user = accounts[1];
@@ -31,29 +34,27 @@ contract("DAIProxy Contract", function(accounts) {
 
   const migrate = async () => {
     try {
-      HeroFakeToken = await HeroFakeTokenContract.new({from: owner});
-      DAIToken = await HeroFakeTokenContract.new({from: owner});
-      await DAIToken.transferFakeHeroTokens(user, {from: owner});
-      await DAIToken.transferFakeHeroTokens(other_kyc_user_no_deposit, {from: owner});
-      await DAIToken.transferFakeHeroTokens(other_user, {from: owner});
+      RaiseToken = await RaiseContract.new({from: owner});
+      DAIToken = await DAIContract.new({from: owner});
+      await DAIToken.mintTokens(user, {from: owner});
+      await DAIToken.mintTokens(other_kyc_user_no_deposit, {from: owner});
+      await DAIToken.mintTokens(other_user, {from: owner});
       LoanContract = await MockLoanContract.new(DAIToken.address, {from: owner});
       KYCRegistry = await KYCContract.new();
       await KYCRegistry.setAdministrator(admin);
-      DepositRegistry = await DepositRegistryContract.new(
-        HeroFakeToken.address,
-        KYCRegistry.address,
-        {from: owner}
-      );
+      DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
+        from: owner
+      });
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-
       ERC20Wrapper = await ERC20WrapperContract.new();
       await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-      DAIProxy = await DAIProxyContract.new(Auth.address);
+      uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
+      DAIProxy = await DAIProxyContract.new(Auth.address, uniswapAddress);
       await DAIProxy.setAdministrator(admin, {from: owner});
 
       // user one
-      await HeroFakeToken.transferFakeHeroTokens(user, {from: owner});
-      await HeroFakeToken.approve(DepositRegistry.address, HeroAmount, {from: user});
+      await RaiseToken.mintTokens(user, {from: owner});
+      await RaiseToken.approve(DepositRegistry.address, HeroAmount, {from: user});
       await DepositRegistry.depositFor(user, {from: user});
       await KYCRegistry.addAddressToKYC(user, {from: admin});
 

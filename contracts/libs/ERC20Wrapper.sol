@@ -59,7 +59,7 @@ library ERC20Wrapper {
         }
     }
 
-    function isIssuedToken(address _token) private returns (bool) {
+    function isIssuedToken(address _token) private view returns (bool) {
         return (keccak256(abi.encodePacked((IERC20Wrapper(_token).symbol()))) ==
             keccak256(abi.encodePacked(("USDT"))));
     }

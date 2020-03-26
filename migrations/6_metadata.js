@@ -1,8 +1,8 @@
 const spawn = require("child_process").spawn;
 const version = require("../package.json").version;
 const path = require("path");
-const {copyFileSync, mkdirSync, existsSync} = require("fs");
-const {NEW_METADATA, PRIOR_METADATA} = require("../scripts/helpers");
+const {copyFileSync, writeFileSync, mkdirSync, existsSync} = require("fs");
+const {NEW_METADATA, PRIOR_METADATA, getContracts} = require("../scripts/helpers");
 
 async function jsondiff(files) {
   const cmd = spawn(`node ${process.env.PWD}/scripts/diff.js`, files, {
@@ -18,6 +18,10 @@ module.exports = async (deployer, network, accounts) => {
   if (network.includes("coverage") || network.includes("test")) {
     return;
   }
+  const currentContracts = await getContracts();
+  currentContracts.version = version;
+  writeFileSync(`${process.env.PWD}/${NEW_METADATA}`, JSON.stringify(currentContracts, null, 2));
+
   const netId = await web3.eth.net.getId();
 
   console.log("\n\nCompare last version and new version:\n");

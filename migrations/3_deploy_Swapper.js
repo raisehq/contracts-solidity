@@ -1,6 +1,6 @@
 const _ = require("lodash");
-const SwapAndDeposit = artifacts.require("SwapAndDeposit");
-const SwapAndDepositFactory = artifacts.require("SwapAndDepositFactory");
+const UniswapSwapper = artifacts.require("UniswapSwapper");
+const UniswapSwapperFactory = artifacts.require("UniswapSwapperFactory");
 const UniswapExchangeAbi = artifacts.require("IUniswapExchange").abi;
 const UniswapFactoryAbi = artifacts.require("IUniswapFactory").abi;
 const {writeFileSync} = require("fs");
@@ -17,8 +17,9 @@ const {
 } = require("../scripts/helpers");
 const {BN} = require("web3-utils");
 
-const SwapAndDepositId = "SwapAndDeposit";
-const SwapAndDepositFactoryId = "SwapAndDepositFactory";
+const UniswapSwapperId = "UniswapSwapper";
+const UniswapSwapperFactoryId = "UniswapSwapperFactory";
+const uniswapId = "UniswapFactory";
 
 const migration = async (deployer, network, accounts) => {
   const web3One = getWeb3(web3);
@@ -30,10 +31,9 @@ const migration = async (deployer, network, accounts) => {
   let uniswapAddress = UNISWAP_FACTORY_ADDRESS[netId] || null;
   const authAddress = _.get(contracts, `address.${netId}.Auth`);
 
-  const swapTemplateHasUpdated = () =>
-    contractIsUpdated(contracts, netId, SwapAndDepositId, SwapAndDeposit);
+  const swapTemplateHasUpdated = () => contractIsUpdated(contracts, netId, UniswapSwapperId, UniswapSwapper);
   const swapFactoryHasUpdated = () =>
-    contractIsUpdated(contracts, netId, SwapAndDepositFactoryId, SwapAndDepositFactory);
+    contractIsUpdated(contracts, netId, UniswapSwapperFactoryId, UniswapSwapperFactory);
 
   if (!uniswapAddress) {
     console.log("--- deploying uniswap ---");
@@ -52,49 +52,39 @@ const migration = async (deployer, network, accounts) => {
 
     uniswapAddress = await uniswapFactory.options.address;
     console.log("UNISWAP ADDRRESS", uniswapAddress);
+    contractMetadata = setMetadata(contractMetadata, netId, uniswapId, {address: uniswapAddress});
   }
   if (swapTemplateHasUpdated() && swapFactoryHasUpdated()) {
-    console.log("|============ deploying SwapTemplate and SwapFactory ==============|");
-    await deployer.deploy(SwapAndDeposit, {
+    console.log("|============ deploying UniswapSwapper and UniswapSwapperFactory ==============|");
+    await deployer.deploy(UniswapSwapper, {
       from: deployerAddress
     });
-    await deployer.deploy(
-      SwapAndDepositFactory,
-      SwapAndDeposit.address,
-      authAddress,
-      uniswapAddress,
-      {
-        from: deployerAddress
-      }
-    );
+    await deployer.deploy(UniswapSwapperFactory, UniswapSwapper.address, uniswapAddress, {
+      from: deployerAddress
+    });
 
     // Update contracts
-    contractMetadata = setMetadata(contractMetadata, netId, SwapAndDepositId, SwapAndDeposit);
-    contractMetadata = setMetadata(
-      contractMetadata,
-      netId,
-      SwapAndDepositFactoryId,
-      SwapAndDepositFactory
-    );
+    contractMetadata = setMetadata(contractMetadata, netId, UniswapSwapperId, UniswapSwapper);
+    contractMetadata = setMetadata(contractMetadata, netId, UniswapSwapperFactoryId, UniswapSwapperFactory);
   } else if (swapTemplateHasUpdated() && !swapFactoryHasUpdated()) {
     console.log(
       "|============ swapTemplate changed: deploying new SwapTemplate and updating swapFactory ==============|"
     );
-    const swapFactoryAddress = _.get(contracts, `address.${netId}.${SwapAndDepositFactoryId}`);
-    await deployer.deploy(SwapAndDeposit, {
+    const swapFactoryAddress = _.get(contracts, `address.${netId}.${UniswapSwapperFactoryId}`);
+    await deployer.deploy(UniswapSwapper, {
       from: deployerAddress
     });
-    const swapFactoryInstance = await SwapAndDepositFactory.at(swapFactoryAddress);
-    await swapFactoryInstance.setLibraryAddress(SwapAndDeposit.address);
+    const swapFactoryInstance = await UniswapSwapperFactory.at(swapFactoryAddress);
+    await swapFactoryInstance.setLibraryAddress(UniswapSwapper.address);
 
     // Update contracts
-    contractMetadata = setMetadata(contractMetadata, netId, SwapAndDepositId, SwapAndDeposit);
+    contractMetadata = setMetadata(contractMetadata, netId, UniswapSwapperId, UniswapSwapper);
   } else {
     console.log(
       "|============ SwapAndDeposit and SwapAndFactory: no changes to deploy ==============|"
     );
   }
-  
+
   writeMetadataTemp(contractMetadata);
 };
 

@@ -164,7 +164,6 @@ module.exports = async (deployer, network, accounts) => {
     );
     // Copying prior contracts to new.contracts.json and set version
     console.log("Writting new metadata to ", `${process.env.PWD}/${NEW_METADATA}`);
-    currentContracts.version = version;
     writeFileSync(`${process.env.PWD}/${NEW_METADATA}`, JSON.stringify(currentContracts, null, 2));
     // Start migrations
     if (network.includes("mainnet")) {

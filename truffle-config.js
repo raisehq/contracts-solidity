@@ -1,4 +1,3 @@
-require("@babel/polyfill");
 const fs = require("fs");
 
 /**
@@ -29,7 +28,7 @@ const fs = require("fs");
 //   .toString()
 //   .trim();
 const infuraApi = network => `https://${network}.infura.io/v3/eb15aaa516234d9f9cf16c7ce4517f27`;
-const HDWalletProvider = require("truffle-hdwallet-provider");
+const HDWalletProvider = require("@truffle/hdwallet-provider");
 const ownerKey = process.env.PRIVATE_KEY || fs.readFileSync("./private.key").toString();
 const adminKey = process.env.PRIVATE_KEY || fs.readFileSync("./private.key").toString();
 const privateKeys = [ownerKey, adminKey];

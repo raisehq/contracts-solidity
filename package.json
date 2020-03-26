@@ -1,6 +1,6 @@
 {
   "name": "herotoken-contracts-solidity",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "description": "Herotoken solidity contracts",
   "private": false,
   "watch": {
@@ -49,6 +49,7 @@
     "@ledgerhq/hw-app-eth": "4.70.0",
     "@ledgerhq/hw-transport-node-hid": "4.70.0",
     "@ledgerhq/web3-subprovider": "4.68.2",
+    "@truffle/hdwallet-provider": "^1.0.33",
     "axios": "^0.18.0",
     "bignumber.js": "^9.0.0",
     "bluebird": "^3.5.5",
@@ -63,7 +64,7 @@
     "jsondiffpatch": "^0.4.1",
     "openzeppelin-solidity": "2.4.0",
     "raise-token": "git+https://git@gitlab.com/raisehq/raise-token.git",
-    "truffle": "5.1.13",
+    "truffle": "5.1.10",
     "truffle-assertions": "0.9.1",
     "truffle-hdwallet-provider": "1.0.13",
     "truffle-ledger-provider": "1.0.1",

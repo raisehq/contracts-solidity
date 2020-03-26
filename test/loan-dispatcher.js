@@ -9,7 +9,8 @@ const truffleAssert = require("truffle-assertions");
 const {expect} = chai;
 const DAIProxyContract = artifacts.require("DAIProxy");
 
-const HeroFakeTokenContract = artifacts.require("HeroFakeToken");
+const DAITokenContract = artifacts.require("DAIFake");
+const RaiseTokenContract = artifacts.require("RaiseFake");
 const LoanContract = artifacts.require("LoanContract");
 const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
@@ -17,6 +18,7 @@ const KYCContract = artifacts.require("KYCRegistry");
 const SwapFactoryContract = artifacts.require("SwapAndDepositFactory");
 const LoanContractDispatcherContract = artifacts.require("LoanContractDispatcher");
 const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
+const {initializeUniswap} = require("./uniswap.utils");
 
 const HeroAmount = "200000000000000000000";
 const helpers = require("./helpers.js");
@@ -26,6 +28,7 @@ const zeroAddress = "0x0000000000000000000000000000000000000000";
 contract("LoanContractDispatcher", accounts => {
   let DAIProxy;
   let DAIToken;
+  let RaiseToken;
   let DepositRegistry;
   let KYCRegistry;
   let Auth;
@@ -48,8 +51,8 @@ contract("LoanContractDispatcher", accounts => {
         await LoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
         await LoanContractDispatcherContract.link("ERC20Wrapper", ERC20Wrapper.address);
 
-        DAIToken = await HeroFakeTokenContract.new({from: owner});
-        HeroToken = await HeroFakeTokenContract.new({from: owner});
+        DAIToken = await DAITokenContract.new({from: owner});
+        RaiseToken = await RaiseTokenContract.new({from: owner});
         SwapFactory = await SwapFactoryContract.new(zeroAddress, zeroAddress, zeroAddress, {
           from: owner
         });
@@ -60,15 +63,15 @@ contract("LoanContractDispatcher", accounts => {
 
         // give permision to the deposit registry to deposit tokens instead of the lender
         DepositRegistry = await DepositRegistryContract.new(
-          HeroToken.address,
+          RaiseToken.address,
           KYCRegistry.address,
           {from: owner}
         );
 
         // initialize proxies for lender and borrower
         Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-        DAIProxy = await DAIProxyContract.new(Auth.address, {from: owner});
-
+        uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
+        DAIProxy = await DAIProxyContract.new(Auth.address, uniswapAddress);
         // check KYC and Deposit
         borrowerKYC = await Auth.isKYCConfirmed(borrower);
 
@@ -114,21 +117,21 @@ contract("LoanContractDispatcher", accounts => {
       });
       it("Expects to set accepted token address", async () => {
         await LoanDispatcher.setAdministrator(admin, {from: owner});
-        const ERC20Token = await HeroFakeTokenContract.new({from: owner});
+        const ERC20Token = await RaiseTokenContract.new({from: owner});
         await LoanDispatcher.addTokenToAcceptedList(ERC20Token.address, {from: admin});
         const token = await LoanDispatcher.isTokenAccepted(ERC20Token.address);
         expect(token).to.equal(true);
       });
       it("Expects to get token address if previously set", async () => {
         await LoanDispatcher.setAdministrator(admin, {from: owner});
-        const ERC20Token = await HeroFakeTokenContract.new({from: owner});
+        const ERC20Token = await RaiseTokenContract.new({from: owner});
         await LoanDispatcher.addTokenToAcceptedList(ERC20Token.address, {from: admin});
         const token = await LoanDispatcher.isTokenAccepted(ERC20Token.address);
         expect(token).to.equal(true);
       });
       it("Expects to remove accepted token", async () => {
         await LoanDispatcher.setAdministrator(admin, {from: owner});
-        const ERC20Token = await HeroFakeTokenContract.new({from: owner});
+        const ERC20Token = await RaiseTokenContract.new({from: owner});
         await LoanDispatcher.addTokenToAcceptedList(ERC20Token.address, {from: admin});
         let token = await LoanDispatcher.isTokenAccepted(ERC20Token.address);
         expect(token).to.equal(true);
@@ -138,7 +141,7 @@ contract("LoanContractDispatcher", accounts => {
       });
       it("Expects to not get token address if not previously set", async () => {
         await LoanDispatcher.setAdministrator(admin, {from: owner});
-        const ERC20Token = await HeroFakeTokenContract.new({from: owner});
+        const ERC20Token = await RaiseTokenContract.new({from: owner});
         const token = await LoanDispatcher.isTokenAccepted(ERC20Token.address);
         expect(token).to.equal(false);
       });
@@ -220,7 +223,8 @@ contract("LoanContractDispatcher", accounts => {
       });
       it("Expects to set dai proxy address", async () => {
         await LoanDispatcher.setAdministrator(admin, {from: owner});
-        const DAIProxy2 = await DAIProxyContract.new(Auth.address, {from: owner});
+        uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
+        const DAIProxy2 = await DAIProxyContract.new(Auth.address, uniswapAddress, {from: owner});
         await LoanDispatcher.setDaiProxyAddress(DAIProxy2.address, {from: admin});
         const resp = await LoanDispatcher.DAIProxyAddress();
         expect(resp).to.equal(DAIProxy2.address);
