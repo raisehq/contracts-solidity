@@ -31,6 +31,7 @@ contract("DAIProxy Contract", function(accounts) {
   const other_kyc_user_no_deposit = accounts[3];
   const other_user = accounts[4];
   const other_user_kyc_no_dai = accounts[5];
+  const otherAdmin = accounts[6];
 
   const migrate = async () => {
     try {
@@ -72,6 +73,106 @@ contract("DAIProxy Contract", function(accounts) {
     /**
      * user represents a lender in these tests
      */
+    describe("Setters", () => {
+      beforeEach(migrate);
+      describe("Test setDepositRequirement", () => {
+        it("Expects to set the deposit requirement if admin", async () => {
+          await DAIProxy.setDepositRequeriment(true, {from: admin});
+          const hasToDeposit = await DAIProxy.hasToDeposit();
+          expect(hasToDeposit).to.equal(true);
+          await DAIProxy.setDepositRequeriment(false, {from: admin});
+          const hasToDeposit2 = await DAIProxy.hasToDeposit();
+          expect(hasToDeposit2).to.equal(false);
+        });
+        it("Expects to not set the deposit requirement if not admin", async () => {
+          await truffleAssert.fails(
+            DAIProxy.setDepositRequeriment(true, {from: otherAdmin}),
+            truffleAssert.ErrorType.REVERT,
+            "Caller is not an administrator"
+          );
+        });
+      });
+      describe("Test setUniswapSwapper", () => {
+        it("Expects to set the uniswap swapper address if admin", async () => {
+          const newSuappAddress = await initializeUniswap(
+            web3,
+            DAIToken.address,
+            RaiseToken.address,
+            owner
+          );
+          await DAIProxy.setUniswapSwapper(newSuappAddress, {from: admin});
+          const sa = await DAIProxy.swapperFactoryAddress();
+          expect(sa).to.equal(newSuappAddress);
+        });
+        it("Expects to not set the uniswap swapper if not addmin", async () => {
+          const newSuappAddress = await initializeUniswap(
+            web3,
+            DAIToken.address,
+            RaiseToken.address,
+            owner
+          );
+          await truffleAssert.fails(
+            DAIProxy.setUniswapSwapper(newSuappAddress, {from: otherAdmin}),
+            truffleAssert.ErrorType.REVERT,
+            "Caller is not an administrator"
+          );
+        });
+      });
+      describe("Test toggleUniswap", () => {
+        it("Expects to toggle uniswap if admin", async () => {
+          await DAIProxy.toggleUniswap(true, {from: admin});
+          const swap1 = await DAIProxy.swapEnabled();
+          await DAIProxy.toggleUniswap(false, {from: admin});
+          const swap2 = await DAIProxy.swapEnabled();
+          expect(swap1).to.equal(true);
+          expect(swap2).to.equal(false);
+        });
+        it("Expects to not toggle uniswap if not addmin", async () => {
+          await truffleAssert.fails(
+            DAIProxy.toggleUniswap(true, {from: otherAdmin}),
+            truffleAssert.ErrorType.REVERT,
+            "Caller is not an administrator"
+          );
+        });
+      });
+      describe("Test setAdministrator", () => {
+        it("Expects to set the administrator address if owner", async () => {
+          await DAIProxy.setAdministrator(otherAdmin, {from: owner});
+          const adm = await DAIProxy.administrator();
+          expect(adm).to.equal(otherAdmin);
+        });
+        it("Expects to not set the administrator if not owner", async () => {
+          await truffleAssert.fails(
+            DAIProxy.setAdministrator(otherAdmin, {from: otherAdmin}),
+            truffleAssert.ErrorType.REVERT,
+            "caller is not the owner"
+          );
+        });
+      });
+      describe("Test setAuthAddress", () => {
+        it("Expects to set the auth address if admin", async () => {
+          const newAuthAddres = await AuthContract.new(
+            KYCRegistry.address,
+            DepositRegistry.address
+          );
+          await DAIProxy.setAuthAddress(newAuthAddres.address, {from: admin});
+        });
+        it("Expects to not set the auth address if not addmin", async () => {
+          const newAuthAddres = await AuthContract.new(
+            KYCRegistry.address,
+            DepositRegistry.address
+          );
+          await truffleAssert.fails(
+            DAIProxy.setAuthAddress(newAuthAddres.address, {from: otherAdmin}),
+            truffleAssert.ErrorType.REVERT,
+            "Caller is not an administrator"
+          );
+        });
+      });
+    });
+    describe("swapTokenAndFund", () => {});
+    describe("swapEthAndFund", () => {});
+
     describe("Should allow loan funding", () => {
       beforeEach(migrate);
       it("Expects the amount of dai tokens to be reduced in the amount funded", async () => {
