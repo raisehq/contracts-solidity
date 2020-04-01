@@ -286,18 +286,16 @@ contract("DAIProxy Contract", function(accounts) {
         const userBalanceBefore = await DAIToken.balanceOf(user);
 
         const INPUT_AMOUNT = new BN(web3.utils.toWei("10")); // 300 DAI
-        const OUTPUT_AMOUNT = new BN(web3.utils.toWei("1")); // 200 Raise
-        console.log("balance:===============>  ", Number(userBalanceBefore));
+        const OUTPUT_AMOUNT = new BN(web3.utils.toWei("1")); // 200 USDC
         await DAIToken.approve(DAIProxy.address, INPUT_AMOUNT, {from: user});
         await DAIProxy.swapTokenAndFund(LC.address, DAIToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT, {
           from: user
         });
 
         const userBalanceAfter = await DAIToken.balanceOf(user);
-        console.log("user balance after::: ", Number(userBalanceAfter));
         const loanBalance = await LC.auctionBalance();
-        console.log("loan balance :: ", Number(loanBalance));
         expect(OUTPUT_AMOUNT.eq(loanBalance));
+        expect(userBalanceAfter.eq(userBalanceBefore - INPUT_AMOUNT));
       });
     });
     describe("swapEthAndFund", () => {});
