@@ -7,6 +7,7 @@ const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
 const RaiseContract = artifacts.require("RaiseFake");
 const DAIContract = artifacts.require("DAIFake");
+const MockERC20 = artifacts.require("MockERC20");
 const KYCContract = artifacts.require("KYCRegistry");
 const MockLoanContract = artifacts.require("LoanContractMock");
 const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
@@ -22,6 +23,7 @@ contract("DAIProxy Contract", function(accounts) {
   let DepositRegistry;
   let KYCRegistry;
   let DAIToken;
+  let USDCToken;
   let LoanContract;
   let uniswapAddress;
 
@@ -64,6 +66,39 @@ contract("DAIProxy Contract", function(accounts) {
 
       // other_user_kyc_no_dai
       await KYCRegistry.addAddressToKYC(other_user_kyc_no_dai, {from: admin});
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const migrateFund = async () => {
+    try {
+      RaiseToken = await RaiseContract.new({from: owner});
+
+      DAIToken = await DAIContract.new({from: owner});
+      await DAIToken.mintTokens(user, {from: owner});
+
+      USDCToken = await MockERC20.new("USDCToken", "USDC", {from: owner});
+      await USDCToken.mintTokens(user, {from: owner});
+
+      LoanContract = await MockLoanContract.new(USDCToken.address, {from: owner});
+      KYCRegistry = await KYCContract.new();
+      await KYCRegistry.setAdministrator(admin);
+      DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
+        from: owner
+      });
+      Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
+      ERC20Wrapper = await ERC20WrapperContract.new();
+      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
+      uniswapAddress = await initializeUniswap(web3, DAIToken.address, USDCToken.address, owner);
+      DAIProxy = await DAIProxyContract.new(Auth.address, uniswapAddress);
+      await DAIProxy.setAdministrator(admin, {from: owner});
+
+      // user one
+      await RaiseToken.mintTokens(user, {from: owner});
+      await RaiseToken.approve(DepositRegistry.address, HeroAmount, {from: user});
+      await DepositRegistry.depositFor(user, {from: user});
+      await KYCRegistry.addAddressToKYC(user, {from: admin});
     } catch (error) {
       throw error;
     }
@@ -170,7 +205,22 @@ contract("DAIProxy Contract", function(accounts) {
         });
       });
     });
-    describe("swapTokenAndFund", () => {});
+    describe("swapTokenAndFund", () => {
+      beforeEach(migrateFund);
+      it.only("Expects to fund loan swapping the token", async () => {
+        const userBalanceBefore = await DAIToken.balanceOf(user);
+        await DAIToken.approve(DAIProxy.address, 100, {from: user});
+        await DAIProxy.swapTokenAndFund(LoanContract.address, DAIToken.address, 100, 100, {
+          from: user
+        });
+
+        const userBalanceAfter = await DAIToken.balanceOf(user);
+        const loanBalance = await LoanContract.getFundedAmount();
+
+        expect(Number(loanBalance).to.equal(100));
+        return expect(Number(userBalanceAfter)).to.equal(Number(userBalanceBefore) - 100);
+      });
+    });
     describe("swapEthAndFund", () => {});
 
     describe("Should allow loan funding", () => {
