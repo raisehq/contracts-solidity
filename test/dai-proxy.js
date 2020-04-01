@@ -1,6 +1,11 @@
 const chai = require("chai");
+const bnChai = require("bn-chai");
 const chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
+const web3 = global.web3;
+const {BN} = web3.utils;
+chai.use(chaiAsPromised);
+chai.use(bnChai(BN));
 const {expect} = chai;
 const DAIProxyContract = artifacts.require("DAIProxy");
 const AuthContract = artifacts.require("Authorization");
@@ -13,6 +18,8 @@ const MockLoanContract = artifacts.require("LoanContractMock");
 const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
 const truffleAssert = require("truffle-assertions");
 const {initializeUniswap} = require("./uniswap.utils");
+const UniswapSwapperFactoryContract = artifacts.require("UniswapSwapperFactory");
+const UniswapSwapper = artifacts.require("UniswapSwapper");
 
 const HeroAmount = "200000000000000000000";
 
@@ -26,6 +33,7 @@ contract("DAIProxy Contract", function(accounts) {
   let USDCToken;
   let LoanContract;
   let uniswapAddress;
+  let UniswapSwapperFactory;
 
   const owner = accounts[0];
   const user = accounts[1];
@@ -51,8 +59,18 @@ contract("DAIProxy Contract", function(accounts) {
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
       ERC20Wrapper = await ERC20WrapperContract.new();
       await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
+
       uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
-      DAIProxy = await DAIProxyContract.new(Auth.address, uniswapAddress);
+      UniswapSwapperTemplate = await UniswapSwapper.new({from: owner});
+      UniswapSwapperFactory = await UniswapSwapperFactoryContract.new(
+        UniswapSwapperTemplate.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+
+      DAIProxy = await DAIProxyContract.new(Auth.address, UniswapSwapperFactory.address);
       await DAIProxy.setAdministrator(admin, {from: owner});
 
       // user one
@@ -90,8 +108,19 @@ contract("DAIProxy Contract", function(accounts) {
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
       ERC20Wrapper = await ERC20WrapperContract.new();
       await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
+
       uniswapAddress = await initializeUniswap(web3, DAIToken.address, USDCToken.address, owner);
-      DAIProxy = await DAIProxyContract.new(Auth.address, uniswapAddress);
+      UniswapSwapperTemplate = await UniswapSwapper.new({from: owner});
+      UniswapSwapperFactory = await UniswapSwapperFactoryContract.new(
+        UniswapSwapperTemplate.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+
+      DAIProxy = await DAIProxyContract.new(Auth.address, UniswapSwapperFactory.address);
+
       await DAIProxy.setAdministrator(admin, {from: owner});
 
       // user one
@@ -209,10 +238,20 @@ contract("DAIProxy Contract", function(accounts) {
       beforeEach(migrateFund);
       it.only("Expects to fund loan swapping the token", async () => {
         const userBalanceBefore = await DAIToken.balanceOf(user);
-        await DAIToken.approve(DAIProxy.address, 100, {from: user});
-        await DAIProxy.swapTokenAndFund(LoanContract.address, DAIToken.address, 100, 100, {
-          from: user
-        });
+
+        const INPUT_AMOUNT = new BN(web3.utils.toWei("300")); // 300 DAI
+        const OUTPUT_AMOUNT = new BN(web3.utils.toWei("200")); // 200 Raise
+        console.log("balance:===============>  ", Number(userBalanceBefore));
+        await DAIToken.approve(DAIProxy.address, INPUT_AMOUNT, {from: user});
+        await DAIProxy.swapTokenAndFund(
+          LoanContract.address,
+          DAIToken.address,
+          INPUT_AMOUNT,
+          OUTPUT_AMOUNT,
+          {
+            from: user
+          }
+        );
 
         const userBalanceAfter = await DAIToken.balanceOf(user);
         const loanBalance = await LoanContract.getFundedAmount();
