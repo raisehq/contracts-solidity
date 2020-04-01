@@ -105,6 +105,8 @@ contract DAIProxy is IDAIProxy, Ownable {
         uint256 outputTokenAmount
     ) internal returns (bool) {
         address swapperAddress = IUniswapSwapperFactory(swapperFactoryAddress).deploy();
+        ERC20Wrapper.transferFrom(inputTokenAddress, msg.sender, address(this), inputTokenAmount);
+        ERC20Wrapper.approve(inputTokenAddress, swapperAddress, inputTokenAmount);
         IUniswapSwapper(swapperAddress).swap(
             msg.sender,
             inputTokenAddress,

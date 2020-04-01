@@ -15,11 +15,13 @@ const DAIContract = artifacts.require("DAIFake");
 const MockERC20 = artifacts.require("MockERC20");
 const KYCContract = artifacts.require("KYCRegistry");
 const MockLoanContract = artifacts.require("LoanContractMock");
+const RealLoanContract = artifacts.require("LoanContract");
 const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
 const truffleAssert = require("truffle-assertions");
 const {initializeUniswap} = require("./uniswap.utils");
 const UniswapSwapperFactoryContract = artifacts.require("UniswapSwapperFactory");
 const UniswapSwapper = artifacts.require("UniswapSwapper");
+const LoanContractDispatcherContract = artifacts.require("LoanContractDispatcher");
 
 const HeroAmount = "200000000000000000000";
 
@@ -34,6 +36,8 @@ contract("DAIProxy Contract", function(accounts) {
   let LoanContract;
   let uniswapAddress;
   let UniswapSwapperFactory;
+  let LC;
+  let ERC20Wrapper;
 
   const owner = accounts[0];
   const user = accounts[1];
@@ -42,6 +46,7 @@ contract("DAIProxy Contract", function(accounts) {
   const other_user = accounts[4];
   const other_user_kyc_no_dai = accounts[5];
   const otherAdmin = accounts[6];
+  const borrower = accounts[7];
 
   const migrate = async () => {
     try {
@@ -91,24 +96,33 @@ contract("DAIProxy Contract", function(accounts) {
 
   const migrateFund = async () => {
     try {
+      // link
+      ERC20Wrapper = await ERC20WrapperContract.new();
+      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
+      await RealLoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
+      await LoanContractDispatcherContract.link("ERC20Wrapper", ERC20Wrapper.address);
+
       RaiseToken = await RaiseContract.new({from: owner});
 
+      // Mint
       DAIToken = await DAIContract.new({from: owner});
-      await DAIToken.mintTokens(user, {from: owner});
-
       USDCToken = await MockERC20.new("USDCToken", "USDC", {from: owner});
+
+      await DAIToken.mintTokens(user, {from: owner});
       await USDCToken.mintTokens(user, {from: owner});
 
-      LoanContract = await MockLoanContract.new(USDCToken.address, {from: owner});
+      // add usr to kyc
       KYCRegistry = await KYCContract.new();
       await KYCRegistry.setAdministrator(admin);
+      await KYCRegistry.addAddressToKYC(user, {from: admin});
+
+      // init contracts
       DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
         from: owner
       });
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-      ERC20Wrapper = await ERC20WrapperContract.new();
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
 
+      // init uniswap
       uniswapAddress = await initializeUniswap(web3, DAIToken.address, USDCToken.address, owner);
       UniswapSwapperTemplate = await UniswapSwapper.new({from: owner});
       UniswapSwapperFactory = await UniswapSwapperFactoryContract.new(
@@ -119,15 +133,47 @@ contract("DAIProxy Contract", function(accounts) {
         }
       );
 
+      // init daiproxy
       DAIProxy = await DAIProxyContract.new(Auth.address, UniswapSwapperFactory.address);
-
       await DAIProxy.setAdministrator(admin, {from: owner});
 
-      // user one
-      await RaiseToken.mintTokens(user, {from: owner});
-      await RaiseToken.approve(DepositRegistry.address, HeroAmount, {from: user});
-      await DepositRegistry.depositFor(user, {from: user});
-      await KYCRegistry.addAddressToKYC(user, {from: admin});
+      // initialize loan contract dispatcher
+      LoanDispatcher = await LoanContractDispatcherContract.new(
+        Auth.address,
+        DAIProxy.address,
+        UniswapSwapperFactory.address, // SwapAndDepositFactory
+        {
+          from: owner
+        }
+      );
+      await LoanDispatcher.setAdministrator(admin, {from: owner});
+      await LoanDispatcher.setMinTermLength(0, {from: admin});
+      await LoanDispatcher.setMinAuctionLength(0, {from: admin});
+      await LoanDispatcher.addTokenToAcceptedList(USDCToken.address, {from: admin});
+
+      // borrower creates loan
+      const loanRepaymentTime = 2 * 60 * 60; // 2 hours in seconds
+      loanMinAmount = web3.utils.toWei(new BN(90, 10));
+      loanMaxAmount = web3.utils.toWei(new BN(100, 10));
+      const minInterestRate = 0;
+      const maxInterestRate = 5000;
+      auctionLength = 60 * 60;
+
+      await LoanDispatcher.deploy(
+        loanMinAmount,
+        loanMaxAmount,
+        minInterestRate,
+        maxInterestRate,
+        loanRepaymentTime,
+        auctionLength,
+        USDCToken.address,
+        {from: user}
+      );
+      const loanEventHistory = await LoanDispatcher.getPastEvents("LoanContractCreated"); // {fromBlock: 0, toBlock: "latest"} put this to get all
+      const loanAddress = loanEventHistory[0].returnValues.contractAddress;
+
+      // create loan instance from Loan.address
+      LC = await RealLoanContract.at(loanAddress);
     } catch (error) {
       throw error;
     }
@@ -239,25 +285,19 @@ contract("DAIProxy Contract", function(accounts) {
       it.only("Expects to fund loan swapping the token", async () => {
         const userBalanceBefore = await DAIToken.balanceOf(user);
 
-        const INPUT_AMOUNT = new BN(web3.utils.toWei("300")); // 300 DAI
-        const OUTPUT_AMOUNT = new BN(web3.utils.toWei("200")); // 200 Raise
+        const INPUT_AMOUNT = new BN(web3.utils.toWei("10")); // 300 DAI
+        const OUTPUT_AMOUNT = new BN(web3.utils.toWei("1")); // 200 Raise
         console.log("balance:===============>  ", Number(userBalanceBefore));
         await DAIToken.approve(DAIProxy.address, INPUT_AMOUNT, {from: user});
-        await DAIProxy.swapTokenAndFund(
-          LoanContract.address,
-          DAIToken.address,
-          INPUT_AMOUNT,
-          OUTPUT_AMOUNT,
-          {
-            from: user
-          }
-        );
+        await DAIProxy.swapTokenAndFund(LC.address, DAIToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT, {
+          from: user
+        });
 
         const userBalanceAfter = await DAIToken.balanceOf(user);
-        const loanBalance = await LoanContract.getFundedAmount();
-
-        expect(Number(loanBalance).to.equal(100));
-        return expect(Number(userBalanceAfter)).to.equal(Number(userBalanceBefore) - 100);
+        console.log("user balance after::: ", Number(userBalanceAfter));
+        const loanBalance = await LC.auctionBalance();
+        console.log("loan balance :: ", Number(loanBalance));
+        expect(OUTPUT_AMOUNT.eq(loanBalance));
       });
     });
     describe("swapEthAndFund", () => {});
