@@ -22,6 +22,9 @@ const {initializeUniswap} = require("./uniswap.utils");
 const UniswapSwapperFactoryContract = artifacts.require("UniswapSwapperFactory");
 const UniswapSwapper = artifacts.require("UniswapSwapper");
 const LoanContractDispatcherContract = artifacts.require("LoanContractDispatcher");
+const UniswapExchangeAbi = artifacts.require("IUniswapExchange").abi;
+const UniswapFactoryAbi = artifacts.require("IUniswapFactory").abi;
+const {getWeb3} = require("../scripts/helpers.js");
 
 const HeroAmount = "200000000000000000000";
 
@@ -95,6 +98,91 @@ contract("DAIProxy Contract", function(accounts) {
   };
 
   const migrateFund = async () => {
+    try {
+      // link
+      ERC20Wrapper = await ERC20WrapperContract.new();
+      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
+      await RealLoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
+      await LoanContractDispatcherContract.link("ERC20Wrapper", ERC20Wrapper.address);
+
+      RaiseToken = await RaiseContract.new({from: owner});
+
+      // Mint
+      DAIToken = await DAIContract.new({from: owner});
+      USDCToken = await MockERC20.new("USDCToken", "USDC", {from: owner});
+
+      await DAIToken.mintTokens(user, {from: owner});
+      await USDCToken.mintTokens(user, {from: owner});
+
+      // add usr to kyc
+      KYCRegistry = await KYCContract.new();
+      await KYCRegistry.setAdministrator(admin);
+      await KYCRegistry.addAddressToKYC(user, {from: admin});
+
+      // init contracts
+      DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
+        from: owner
+      });
+      Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
+
+      // init uniswap
+      uniswapAddress = await initializeUniswap(web3, DAIToken.address, USDCToken.address, owner);
+      UniswapSwapperTemplate = await UniswapSwapper.new({from: owner});
+      UniswapSwapperFactory = await UniswapSwapperFactoryContract.new(
+        UniswapSwapperTemplate.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
+
+      // init daiproxy
+      DAIProxy = await DAIProxyContract.new(Auth.address, UniswapSwapperFactory.address);
+      await DAIProxy.setAdministrator(admin, {from: owner});
+
+      // initialize loan contract dispatcher
+      LoanDispatcher = await LoanContractDispatcherContract.new(
+        Auth.address,
+        DAIProxy.address,
+        UniswapSwapperFactory.address, // SwapAndDepositFactory
+        {
+          from: owner
+        }
+      );
+      await LoanDispatcher.setAdministrator(admin, {from: owner});
+      await LoanDispatcher.setMinTermLength(0, {from: admin});
+      await LoanDispatcher.setMinAuctionLength(0, {from: admin});
+      await LoanDispatcher.addTokenToAcceptedList(USDCToken.address, {from: admin});
+
+      // borrower creates loan
+      const loanRepaymentTime = 2 * 60 * 60; // 2 hours in seconds
+      loanMinAmount = web3.utils.toWei(new BN(90, 10));
+      loanMaxAmount = web3.utils.toWei(new BN(100, 10));
+      const minInterestRate = 0;
+      const maxInterestRate = 5000;
+      auctionLength = 60 * 60;
+
+      await LoanDispatcher.deploy(
+        loanMinAmount,
+        loanMaxAmount,
+        minInterestRate,
+        maxInterestRate,
+        loanRepaymentTime,
+        auctionLength,
+        USDCToken.address,
+        {from: user}
+      );
+      const loanEventHistory = await LoanDispatcher.getPastEvents("LoanContractCreated"); // {fromBlock: 0, toBlock: "latest"} put this to get all
+      const loanAddress = loanEventHistory[0].returnValues.contractAddress;
+
+      // create loan instance from Loan.address
+      LC = await RealLoanContract.at(loanAddress);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const migrateFundEth = async () => {
     try {
       // link
       ERC20Wrapper = await ERC20WrapperContract.new();
@@ -282,7 +370,7 @@ contract("DAIProxy Contract", function(accounts) {
     });
     describe("swapTokenAndFund", () => {
       beforeEach(migrateFund);
-      it.only("Expects to fund loan swapping the token", async () => {
+      it("Expects to fund loan swapping the token", async () => {
         const userBalanceBefore = await DAIToken.balanceOf(user);
 
         const INPUT_AMOUNT = new BN(web3.utils.toWei("10")); // 300 DAI
@@ -298,7 +386,51 @@ contract("DAIProxy Contract", function(accounts) {
         expect(userBalanceAfter.eq(userBalanceBefore - INPUT_AMOUNT));
       });
     });
-    describe("swapEthAndFund", () => {});
+    describe("swapEthAndFund", () => {
+      beforeEach(migrateFund);
+      it.only("Expects to fund loan swapping eth", async () => {
+        const web3One = getWeb3(web3);
+        const userEtherBalance = new BN(await web3One.eth.getBalance(user));
+
+        const OUTPUT_AMOUNT = new BN(web3One.utils.toWei("100")); // 200 USDC
+
+        const exchangeAddress = await new web3One.eth.Contract(
+          UniswapFactoryAbi,
+          uniswapAddress
+        ).methods
+          .getExchange(USDCToken.address)
+          .call();
+
+        const exchange = new web3One.eth.Contract(UniswapExchangeAbi, exchangeAddress);
+
+        const ethCosts = new BN(
+          await exchange.methods.getEthToTokenOutputPrice(OUTPUT_AMOUNT).call()
+        );
+
+        const swapTx = await DAIProxy.swapEthAndFund(LC.address, OUTPUT_AMOUNT, {
+          from: user,
+          value: ethCosts
+        });
+
+        // Retrieve gasUsed, real eth spent, and gas price to know the total of ETH spent
+        const {
+          receipt: {gasUsed}
+        } = swapTx;
+
+        const gasPrice = (await web3One.eth.getTransaction(swapTx.tx)).gasPrice;
+
+        const afterEtherBalance = new BN(await web3One.eth.getBalance(user));
+        const loanBalance = await LC.auctionBalance();
+
+        expect(OUTPUT_AMOUNT.eq(loanBalance));
+        // User ETH balance must decrease gas costs and ether costs
+        expect(afterEtherBalance).to.be.eq.BN(
+          userEtherBalance.sub(
+            new BN(ethCosts).add(new BN(gasUsed.toString()).mul(new BN(gasPrice)))
+          )
+        );
+      });
+    });
 
     describe("Should allow loan funding", () => {
       beforeEach(migrate);

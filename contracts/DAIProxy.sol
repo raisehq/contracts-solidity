@@ -105,8 +105,19 @@ contract DAIProxy is IDAIProxy, Ownable {
         uint256 outputTokenAmount
     ) internal returns (bool) {
         address swapperAddress = IUniswapSwapperFactory(swapperFactoryAddress).deploy();
-        ERC20Wrapper.transferFrom(inputTokenAddress, msg.sender, address(this), inputTokenAmount);
-        ERC20Wrapper.approve(inputTokenAddress, swapperAddress, inputTokenAmount);
+        require(
+            ERC20Wrapper.transferFrom(
+                inputTokenAddress,
+                msg.sender,
+                address(this),
+                inputTokenAmount
+            ),
+            "failed at transferFrom prior swap"
+        );
+        require(
+            ERC20Wrapper.approve(inputTokenAddress, swapperAddress, inputTokenAmount),
+            "failed at approve prior swap"
+        );
         IUniswapSwapper(swapperAddress).swap(
             msg.sender,
             inputTokenAddress,
