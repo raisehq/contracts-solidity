@@ -31,7 +31,7 @@ contract("Authorization", accounts => {
       const amount = new BN(web3.utils.toWei("100000")); // 300 DAI
 
       KYCRegistry = await KYCContract.new({from: owner});
-
+      await KYCRegistry.setAdministrator(admin, {from: owner});
       // init contracts
       DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
         from: owner
