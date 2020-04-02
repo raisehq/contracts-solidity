@@ -36,6 +36,7 @@ contract("DAIProxy Contract", function(accounts) {
   let KYCRegistry;
   let DAIToken;
   let USDCToken;
+  let USDTToken;
   let LoanContract;
   let uniswapAddress;
   let UniswapSwapperFactory;
@@ -110,94 +111,10 @@ contract("DAIProxy Contract", function(accounts) {
       // Mint
       DAIToken = await DAIContract.new({from: owner});
       USDCToken = await MockERC20.new("USDCToken", "USDC", {from: owner});
-
+      USDTToken = await MockERC20.new("USDTToken", "USDT", {from: owner});
       await DAIToken.mintTokens(user, {from: owner});
       await USDCToken.mintTokens(user, {from: owner});
-
-      // add usr to kyc
-      KYCRegistry = await KYCContract.new();
-      await KYCRegistry.setAdministrator(admin);
-      await KYCRegistry.addAddressToKYC(user, {from: admin});
-
-      // init contracts
-      DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
-        from: owner
-      });
-      Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-
-      // init uniswap
-      uniswapAddress = await initializeUniswap(web3, DAIToken.address, USDCToken.address, owner);
-      UniswapSwapperTemplate = await UniswapSwapper.new({from: owner});
-      UniswapSwapperFactory = await UniswapSwapperFactoryContract.new(
-        UniswapSwapperTemplate.address,
-        uniswapAddress,
-        {
-          from: owner
-        }
-      );
-
-      // init daiproxy
-      DAIProxy = await DAIProxyContract.new(Auth.address, UniswapSwapperFactory.address);
-      await DAIProxy.setAdministrator(admin, {from: owner});
-
-      // initialize loan contract dispatcher
-      LoanDispatcher = await LoanContractDispatcherContract.new(
-        Auth.address,
-        DAIProxy.address,
-        UniswapSwapperFactory.address, // SwapAndDepositFactory
-        {
-          from: owner
-        }
-      );
-      await LoanDispatcher.setAdministrator(admin, {from: owner});
-      await LoanDispatcher.setMinTermLength(0, {from: admin});
-      await LoanDispatcher.setMinAuctionLength(0, {from: admin});
-      await LoanDispatcher.addTokenToAcceptedList(USDCToken.address, {from: admin});
-
-      // borrower creates loan
-      const loanRepaymentTime = 2 * 60 * 60; // 2 hours in seconds
-      loanMinAmount = web3.utils.toWei(new BN(90, 10));
-      loanMaxAmount = web3.utils.toWei(new BN(100, 10));
-      const minInterestRate = 0;
-      const maxInterestRate = 5000;
-      auctionLength = 60 * 60;
-
-      await LoanDispatcher.deploy(
-        loanMinAmount,
-        loanMaxAmount,
-        minInterestRate,
-        maxInterestRate,
-        loanRepaymentTime,
-        auctionLength,
-        USDCToken.address,
-        {from: user}
-      );
-      const loanEventHistory = await LoanDispatcher.getPastEvents("LoanContractCreated"); // {fromBlock: 0, toBlock: "latest"} put this to get all
-      const loanAddress = loanEventHistory[0].returnValues.contractAddress;
-
-      // create loan instance from Loan.address
-      LC = await RealLoanContract.at(loanAddress);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const migrateFundEth = async () => {
-    try {
-      // link
-      ERC20Wrapper = await ERC20WrapperContract.new();
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-      await RealLoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
-      await LoanContractDispatcherContract.link("ERC20Wrapper", ERC20Wrapper.address);
-
-      RaiseToken = await RaiseContract.new({from: owner});
-
-      // Mint
-      DAIToken = await DAIContract.new({from: owner});
-      USDCToken = await MockERC20.new("USDCToken", "USDC", {from: owner});
-
-      await DAIToken.mintTokens(user, {from: owner});
-      await USDCToken.mintTokens(user, {from: owner});
+      await USDTToken.mintTokens(user, {from: owner});
 
       // add usr to kyc
       KYCRegistry = await KYCContract.new();
@@ -385,10 +302,48 @@ contract("DAIProxy Contract", function(accounts) {
         expect(OUTPUT_AMOUNT.eq(loanBalance));
         expect(userBalanceAfter.eq(userBalanceBefore - INPUT_AMOUNT));
       });
+      it("Expects to fail funding, and continue to have same balance", async () => {
+        const userBalanceBefore = await DAIToken.balanceOf(user);
+
+        const INPUT_AMOUNT = new BN(web3.utils.toWei("200")); // 300 DAI
+        const OUTPUT_AMOUNT = new BN(web3.utils.toWei("100")); // 200 USDC
+        await DAIToken.approve(DAIProxy.address, INPUT_AMOUNT, {from: user});
+        await DAIProxy.swapTokenAndFund(LC.address, DAIToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT, {
+          from: user
+        });
+        const userBalanceAfter = await DAIToken.balanceOf(user);
+        const loanBalance = await LC.auctionBalance();
+        expect(OUTPUT_AMOUNT.eq(loanBalance));
+        expect(userBalanceAfter.eq(userBalanceBefore - INPUT_AMOUNT));
+
+        await truffleAssert.fails(
+          DAIProxy.swapTokenAndFund(LC.address, DAIToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT, {
+            from: user
+          }),
+          truffleAssert.ErrorType.REVERT,
+          "Loan status is not CREATED"
+        );
+
+        const userBalanceAfter2 = await DAIToken.balanceOf(user);
+        expect(userBalanceAfter.eq(userBalanceAfter2));
+      });
+      it("Expects to fail funding when swap fails", async () => {
+        const INPUT_AMOUNT = new BN(web3.utils.toWei("200")); // 300 DAI
+        const OUTPUT_AMOUNT = new BN(web3.utils.toWei("100")); // 200 USDC
+        await USDTToken.approve(DAIProxy.address, INPUT_AMOUNT, {from: user});
+
+        await truffleAssert.fails(
+          DAIProxy.swapTokenAndFund(LC.address, USDTToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT, {
+            from: user
+          }),
+          truffleAssert.ErrorType.REVERT,
+          "exchange can not be 0 address."
+        );
+      });
     });
     describe("swapEthAndFund", () => {
       beforeEach(migrateFund);
-      it.only("Expects to fund loan swapping eth", async () => {
+      it("Expects to fund loan swapping eth", async () => {
         const web3One = getWeb3(web3);
         const userEtherBalance = new BN(await web3One.eth.getBalance(user));
 

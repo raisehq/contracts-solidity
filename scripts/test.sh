@@ -51,5 +51,5 @@ else
     echo "Starting our own ganache instance"
     start_ganache
   fi
-  npx truffle test --network test "test/dai-proxy.js" "$@"
+  npx truffle test --network test "$@"
 fi
