@@ -13,7 +13,7 @@ import "./libs/ERC20Wrapper.sol";
 contract LoanContract is ILoanContract {
     using SafeMath for uint256;
     address public swapFactory;
-    address public proxyContractAddress;
+    address public proxyAddress;
     address public tokenAddress;
     address public originator;
     address public administrator;
@@ -54,8 +54,6 @@ contract LoanContract is ILoanContract {
     }
 
     LoanState public currentState;
-
-    IDAIProxy public proxy;
 
     bool public loanWithdrawn;
     bool public minimumReached;
@@ -108,6 +106,11 @@ contract LoanContract is ILoanContract {
     event FullyFundsUnlockedWithdrawn(address loanAddress);
     event LoanFundsUnlocked(uint256 auctionBalance);
     event OperatorWithdrawn(uint256 amount, address administrator);
+    event DaiProxyAddressUpdated(
+        address newDaiProxyAddress,
+        address administrator,
+        address loanDispatcher
+    );
 
     modifier onlyFrozen() {
         require(currentState == LoanState.FROZEN, "Loan status is not FROZEN");
@@ -143,7 +146,7 @@ contract LoanContract is ILoanContract {
     }
 
     modifier onlyProxy() {
-        require(msg.sender == address(proxy), "Caller is not the proxy");
+        require(msg.sender == address(proxyAddress), "Caller is not the proxy");
         _;
     }
 
@@ -167,8 +170,7 @@ contract LoanContract is ILoanContract {
         address _swapFactory
     ) public {
         tokenAddress = _tokenAddress;
-        proxyContractAddress = _proxyAddress;
-        proxy = IDAIProxy(_proxyAddress);
+        proxyAddress = _proxyAddress;
         originator = _originator;
         administrator = _administrator;
         swapFactory = _swapFactory;
@@ -472,5 +474,10 @@ contract LoanContract is ILoanContract {
             lastFundedTimestamp
         );
         return true;
+    }
+
+    function setProxyAddress(address _proxyAddress) external onlyAdmin {
+        proxyAddress = _proxyAddress;
+        emit DaiProxyAddressUpdated(_proxyAddress, administrator, address(this));
     }
 }
