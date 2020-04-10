@@ -3,7 +3,7 @@ module.exports = async function(deployer, network, acc) {
     console.log("Skipping migrations due not needed for coverage or test");
     return;
   }
-  if (network === "mainnet" && !process.env.ADMIN_ADDRESS) {
+  if (network.includes("mainnet") && !process.env.ADMIN_ADDRESS) {
     throw new Error("Admin address not set.");
   }
 };
