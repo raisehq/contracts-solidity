@@ -154,7 +154,7 @@ module.exports = async (deployer, network, accounts) => {
       console.error(
         "Exiting... current metadata version can not be equal to past metadata version. Bump the version at package.json to continue."
       );
-      return exit(2);
+      return process.exit(2);
     }
     // Copying prior contracts to last.contracts.json to do JSON diff at the end of migrations
     console.log("Writting prior metadata to ", `${process.env.PWD}/${PRIOR_METADATA}`);
