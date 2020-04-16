@@ -1,7 +1,7 @@
 pragma solidity 0.5.12;
 
 
-interface IERC20NotStandar {
+interface IERC20NotStandard {
     function transfer(address _to, uint256 _quantity) external;
 
     function transferFrom(
@@ -54,7 +54,7 @@ library ERC20Wrapper {
         uint256 _quantity
     ) external returns (bool) {
         if (isIssuedToken(_token)) {
-            IERC20NotStandar(_token).transfer(_to, _quantity);
+            IERC20NotStandard(_token).transfer(_to, _quantity);
 
             require(checkSuccess(), "ERC20Wrapper.transfer: Bad return value");
             return true;
@@ -70,7 +70,7 @@ library ERC20Wrapper {
         uint256 _quantity
     ) external returns (bool) {
         if (isIssuedToken(_token)) {
-            IERC20NotStandar(_token).transferFrom(_from, _to, _quantity);
+            IERC20NotStandard(_token).transferFrom(_from, _to, _quantity);
             // Check that transferFrom returns true or null
             require(checkSuccess(), "ERC20Wrapper.transferFrom: Bad return value");
             return true;
@@ -85,7 +85,7 @@ library ERC20Wrapper {
         uint256 _quantity
     ) external returns (bool) {
         if (isIssuedToken(_token)) {
-            IERC20NotStandar(_token).approve(_spender, _quantity);
+            IERC20NotStandard(_token).approve(_spender, _quantity);
             // Check that approve returns true or null
             require(checkSuccess(), "ERC20Wrapper.approve: Bad return value");
             return true;
