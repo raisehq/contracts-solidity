@@ -1,5 +1,6 @@
 const spawn = require("child_process").spawn;
 const version = require("../package.json").version;
+const pick = require("lodash/pick");
 const path = require("path");
 const {copyFileSync, writeFileSync, mkdirSync, existsSync} = require("fs");
 const {NEW_METADATA, PRIOR_METADATA, getContracts} = require("../scripts/helpers");
@@ -20,7 +21,7 @@ module.exports = async (deployer, network, accounts) => {
   }
   const currentContracts = await getContracts();
   currentContracts.version = version;
-  writeFileSync(`${process.env.PWD}/${NEW_METADATA}`, JSON.stringify(currentContracts, null, 2));
+  writeFileSync(`${process.env.PWD}/${NEW_METADATA}`, JSON.stringify(currentContracts));
 
   const netId = await web3.eth.net.getId();
 
@@ -34,11 +35,15 @@ module.exports = async (deployer, network, accounts) => {
 
   if (SUPPORTED_NETWORKS.includes(netId)) {
     const metaDir = `${process.env.PWD}/metadata`;
-    console.log(`Generating metadata file: metadata/contracts_${version}.json`);
+    console.log(`Generating full metadata file: metadata/contracts_full_${version}.json`);
     if (!existsSync(metaDir)) {
       mkdirSync(metaDir, 0744);
     }
-    copyFileSync(`${process.env.PWD}/${NEW_METADATA}`, `${metaDir}/contracts_${version}.json`);
+    copyFileSync(`${process.env.PWD}/${NEW_METADATA}`, `${metaDir}/contracts_full_${version}.json`);
+
+    console.log(`Generating simplified metadata file: metadata/contracts_${version}.json`);
+    const simplifiedContracts = pick(currentContracts, ["address", "abi", "version"]);
+    writeFileSync(`${metaDir}/contracts_${version}.json`, JSON.stringify(simplifiedContracts));
   } else {
     console.log("Not added to metadata folder due is not Kovan or Mainnet.");
   }
