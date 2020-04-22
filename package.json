@@ -24,7 +24,7 @@
     "migration:kovan:reset": "truffle migration --reset --network kovan",
     "migration:goerli": "truffle migration --network goerli",
     "migration:goerli:reset": "truffle migration --reset --network goerli",
-    "migration:mainnet": "npx truffle@4.1.15 migration --network mainnet",
+    "migration:mainnet": "truffle migration --network mainnet",
     "migration:reset": "truffle migration --reset --network development",
     "migration:cypress": "truffle migration --reset --network cypress",
     "console": "truffle console --network kovan",

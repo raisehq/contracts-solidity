@@ -108,6 +108,7 @@ module.exports = {
     mainnet: {
       networkCheckTimeout: 10000000,
       gasPrice: 9100000000,
+      skipDryRun: true,
       network_id: "1", // mainnet
       provider: function() {
         return new HDWalletProvider(privateKeys, infuraApi("mainnet"), 0, 2);
