@@ -1,12 +1,12 @@
 pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "./interfaces/ILoanInstalmentsDispatcher.sol";
-import "./interfaces/ILoanInstalments.sol";
-import "./interfaces/IAuthorization.sol";
-import "./CloneFactory.sol";
+import "../interfaces/ILoanInstalmentsDispatcher.sol";
+import "../interfaces/ILoanInstalments.sol";
+import "../interfaces/IAuthorization.sol";
+import "../CloneFactory.sol";
 
-contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, Ownable {
+contract LoanInstalmentsCloner is ILoanInstalmentsDispatcher, CloneFactory, Ownable {
     address public auth;
     address public DAIProxyAddress;
     address public swapFactory;
@@ -24,6 +24,8 @@ contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, 
     uint256 public maxInterestRate;
 
     mapping(address => bool) public acceptedTokens;
+
+    mapping(address => bool) public isLoanContract;
 
     modifier onlyKYC {
         require(IAuthorization(auth).isKYCConfirmed(msg.sender), "user does not have KYC");
@@ -100,11 +102,11 @@ contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, 
         DAIProxyAddress = _DAIProxyAddress;
         swapFactory = _swapFactory;
         loanTemplate = _loanTemplate;
-        minAmount = 1e18;
+        minAmount = 0;
         maxAmount = 2500000e18;
 
         maxInterestRate = 20e18;
-        minInterestRate = 0e18;
+        minInterestRate = 0;
         operatorFee = 2e18;
 
         minAuctionLength = 604800;
@@ -224,36 +226,7 @@ contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, 
         uint256 auctionLength,
         address tokenAddress,
         uint256 instalments
-    ) external onlyKYC returns (address) {
-        require(administrator != address(0), "There is no administrator set");
-        require(
-            loanMinAmount >= minAmount &&
-                loanMinAmount <= maxAmount &&
-                loanMinAmount <= loanMaxAmount,
-            "minimum amount not correct"
-        );
-        require(
-            loanMaxAmount >= minAmount &&
-                loanMaxAmount <= maxAmount &&
-                loanMaxAmount >= loanMinAmount,
-            "maximum amount not correct"
-        );
-        require(
-            loanMaxInterestRate >= minInterestRate && loanMaxInterestRate <= maxInterestRate,
-            "maximum interest rate not correct"
-        );
-        require(
-            loanMinInterestRate >= minInterestRate && loanMinInterestRate <= maxInterestRate,
-            "minimum interest rate not correct"
-        );
-        require(
-            loanMaxInterestRate >= loanMinInterestRate,
-            "minimum interest should not be greater than maximum interest"
-        );
-        require(termLength >= minTermLength, "Term length is to small");
-        require(auctionLength >= minAuctionLength, "Auction length is to small");
-        require(acceptedTokens[tokenAddress] == true, "TokenAddress not accepted");
-
+    ) external returns (address) {
         // Deploy cloned loan from template
         address loanContract = createClone(loanTemplate);
 

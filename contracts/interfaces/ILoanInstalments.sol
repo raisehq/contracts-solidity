@@ -7,14 +7,14 @@ interface ILoanInstalments {
         uint256 _maxAmount,
         uint256 _minInterestRate,
         uint256 _maxInterestRate,
+        uint256 _operatorFee,
+        uint256 _auctionLength,
+        uint256 _instalments,
         address _originator,
         address _tokenAddress,
         address _proxyAddress,
         address _administrator,
-        uint256 _operatorFee,
-        uint256 _auctionLength,
-        address _swapFactory,
-        uint256 _instalments
+        address _swapFactory
     ) external returns (bool);
 
     function onFundingReceived(address lender, uint256 amount) external returns (bool);

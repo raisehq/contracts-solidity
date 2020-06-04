@@ -6,7 +6,6 @@ import "./interfaces/ISwapAndDepositFactory.sol";
 import "./interfaces/IAuthorization.sol";
 import "./CloneFactory.sol";
 
-
 contract SwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable {
     address public libraryAddress;
     address public authAddress;
@@ -14,7 +13,11 @@ contract SwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable 
 
     event NewSwapContract(address proxyAddress);
 
-    constructor(address _libraryAddress, address _authAddress, address _uniswapAddress) public {
+    constructor(
+        address _libraryAddress,
+        address _authAddress,
+        address _uniswapAddress
+    ) public {
         libraryAddress = _libraryAddress;
         authAddress = _authAddress;
         uniswapAddress = _uniswapAddress;

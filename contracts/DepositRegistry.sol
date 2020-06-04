@@ -7,7 +7,6 @@ import "./interfaces/IDepositRegistry.sol";
 import "./interfaces/IReferralTracker.sol";
 import "./interfaces/IKYCRegistry.sol";
 
-
 contract DepositRegistry is IDepositRegistry, Ownable {
     mapping(address => Deposit) deposits;
     mapping(address => address) userToDepositRegistry;

@@ -160,14 +160,14 @@ contract LoanInstalments is ILoanInstalments {
         uint256 _maxAmount,
         uint256 _minInterestRate,
         uint256 _maxInterestRate,
+        uint256 _operatorFee,
+        uint256 _auctionLength,
+        uint256 _instalments,
         address _originator,
         address _tokenAddress,
         address _proxyAddress,
         address _administrator,
-        uint256 _operatorFee,
-        uint256 _auctionLength,
-        address _swapFactory,
-        uint256 _instalments
+        address _swapFactory
     ) public notTemplate returns (bool) {
         require(tokenAddress == address(0), "loan have been initialized");
         tokenAddress = _tokenAddress;
@@ -207,7 +207,7 @@ contract LoanInstalments is ILoanInstalments {
             operatorFee,
             tokenAddress
         );
-        
+
         return true;
     }
 
@@ -306,7 +306,7 @@ contract LoanInstalments is ILoanInstalments {
         return true;
     }
 
-    function withdrawFundsUnlocked() external onlyFrozen notTemplate  {
+    function withdrawFundsUnlocked() external onlyFrozen notTemplate {
         require(!loanWithdrawn, "Loan already withdrawn");
         require(!lenderPosition[msg.sender].loanWithdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposit");
@@ -518,7 +518,7 @@ contract LoanInstalments is ILoanInstalments {
         }
     }
 
-    function setState(LoanState state) notTemplate internal {
+    function setState(LoanState state) internal notTemplate {
         currentState = state;
     }
 

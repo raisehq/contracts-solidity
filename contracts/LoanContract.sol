@@ -7,7 +7,6 @@ import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/ISwapAndDepositFactory.sol";
 import "./libs/ERC20Wrapper.sol";
 
-
 contract LoanContract is ILoanContract {
     using SafeMath for uint256;
     address public swapFactory;

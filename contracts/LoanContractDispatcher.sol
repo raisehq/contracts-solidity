@@ -5,7 +5,6 @@ import "./interfaces/ILoanContractDispatcher.sol";
 import "./interfaces/IAuthorization.sol";
 import "./LoanContract.sol";
 
-
 contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     address public auth;
     address public DAIProxyAddress;
@@ -89,7 +88,11 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         uint256 minTermLength
     );
 
-    constructor(address authAddress, address _DAIProxyAddress, address _swapFactory) public {
+    constructor(
+        address authAddress,
+        address _DAIProxyAddress,
+        address _swapFactory
+    ) public {
         auth = authAddress;
         DAIProxyAddress = _DAIProxyAddress;
         swapFactory = _swapFactory;

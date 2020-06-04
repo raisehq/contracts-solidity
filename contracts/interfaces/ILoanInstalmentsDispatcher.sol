@@ -55,8 +55,6 @@ interface ILoanInstalmentsDispatcher {
         uint256 minTermLength
     );
 
-    function checkLoanContract(address loanAddress) external view returns (bool);
-
     function isTokenAccepted(address tokenAddress) external view returns (bool);
 
     function addTokenToAcceptedList(address tokenAddress) external;
@@ -96,5 +94,5 @@ interface ILoanInstalmentsDispatcher {
         uint256 instalments
     ) external returns (address);
 
-    function isClone(address target, address query) external view;
+    function isCloned(address target, address query) external view returns (bool result);
 }
