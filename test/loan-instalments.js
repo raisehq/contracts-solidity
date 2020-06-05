@@ -29,6 +29,8 @@ contract.only("LoanInstalments", accounts => {
   let DAIToken;
   let Loan;
   let SwapFactory;
+  let loanAddress;
+  let loanCloner;
 
   const averageMiningBlockTime = 15;
 
@@ -39,6 +41,35 @@ contract.only("LoanInstalments", accounts => {
   const bob = accounts[4];
   const otherLender = accounts[5];
 
+  const deployLoan = async (
+    minAmount,
+    maxAmount,
+    minInterestRate,
+    maxInterestRate,
+    termLength,
+    auctionLength,
+    tokenAddress,
+    instalments
+  ) => {
+    const {
+      logs: [
+        {
+          args: {contractAddress: loanContractAddress}
+        }
+      ]
+    } = await loanCloner.deploy(
+      minAmount,
+      maxAmount,
+      minInterestRate,
+      maxInterestRate,
+      termLength,
+      auctionLength,
+      tokenAddress,
+      instalments
+    );
+    return loanContractAddress;
+  };
+
   describe("Unit tests for LoanInstalments", () => {
     let loanAmount;
     let minInterestRate;
@@ -48,8 +79,22 @@ contract.only("LoanInstalments", accounts => {
     let currentBlock;
     let DepositRegistry;
     let loanTemplateAddress;
-    let loanCloner;
     const operatorPercentFee = toWei(new BN(5));
+
+    const onBeforeEach = async () => {
+      loanAddress = await deployLoan(
+        minAmount,
+        maxAmount,
+        minInterestRate,
+        maxInterestRate,
+        termLength,
+        auctionLength,
+        DAIToken.address,
+        "12"
+      );
+      Loan = await LoanInstalments.at(loanAddress);
+    };
+
     beforeEach(async () => {
       ERC20Wrapper = await ERC20WrapperContract.new();
       await LoanInstalments.link("ERC20Wrapper", ERC20Wrapper.address);
@@ -118,20 +163,10 @@ contract.only("LoanInstalments", accounts => {
           from: owner
         }
       );
+      console.log("each parent");
+      await onBeforeEach();
     });
     describe("Method onFundingReceived", () => {
-      beforeEach(async () => {
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
-      });
       it("Expect onFundingReceived to revert if caller is NOT DaiProxy", async () => {
         try {
           // LoanInstalments state should start with CREATED == 0
@@ -168,7 +203,7 @@ contract.only("LoanInstalments", accounts => {
           throw error;
         }
       });
-      it("Expects Lender to be able to fully fund a Loan and mutate from CREATED to ACTIVE state.", async () => {
+      it.only("Expects Lender to be able to fully fund a Loan and mutate from CREATED to ACTIVE state.", async () => {
         try {
           // LoanInstalments state should start with CREATED == 0
           const firstState = await Loan.currentState();
@@ -185,6 +220,7 @@ contract.only("LoanInstalments", accounts => {
           const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
 
           expect(fundedByLender).to.eq.BN(fundAmount);
+          console.log("auctionBalance", auctionBalanceAmount);
           expect(auctionBalanceAmount).to.eq.BN(calculateNetLoan(fundAmount, operatorPercentFee));
 
           // LoanInstalments state should mutate to ACTIVE == 2
@@ -193,7 +229,7 @@ contract.only("LoanInstalments", accounts => {
           throw error;
         }
       });
-      it("Expects Lender to be able to send bigger funds to Loan, only loan amunt needed, and mutate from CREATED to ACTIVE state", async () => {
+      it.only("Expects Lender to be able to send bigger funds to Loan, only loan amunt needed, and mutate from CREATED to ACTIVE state", async () => {
         try {
           // LoanInstalments state should start with CREATED == 0
           const firstState = await Loan.currentState();
@@ -324,16 +360,7 @@ contract.only("LoanInstalments", accounts => {
           auctionLength = 60 * 60; // 1 hour in seconds
           termLength = 1 * 30 * 24 * 60 * 60; // 1 month in seconds
 
-          Loan = await loanCloner.deploy(
-            minAmount,
-            maxAmount,
-            minInterestRate,
-            maxInterestRate,
-            termLength,
-            auctionLength,
-            DAIToken.address,
-            "12"
-          );
+          await onBeforeEach();
         } catch (error) {
           throw error;
         }
@@ -371,18 +398,6 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method getUpdateState", () => {
-      beforeEach(async () => {
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
-      });
       it("Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ", async () => {
         try {
           // Contract init state should be CREATED
@@ -499,18 +514,6 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method withdrawLoan", () => {
-      beforeEach(async () => {
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
-      });
       it("Expect withdrawLoan to allow Borrower take loan if state == ACTIVE", async () => {
         try {
           const fundAmount = new BN(100);
@@ -686,17 +689,10 @@ contract.only("LoanInstalments", accounts => {
       const loanMinAmount = web3.utils.toWei("2000");
       const loanMaxAmount = web3.utils.toWei("2000");
       beforeEach(async () => {
-        const loanTermLength = 12 * 30 * 24 * 60 * 60; // 1 year in seconds
-        Loan = await loanCloner.deploy(
-          loanMinAmount,
-          loanMaxAmount,
-          minInterestRate,
-          maxInterestRate,
-          loanTermLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
+        termLength = 12 * 30 * 24 * 60 * 60; // 1 year in seconds
+        minAmount = loanMinAmount;
+        maxAmount = loanMaxAmount;
+        await onBeforeEach();
       });
       it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         const balancee = await DAIToken.balanceOf(otherLender);
@@ -737,18 +733,6 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method withdrawRepayment", () => {
-      beforeEach(async () => {
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
-      });
       it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         try {
           await DAIToken.approve(DAIProxy.address, 100, {from: lender});
@@ -937,16 +921,7 @@ contract.only("LoanInstalments", accounts => {
       beforeEach(async () => {
         auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
         termEndTimestamp = currentBlock.timestamp + 2;
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
+        await onBeforeEach();
       });
       it("Expect withdrawRefund to allow Lender refund if state == FAILED_TO_FUND", async () => {
         // Partially fund the Loan
@@ -1075,18 +1050,6 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method onRepaymentReceived", () => {
-      beforeEach(async () => {
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
-      });
       it("Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID", async () => {
         // Partially fund the Loan
         await DAIToken.approve(DAIProxy.address, 100, {from: lender});
@@ -1117,18 +1080,6 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method isAuctionExpired", () => {
-      beforeEach(async () => {
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
-      });
       it("Expects to return true when block number is greater than the auction end block", async () => {
         await helpers.increaseTime(auctionLength + 10);
         const isExpired = await Loan.isAuctionExpired();
@@ -1143,16 +1094,7 @@ contract.only("LoanInstalments", accounts => {
       beforeEach(async () => {
         auctionLength = 30; // 1 min in seconds
         termLength = 2;
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
+        await onBeforeEach();
       });
       it("Expects to return true when block timestamp is greater than the termEndTimestamp", async () => {
         await helpers.increaseTime(auctionLength + 10);
@@ -1168,16 +1110,7 @@ contract.only("LoanInstalments", accounts => {
       beforeEach(async () => {
         auctionLength = 60; // 1 min in seconds
         termLength = 60;
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
+        await onBeforeEach();
       });
       it("Expects to calculate correctly the interest rate when loan is in state = CREATED", async () => {
         await DAIToken.approve(DAIProxy.address, 50, {from: lender});
@@ -1222,16 +1155,7 @@ contract.only("LoanInstalments", accounts => {
       beforeEach(async () => {
         auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
         termEndTimestamp = currentBlock.timestamp + 2;
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
+        await onBeforeEach();
       });
       it("Expects lender to withdraw funds after unlocked", async () => {
         const balanceBefore = Number(await DAIToken.balanceOf(lender));
@@ -1263,16 +1187,7 @@ contract.only("LoanInstalments", accounts => {
       beforeEach(async () => {
         auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
         termEndTimestamp = currentBlock.timestamp + 2;
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
+        await onBeforeEach();
       });
       it("Expects to unlock the funds if admin", async () => {
         await Loan.unlockFundsWithdrawal({from: admin});
@@ -1308,16 +1223,7 @@ contract.only("LoanInstalments", accounts => {
           maxInterestRate = 3000;
           auctionLength = 60 * 60; // 1 hour in seconds
           termEndTimestamp = 2 * 60 * 60; // 2 hours in seconds
-          Loan = await loanCloner.deploy(
-            minAmount,
-            maxAmount,
-            minInterestRate,
-            maxInterestRate,
-            termLength,
-            auctionLength,
-            DAIToken.address,
-            "12"
-          );
+          await onBeforeEach();
         } catch (error) {
           throw error;
         }
@@ -1362,16 +1268,7 @@ contract.only("LoanInstalments", accounts => {
       beforeEach(async () => {
         auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
         termEndTimestamp = currentBlock.timestamp + 2;
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
+        await onBeforeEacha();
       });
       it("Expect operators to withdraw the loan operator fee if borrower has withdraw", async () => {
         const adminBalancePrior = await DAIToken.balanceOf(admin);
@@ -1418,18 +1315,6 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method setDAIProxy", () => {
-      beforeEach(async () => {
-        Loan = await loanCloner.deploy(
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          termLength,
-          auctionLength,
-          DAIToken.address,
-          "12"
-        );
-      });
       it("Update DAI proxy address", async () => {
         const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
         const proxyAddress = await Loan.proxyAddress();

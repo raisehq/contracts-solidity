@@ -1,20 +1,7 @@
 pragma solidity 0.5.12;
 
 interface ILoanContractDispatcher {
-    event LoanContractCreated(
-        address loanDispatcher,
-        address contractAddress,
-        address indexed originator,
-        uint256 minAmount,
-        uint256 maxAmount,
-        uint256 minInterestRate,
-        uint256 maxInterestRate,
-        uint256 termEndTimestamp,
-        address indexed administrator,
-        uint256 operatorFee,
-        uint256 auctionLength,
-        address indexed tokenAddress
-    );
+    event LoanContractCreated(address contractAddress, address indexed originator);
 
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
     event MaxAmountUpdated(uint256 maxAmount, address loanDispatcher);
@@ -61,7 +48,7 @@ interface ILoanContractDispatcher {
     function addTokenToAcceptedList(address tokenAddress) external;
 
     function removeTokenFromAcceptedList(address tokenAddress) external;
-    
+
     function setAuthAddress(address authAddress) external;
 
     function setDaiProxyAddress(address daiProxyAddress) external;

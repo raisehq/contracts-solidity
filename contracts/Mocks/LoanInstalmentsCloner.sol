@@ -38,19 +38,8 @@ contract LoanInstalmentsCloner is ILoanInstalmentsDispatcher, CloneFactory, Owna
     }
 
     event LoanContractCreated(
-        address loanDispatcher,
         address contractAddress,
-        address indexed originator,
-        uint256 minAmount,
-        uint256 maxAmount,
-        uint256 minInterestRate,
-        uint256 maxInterestRate,
-        uint256 termEndTimestamp,
-        address indexed administrator,
-        uint256 operatorFee,
-        uint256 auctionLength,
-        address indexed tokenAddress,
-        uint256 instalments
+        address indexed originator
     );
 
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
@@ -249,6 +238,7 @@ contract LoanInstalmentsCloner is ILoanInstalmentsDispatcher, CloneFactory, Owna
             ),
             "Failed to init"
         );
+        emit LoanContractCreated(loanContract, msg.sender);
 
         return loanContract;
     }
