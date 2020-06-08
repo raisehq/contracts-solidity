@@ -24,22 +24,32 @@ const helpers = require("./helpers.js");
 const {calculateNetLoan, increaseTime} = helpers;
 const DAI_COST_200_RAISE = new BN("4596059099803939333");
 
-contract.only("LoanInstalments", accounts => {
+describe.only("LoanInstalments", () => {
+  let accounts = [];
+  let owner, lender, borrower, admin, bob, otherLender;
+
+  before(async function() {
+    accounts = await web3.eth.getAccounts();
+    owner = accounts[0];
+    lender = accounts[1];
+    borrower = accounts[2];
+    admin = accounts[3];
+    bob = accounts[4];
+    otherLender = accounts[5];
+
+    ERC20Wrapper = await ERC20WrapperContract.new();
+    await LoanInstalments.link(ERC20Wrapper);
+  });
+
   let DAIProxy;
   let DAIToken;
   let Loan;
+  let Auth;
   let SwapFactory;
   let loanAddress;
   let loanCloner;
 
   const averageMiningBlockTime = 15;
-
-  const owner = accounts[0];
-  const lender = accounts[1];
-  const borrower = accounts[2];
-  const admin = accounts[3];
-  const bob = accounts[4];
-  const otherLender = accounts[5];
 
   const deployLoan = async (
     minAmount,
@@ -65,7 +75,8 @@ contract.only("LoanInstalments", accounts => {
       termLength,
       auctionLength,
       tokenAddress,
-      instalments
+      instalments,
+      {from: borrower}
     );
     return loanContractAddress;
   };
@@ -79,9 +90,21 @@ contract.only("LoanInstalments", accounts => {
     let currentBlock;
     let DepositRegistry;
     let loanTemplateAddress;
-    const operatorPercentFee = toWei(new BN(5));
+    const operatorPercentFee = toWei(new BN(2));
 
     const onBeforeEach = async () => {
+      loanCloner = await LoanInstalmentsCloner.new(
+        Auth.address,
+        DAIProxy.address,
+        SwapFactory.address,
+        loanTemplateAddress,
+        {
+          from: owner
+        }
+      );
+
+      await loanCloner.setAdministrator(admin, {from: owner});
+
       loanAddress = await deployLoan(
         minAmount,
         maxAmount,
@@ -96,10 +119,6 @@ contract.only("LoanInstalments", accounts => {
     };
 
     beforeEach(async () => {
-      ERC20Wrapper = await ERC20WrapperContract.new();
-      await LoanInstalments.link("ERC20Wrapper", ERC20Wrapper.address);
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-
       DAIToken = await DAITokenContract.new({from: owner});
       await DAIToken.transferAmountToAddress(otherLender, web3.utils.toWei("3000"), {from: owner});
       await DAIToken.transferAmountToAddress(lender, 150, {from: owner});
@@ -123,7 +142,7 @@ contract.only("LoanInstalments", accounts => {
         from: owner
       });
 
-      const Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
+      Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
       const depositAddress = await Auth.getDepositAddress();
       // Set Loan variables
       minAmount = new BN(80);
@@ -153,17 +172,6 @@ contract.only("LoanInstalments", accounts => {
 
       const loanTemplate = await LoanInstalments.new();
       loanTemplateAddress = loanTemplate.address;
-
-      loanCloner = await LoanInstalmentsCloner.new(
-        Auth.address,
-        DAIProxy.address,
-        SwapFactory.address,
-        loanTemplateAddress,
-        {
-          from: owner
-        }
-      );
-      console.log("each parent");
       await onBeforeEach();
     });
     describe("Method onFundingReceived", () => {
@@ -203,7 +211,7 @@ contract.only("LoanInstalments", accounts => {
           throw error;
         }
       });
-      it.only("Expects Lender to be able to fully fund a Loan and mutate from CREATED to ACTIVE state.", async () => {
+      it("Expects Lender to be able to fully fund a Loan and mutate from CREATED to ACTIVE state.", async () => {
         try {
           // LoanInstalments state should start with CREATED == 0
           const firstState = await Loan.currentState();
@@ -220,7 +228,6 @@ contract.only("LoanInstalments", accounts => {
           const fundedByLender = await Loan.getLenderBidAmount(lender, {from: owner});
 
           expect(fundedByLender).to.eq.BN(fundAmount);
-          console.log("auctionBalance", auctionBalanceAmount);
           expect(auctionBalanceAmount).to.eq.BN(calculateNetLoan(fundAmount, operatorPercentFee));
 
           // LoanInstalments state should mutate to ACTIVE == 2
@@ -229,7 +236,7 @@ contract.only("LoanInstalments", accounts => {
           throw error;
         }
       });
-      it.only("Expects Lender to be able to send bigger funds to Loan, only loan amunt needed, and mutate from CREATED to ACTIVE state", async () => {
+      it("Expects Lender to be able to send bigger funds to Loan, only loan amunt needed, and mutate from CREATED to ACTIVE state", async () => {
         try {
           // LoanInstalments state should start with CREATED == 0
           const firstState = await Loan.currentState();
@@ -514,7 +521,7 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method withdrawLoan", () => {
-      it("Expect withdrawLoan to allow Borrower take loan if state == ACTIVE", async () => {
+      it.only("Expect withdrawLoan to allow Borrower take loan if state == ACTIVE", async () => {
         try {
           const fundAmount = new BN(100);
           const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
@@ -526,8 +533,8 @@ contract.only("LoanInstalments", accounts => {
           const stateAfterFund = await Loan.currentState({from: owner});
           expect(stateAfterFund).to.eq.BN(2);
 
-          await Loan.withdrawLoan({from: borrower});
           const netBalance = await Loan.auctionBalance();
+          await Loan.withdrawLoan({from: borrower});
           const borrowerBalance = await DAIToken.balanceOf(borrower);
 
           expect(borrowerBalance).to.eq.BN(borrowerBalancePrior.add(netBalance));
@@ -694,19 +701,19 @@ contract.only("LoanInstalments", accounts => {
         maxAmount = loanMaxAmount;
         await onBeforeEach();
       });
-      it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
-        const balancee = await DAIToken.balanceOf(otherLender);
+      it.only("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         await DAIToken.approve(DAIProxy.address, loanMaxAmount, {from: otherLender});
         await DAIProxy.fund(Loan.address, loanMaxAmount, {from: otherLender});
-        const bidAmount = await Loan.getLenderBidAmount(otherLender);
-        const balancee2 = await DAIToken.balanceOf(otherLender);
         // Retrieve current state == ACTIVE
         const stateAfterFund = await Loan.currentState({from: owner});
         expect(Number(stateAfterFund)).to.equal(2);
 
         await Loan.withdrawLoan({from: borrower});
 
-        const amountToRepay = await Loan.borrowerDebt();
+        const amountInstalmentLog = await Loan.getInstalmentAmount();
+        console.log("amount instalment", amountInstalmentLog);
+        const amountToRepay = await Loan.getInstalmentDebt();
+        console.log("amount to repay", amountToRepay);
         const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
         await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
@@ -733,7 +740,7 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method withdrawRepayment", () => {
-      it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
+      it.only("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         try {
           await DAIToken.approve(DAIProxy.address, 100, {from: lender});
           await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -1050,7 +1057,7 @@ contract.only("LoanInstalments", accounts => {
       });
     });
     describe("Method onRepaymentReceived", () => {
-      it("Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID", async () => {
+      it.only("Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID", async () => {
         // Partially fund the Loan
         await DAIToken.approve(DAIProxy.address, 100, {from: lender});
         await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -1157,7 +1164,7 @@ contract.only("LoanInstalments", accounts => {
         termEndTimestamp = currentBlock.timestamp + 2;
         await onBeforeEach();
       });
-      it("Expects lender to withdraw funds after unlocked", async () => {
+      it.only("Expects lender to withdraw funds after unlocked", async () => {
         const balanceBefore = Number(await DAIToken.balanceOf(lender));
         await DAIToken.approve(DAIProxy.address, 100, {from: lender});
         await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -1189,7 +1196,7 @@ contract.only("LoanInstalments", accounts => {
         termEndTimestamp = currentBlock.timestamp + 2;
         await onBeforeEach();
       });
-      it("Expects to unlock the funds if admin", async () => {
+      it.only("Expects to unlock the funds if admin", async () => {
         await Loan.unlockFundsWithdrawal({from: admin});
         const unlocked = Number(await Loan.currentState());
         expect(unlocked).to.equal(6);
@@ -1228,7 +1235,7 @@ contract.only("LoanInstalments", accounts => {
           throw error;
         }
       });
-      it("Expects to get closed if an abritrary amount of DAI is sent to loan contract when withdrawn", async () => {
+      it.only("Expects to get closed if an abritrary amount of DAI is sent to loan contract when withdrawn", async () => {
         const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
         const fundAmount = new BN(100);
         await DAIToken.approve(DAIProxy.address, fundAmount, {from: lender});
@@ -1268,7 +1275,7 @@ contract.only("LoanInstalments", accounts => {
       beforeEach(async () => {
         auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
         termEndTimestamp = currentBlock.timestamp + 2;
-        await onBeforeEacha();
+        await onBeforeEach();
       });
       it("Expect operators to withdraw the loan operator fee if borrower has withdraw", async () => {
         const adminBalancePrior = await DAIToken.balanceOf(admin);

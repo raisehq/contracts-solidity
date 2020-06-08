@@ -10,6 +10,58 @@ task("accounts", "Prints the list of accounts", async () => {
   }
 });
 
+console.log("Reading buidler config");
+
 module.exports = {
-  solc: {  version: '0.5.12'},
+  solc: {version: "0.5.12"},
+  networks: {
+    buidlerevm: {
+      accounts: [
+        {
+          privateKey: "0x6d05fe3bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05fa3bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05fb3bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05fc3bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05ff3bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05f23bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05f33bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05f43bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05f53bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05f63bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        },
+        {
+          privateKey: "0x6d05f73bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",
+          balance: "10000000000000000000000000000000000"
+        }
+      ]
+    }
+  }
 };

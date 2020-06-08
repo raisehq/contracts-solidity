@@ -6,6 +6,7 @@ import "./interfaces/ILoanInstalments.sol";
 import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/ISwapAndDepositFactory.sol";
 import "./libs/ERC20Wrapper.sol";
+import "@nomiclabs/buidler/console.sol";
 
 contract LoanInstalments is ILoanInstalments {
     using SafeMath for uint256;
@@ -577,6 +578,12 @@ contract LoanInstalments is ILoanInstalments {
         uint256 instalmentLengthProportion = termEndTimestamp.sub(auctionEndTimestamp) /
             instalments /
             2592000;
+        console.log("what", instalmentLengthProportion);
+        console.log("balance", auctionBalance);
+        console.log(
+            "mul",
+            uint256(1).div(instalments).add(getInterestRate().mul(instalmentLengthProportion))
+        );
         return
             auctionBalance.mul(
                 uint256(1).div(instalments).add(getInterestRate().mul(instalmentLengthProportion))
