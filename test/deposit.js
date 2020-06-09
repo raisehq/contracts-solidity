@@ -7,7 +7,6 @@ const DepositRegistryOldContract = artifacts.require("OldDepositRegistry");
 const HeroFakeTokenContract = artifacts.require("HeroFakeToken");
 const RaiseFake = artifacts.require("RaiseFake");
 const KYCContract = artifacts.require("KYCRegistry");
-const ReferralTrackerContract = artifacts.require("ReferralTracker");
 const truffleAssert = require("truffle-assertions");
 
 const HeroAmount = "200000000000000000000";
@@ -17,7 +16,6 @@ contract("Deposit Contract", function(accounts) {
   let HeroToken;
   let DepositRegistry;
   let DepositRegistryOld;
-  let ReferralTracker;
   let KYC;
 
   const owner = accounts[0];
@@ -152,37 +150,7 @@ contract("Deposit Contract", function(accounts) {
         );
       });
     });
-    describe("method setReferralTracker", () => {
-      before(async () => {
-        DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address, {
-          from: owner
-        });
-        await HeroToken.transferFakeHeroTokens(user);
-      });
-      it("Expects to set referral tracker if owner", async () => {
-        ReferralTracker = await ReferralTrackerContract.new(
-          DepositRegistry.address,
-          HeroToken.address
-        );
-        await DepositRegistry.setReferralTracker(ReferralTracker.address, {from: owner});
-        const ref = await DepositRegistry.ref();
-        expect(ref).to.equal(ReferralTracker.address);
-      });
-      it("Expects to not set referral tracker if not owner", async () => {
-        await truffleAssert.fails(
-          DepositRegistry.setReferralTracker(admin, {from: user}),
-          truffleAssert.ErrorType.REVERT,
-          "caller is not the owner"
-        );
-      });
-      it("Expects to not set referral tracker if zero address", async () => {
-        await truffleAssert.fails(
-          DepositRegistry.setReferralTracker(zeroAddress, {from: owner}),
-          truffleAssert.ErrorType.REVERT,
-          "Address needs to be valid"
-        );
-      });
-    });
+
     describe("method hasDeposited", () => {
       beforeEach(async () => {
         DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address, {
@@ -264,16 +232,11 @@ contract("Deposit Contract", function(accounts) {
         );
       });
     });
-    describe("method depositForWithReferral", () => {
+    xdescribe("method depositForWithReferral", () => {
       beforeEach(async () => {
         DepositRegistry = await DepositRegistryContract.new(HeroToken.address, KYC.address, {
           from: owner
         });
-        ReferralTracker = await ReferralTrackerContract.new(
-          DepositRegistry.address,
-          HeroToken.address
-        );
-        await DepositRegistry.setReferralTracker(ReferralTracker.address, {from: owner});
         await HeroToken.transferFakeHeroTokens(user);
         await HeroToken.transferFakeHeroTokens(referrer);
       });

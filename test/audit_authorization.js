@@ -1,5 +1,5 @@
 const DepositContract = artifacts.require("DepositRegistry.sol");
-const ReferralTrackerContract = artifacts.require("ReferralTracker.sol");
+// const ReferralTrackerContract = artifacts.require("ReferralTracker.sol");
 const HeroTokenContract = artifacts.require("HeroFakeToken.sol");
 const KYCContract = artifacts.require("KYCRegistry.sol");
 const Authorization = artifacts.require("Authorization.sol");
@@ -8,7 +8,7 @@ const BigNumber = require("bignumber.js");
 const BN = web3.utils.BN;
 
 contract("Authorization module", function(accounts) {
-  let deposit, referral, token, kyc, authorization;
+  let deposit, token, kyc, authorization;
 
   const owner = accounts[8];
   const admin = accounts[9];
@@ -19,7 +19,7 @@ contract("Authorization module", function(accounts) {
     token = await HeroTokenContract.new({from: owner});
     kyc = await KYCContract.new({from: owner});
     deposit = await DepositContract.new(token.address, kyc.address, {from: owner});
-    referral = await ReferralTrackerContract.new(deposit.address, token.address, {from: owner});
+    // referral = await ReferralTrackerContract.new(deposit.address, token.address, {from: owner});
     authorization = await Authorization.new(kyc.address, deposit.address, {from: owner});
   });
 
@@ -33,9 +33,9 @@ contract("Authorization module", function(accounts) {
         false,
         "isKYCConfirmed is not equal"
       );
-      await deposit
-        .setReferralTracker(referral.address, {from: owner})
-        .then(Utils.receiptShouldSucceed);
+      // await deposit
+      //   .setReferralTracker(referral.address, {from: owner})
+      //   .then(Utils.receiptShouldSucceed);
       await deposit.setAdministrator(admin, {from: owner}).then(Utils.receiptShouldSucceed);
       await token.transferFakeHeroTokens(user, {from: owner});
       await token.increaseAllowance(
