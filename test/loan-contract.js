@@ -1489,7 +1489,7 @@ contract("LoanContract", accounts => {
       it("Update DAI proxy address", async () => {
         const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
         const proxyAddress = await Loan.proxyAddress();
-        Loan.setProxyAddress(newDAIProxy.address, {from: admin});
+        await Loan.setProxyAddress(newDAIProxy.address, {from: admin});
         const newProxyAddress = await Loan.proxyAddress();
         expect(proxyAddress).to.not.equal(newProxyAddress);
       });
