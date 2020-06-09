@@ -147,7 +147,7 @@ describe.only("LoanInstalments", () => {
       // Set Loan variables
       minAmount = new BN(80);
       maxAmount = new BN(100);
-      minInterestRate = new BN("0");
+      minInterestRate = new BN("100000000000000000");
       maxInterestRate = new BN("100000000000000000");
       auctionLength = 60 * 60; // 1 hour in seconds
       termLength = 2 * 60 * 60; // 2 hours in seconds
@@ -521,7 +521,7 @@ describe.only("LoanInstalments", () => {
       });
     });
     describe("Method withdrawLoan", () => {
-      it.only("Expect withdrawLoan to allow Borrower take loan if state == ACTIVE", async () => {
+      it("Expect withdrawLoan to allow Borrower take loan if state == ACTIVE", async () => {
         try {
           const fundAmount = new BN(100);
           const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
@@ -710,10 +710,17 @@ describe.only("LoanInstalments", () => {
 
         await Loan.withdrawLoan({from: borrower});
 
+        const time = await Loan.getCurrentInstalment();
+        console.log("currentInstalment", time.toString());
+        const instalmentLength = await Loan.getInstalmentLenght();
+        console.log("length", instalmentLength.toString());
+        await helpers.increaseTime(instalmentLength.add(new BN("1")));
+        console.log("after time shift instalment", time.toString());
+
         const amountInstalmentLog = await Loan.getInstalmentAmount();
-        console.log("amount instalment", amountInstalmentLog);
+        console.log("amount instalment", amountInstalmentLog.toString());
         const amountToRepay = await Loan.getInstalmentDebt();
-        console.log("amount to repay", amountToRepay);
+        console.log("amount to repay", amountToRepay.toString());
         const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
         await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
@@ -740,7 +747,7 @@ describe.only("LoanInstalments", () => {
       });
     });
     describe("Method withdrawRepayment", () => {
-      it.only("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
+      it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         try {
           await DAIToken.approve(DAIProxy.address, 100, {from: lender});
           await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -1057,7 +1064,7 @@ describe.only("LoanInstalments", () => {
       });
     });
     describe("Method onRepaymentReceived", () => {
-      it.only("Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID", async () => {
+      it("Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID", async () => {
         // Partially fund the Loan
         await DAIToken.approve(DAIProxy.address, 100, {from: lender});
         await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -1164,7 +1171,7 @@ describe.only("LoanInstalments", () => {
         termEndTimestamp = currentBlock.timestamp + 2;
         await onBeforeEach();
       });
-      it.only("Expects lender to withdraw funds after unlocked", async () => {
+      it("Expects lender to withdraw funds after unlocked", async () => {
         const balanceBefore = Number(await DAIToken.balanceOf(lender));
         await DAIToken.approve(DAIProxy.address, 100, {from: lender});
         await DAIProxy.fund(Loan.address, 100, {from: lender});
@@ -1196,7 +1203,7 @@ describe.only("LoanInstalments", () => {
         termEndTimestamp = currentBlock.timestamp + 2;
         await onBeforeEach();
       });
-      it.only("Expects to unlock the funds if admin", async () => {
+      it("Expects to unlock the funds if admin", async () => {
         await Loan.unlockFundsWithdrawal({from: admin});
         const unlocked = Number(await Loan.currentState());
         expect(unlocked).to.equal(6);
@@ -1235,7 +1242,7 @@ describe.only("LoanInstalments", () => {
           throw error;
         }
       });
-      it.only("Expects to get closed if an abritrary amount of DAI is sent to loan contract when withdrawn", async () => {
+      it("Expects to get closed if an abritrary amount of DAI is sent to loan contract when withdrawn", async () => {
         const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
         const fundAmount = new BN(100);
         await DAIToken.approve(DAIProxy.address, fundAmount, {from: lender});

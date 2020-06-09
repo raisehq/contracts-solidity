@@ -440,12 +440,9 @@ contract LoanInstalments is ILoanInstalments {
         if (instalments == instalmentsPaid) {
             return 0;
         }
-        uint256 pendingInstalments = instalments.sub(instalmentsPaid);
-
-        return
-            getInstalmentAmount().add(
-                getInstalmentAmount().mul(getInstalmentPenalty()).mul(pendingInstalments.sub(1))
-            );
+        uint256 penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
+        console.log("pending", getCurrentInstalment(), penaltyInstalments);
+        return getInstalmentAmount().add(getInstalmentPenalty().mul(penaltyInstalments));
     }
 
     function onRepaymentReceived(address from, uint256 amount)
@@ -535,6 +532,8 @@ contract LoanInstalments is ILoanInstalments {
             termEndTimestamp = auctionEndTimestamp.add(termLength);
         }
 
+        auctionEndTimestamp = block.timestamp;
+
         emit AuctionSuccessful(
             address(this),
             borrowerDebt,
@@ -564,10 +563,15 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function getCurrentInstalment() public view returns (uint256) {
-        uint256 currentInstalmentNumber = (block.timestamp.sub(auctionEndTimestamp)).mul(1000).div(
-            getInstalmentLenght()
-        );
+        uint256 timeSinceLoan = block.timestamp.sub(auctionEndTimestamp);
+        console.log("time since loan", timeSinceLoan, getInstalmentLenght());
+        if (timeSinceLoan < getInstalmentLenght()) {
+            return 0;
+        }
+        uint256 currentInstalmentNumber = timeSinceLoan.mul(1000).div(getInstalmentLenght());
+        console.log("prior curr", currentInstalmentNumber);
         currentInstalmentNumber = ceil(currentInstalmentNumber, 1000).div(1000);
+        console.log("curr", currentInstalmentNumber);
         if (currentInstalmentNumber > instalments) {
             return instalments;
         }
@@ -575,26 +579,17 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function getInstalmentAmount() public view returns (uint256) {
-        uint256 instalmentLengthProportion = termEndTimestamp.sub(auctionEndTimestamp) /
-            instalments /
-            2592000;
-        console.log("what", instalmentLengthProportion);
-        console.log("balance", auctionBalance);
-        console.log(
-            "mul",
-            uint256(1).div(instalments).add(getInterestRate().mul(instalmentLengthProportion))
-        );
-        return
-            auctionBalance.mul(
-                uint256(1).div(instalments).add(getInterestRate().mul(instalmentLengthProportion))
-            );
+        return calculateValueWithInterest(auctionBalance).div(instalments);
     }
 
     function getInstalmentPenalty() public view returns (uint256) {
-        return auctionBalance.mul(getInterestRate().mul(2).div(instalments));
+        return
+            auctionBalance.mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS)).div(
+                ONE_HUNDRED
+            );
     }
 
     function ceil(uint256 a, uint256 m) internal pure returns (uint256) {
-        return ((a.mul(m).sub(1)).div(m)).mul(m);
+        return ((a.add(m).sub(1)).div(m)).mul(m);
     }
 }
