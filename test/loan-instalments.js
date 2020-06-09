@@ -170,7 +170,7 @@ describe.only("LoanInstalments", () => {
         }
       );
 
-      const loanTemplate = await LoanInstalments.new();
+      const loanTemplate = await LoanInstalments.new({gas: 8000000});
       loanTemplateAddress = loanTemplate.address;
       await onBeforeEach();
     });
@@ -707,7 +707,6 @@ describe.only("LoanInstalments", () => {
         // Retrieve current state == ACTIVE
         const stateAfterFund = await Loan.currentState({from: owner});
         expect(Number(stateAfterFund)).to.equal(2);
-
         await Loan.withdrawLoan({from: borrower});
 
         const time = await Loan.getCurrentInstalment();
@@ -715,12 +714,14 @@ describe.only("LoanInstalments", () => {
         const instalmentLength = await Loan.getInstalmentLenght();
         console.log("length", instalmentLength.toString());
         await helpers.increaseTime(instalmentLength.add(new BN("1")));
+        const balance = await Loan.borrowerDebt();
         console.log("after time shift instalment", time.toString());
-
+        const totalDebt = await Loan.getTotalDebt();
         const amountInstalmentLog = await Loan.getInstalmentAmount();
         console.log("amount instalment", amountInstalmentLog.toString());
         const amountToRepay = await Loan.getInstalmentDebt();
         console.log("amount to repay", amountToRepay.toString());
+        console.log("total debt", totalDebt.toString(), balance.toString());
         const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
         await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});

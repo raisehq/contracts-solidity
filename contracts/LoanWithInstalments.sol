@@ -8,6 +8,7 @@ import "./interfaces/ISwapAndDepositFactory.sol";
 import "./libs/ERC20Wrapper.sol";
 import "@nomiclabs/buidler/console.sol";
 
+
 contract LoanInstalments is ILoanInstalments {
     using SafeMath for uint256;
     address public swapFactory;
@@ -437,12 +438,31 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function getInstalmentDebt() public view returns (uint256) {
+        uint256 quotient = 0;
         if (instalments == instalmentsPaid) {
             return 0;
         }
+
+        // Handle integer division remainder in the latest payment
+        if (getCurrentInstalment() == instalments) {
+            quotient = borrowerDebt.sub(getInstalmentAmount().mul(instalments));
+        }
+
         uint256 penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
-        console.log("pending", getCurrentInstalment(), penaltyInstalments);
-        return getInstalmentAmount().add(getInstalmentPenalty().mul(penaltyInstalments));
+        return
+            getInstalmentAmount().add(getInstalmentPenalty().mul(penaltyInstalments)).add(quotient);
+    }
+
+    function getTotalDebt() public view returns (uint256) {
+        if (instalments == instalmentsPaid) {
+            return 0;
+        }
+
+        return
+            getInstalmentAmount()
+                .mul(instalments.sub(instalmentsPaid))
+                .add(getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1)))
+                .add(borrowerDebt.sub(getInstalmentAmount().mul(instalments)));
     }
 
     function onRepaymentReceived(address from, uint256 amount)
@@ -564,14 +584,11 @@ contract LoanInstalments is ILoanInstalments {
 
     function getCurrentInstalment() public view returns (uint256) {
         uint256 timeSinceLoan = block.timestamp.sub(auctionEndTimestamp);
-        console.log("time since loan", timeSinceLoan, getInstalmentLenght());
         if (timeSinceLoan < getInstalmentLenght()) {
             return 0;
         }
         uint256 currentInstalmentNumber = timeSinceLoan.mul(1000).div(getInstalmentLenght());
-        console.log("prior curr", currentInstalmentNumber);
         currentInstalmentNumber = ceil(currentInstalmentNumber, 1000).div(1000);
-        console.log("curr", currentInstalmentNumber);
         if (currentInstalmentNumber > instalments) {
             return instalments;
         }
@@ -579,14 +596,14 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function getInstalmentAmount() public view returns (uint256) {
-        return calculateValueWithInterest(auctionBalance).div(instalments);
+        return borrowerDebt.div(instalments);
     }
 
     function getInstalmentPenalty() public view returns (uint256) {
         return
-            auctionBalance.mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS)).div(
-                ONE_HUNDRED
-            );
+            (auctionBalance.add(auctionBalance.mul(operatorFee).div(ONE_HUNDRED)))
+                .mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS))
+                .div(ONE_HUNDRED);
     }
 
     function ceil(uint256 a, uint256 m) internal pure returns (uint256) {
