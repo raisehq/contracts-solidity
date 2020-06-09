@@ -12,8 +12,6 @@ const KYCContract = artifacts.require("KYCRegistry");
 const AuthContract = artifacts.require("Authorization");
 const truffleAssert = require("truffle-assertions");
 
-const HeroAmount = "200000000000000000000";
-
 contract("Referral Tracker", function(accounts) {
   let DAIToken;
   let Auth;
@@ -437,7 +435,7 @@ contract("Referral Tracker", function(accounts) {
         );
       });
     });
-    describe.only("method withdraw", () => {
+    describe("method withdraw", () => {
       beforeEach(async () => {
         try {
           await generateReferral();
@@ -467,21 +465,17 @@ contract("Referral Tracker", function(accounts) {
         assert.equal(Number(await DAIToken.balanceOf(referrer)), Number(Bonus));
         assert.equal(Number(await ReferralContract.getUnclaimedAmount(referrer)), 0);
       });
-      xit("Expects to fail if user has no referrals", async () => {
+      it("Expects to fail if user has no referrals", async () => {
+        await KYCRegistry.addAddressToKYC(referrer, {from: admin});
         await truffleAssert.fails(
           ReferralContract.withdraw(referrer, {from: referrer}),
           truffleAssert.ErrorType.REVERT,
-          "no referrals to claim"
+          "no referral amount to claim"
         );
       });
-      xit("Expects to fail if contract does not have enough funds", async () => {
-        await HeroToken.transferFakeHeroTokens(user);
-        await HeroToken.transferFakeHeroTokens(referrer);
-        await HeroToken.approve(DepositRegistry.address, HeroAmount, {from: user});
-        await HeroToken.approve(DepositRegistry.address, HeroAmount, {from: referrer});
-        await DepositRegistry.depositFor(referrer, {from: referrer});
-
-        await DepositRegistry.depositForWithReferral(user, referrer, {from: user});
+      it("Expects to fail if contract does not have enough funds", async () => {
+        await KYCRegistry.addAddressToKYC(referrer, {from: admin});
+        await ReferralContract.registerReferral(referrer, user, {from: admin});
 
         await truffleAssert.fails(
           ReferralContract.withdraw(referrer, {from: referrer}),
@@ -489,53 +483,120 @@ contract("Referral Tracker", function(accounts) {
           "Not enough funds"
         );
       });
-      xit("Expects to fail if contract is paused", async () => {
+      it("Expects to fail if contract is paused", async () => {
+        await ReferralContract.addPauser(admin);
         await ReferralContract.pause({from: admin});
+        await KYCRegistry.addAddressToKYC(referrer, {from: admin});
         await truffleAssert.fails(
           ReferralContract.withdraw(referrer, {from: referrer}),
           truffleAssert.ErrorType.REVERT,
           "Pausable: paused"
         );
       });
-      xit("Expects to fail if paused and succeed when unpaused and tried again", async () => {
-        await HeroToken.transferFakeHeroTokens(admin);
-        await HeroToken.approve(ReferralContract.address, HeroAmount, {from: admin});
-        await ReferralContract.addFunds(HeroAmount, {from: admin});
+      it("Expects to fail if address not kyced", async () => {
+        await DAIToken.transferAmountToAddress(admin, amount, {
+          from: owner
+        });
+        await DAIToken.approve(ReferralContract.address, amount, {from: admin});
+        await ReferralContract.addFunds(amount, {from: admin});
+        await ReferralContract.registerReferral(referrer, user, {from: admin});
+        await truffleAssert.fails(
+          ReferralContract.withdraw(referrer, {from: referrer}),
+          truffleAssert.ErrorType.REVERT,
+          "user does not have KYC"
+        );
+      });
+      it("Expects to fail if paused and succeed when unpaused and tried again", async () => {
+        await DAIToken.transferAmountToAddress(admin, amount, {
+          from: owner
+        });
+        await DAIToken.approve(ReferralContract.address, amount, {from: admin});
+        await ReferralContract.addFunds(amount, {from: admin});
 
-        const balance = Number(await HeroToken.balanceOf(ReferralContract.address));
-        expect(balance).to.equal(Number(HeroAmount));
+        const balance = Number(await DAIToken.balanceOf(ReferralContract.address));
+        expect(balance).to.equal(Number(amount));
+        await KYCRegistry.addAddressToKYC(referrer, {from: admin});
+        await ReferralContract.registerReferral(referrer, user, {from: admin});
 
-        await HeroToken.transferFakeHeroTokens(user);
-        await HeroToken.transferFakeHeroTokens(referrer2);
-        await HeroToken.approve(DepositRegistry.address, HeroAmount, {from: user});
-        await HeroToken.approve(DepositRegistry.address, HeroAmount, {from: referrer2});
-        await DepositRegistry.depositFor(referrer2, {from: referrer2});
-        await DepositRegistry.depositForWithReferral(user, referrer2, {from: user});
-        const referrerBalanceAfterDeposit = Number(await HeroToken.balanceOf(referrer2));
-
+        await ReferralContract.addPauser(admin);
         await ReferralContract.pause({from: admin});
         await truffleAssert.fails(
-          ReferralContract.withdraw(referrer2, {from: referrer2}),
+          ReferralContract.withdraw(referrer, {from: referrer}),
           truffleAssert.ErrorType.REVERT,
           "Pausable: paused"
         );
         await ReferralContract.unpause({from: admin});
-        await ReferralContract.withdraw(referrer2, {from: referrer2});
+        await ReferralContract.withdraw(referrer, {from: referrer});
 
-        const contractBalance = Number(await HeroToken.balanceOf(ReferralContract.address));
-        const referrerBalance = Number(await HeroToken.balanceOf(referrer2));
-        const unclaimedReferrals = Number(await ReferralContract.unclaimedReferrals(referrer2));
-        expect(referrerBalanceAfterDeposit).to.equal(0);
-        expect(contractBalance).to.equal(Number(HeroAmount) / 2);
-        expect(referrerBalance).to.equal(Number(HeroAmount) / 2);
+        const contractBalance = Number(await DAIToken.balanceOf(ReferralContract.address));
+        const referrerBalance = Number(await DAIToken.balanceOf(referrer));
+        const unclaimedReferrals = Number(await ReferralContract.getUnclaimedAmount(referrer));
+        expect(contractBalance).to.equal(Number(amount) - Number(Bonus));
+        expect(referrerBalance).to.equal(Number(Bonus));
         expect(unclaimedReferrals).to.equal(0);
       });
     });
     describe("method getUnclaimedAmount", () => {
-      it("Expects to get correct unclaimed amount", async () => {
-        // TODO: add address referral registry
+      beforeEach(async () => {
+        try {
+          await generateReferral();
+          await ReferralContract.setAdministrator(admin, {from: owner});
+          await ReferralContract.addRegistryAddress(admin, {from: admin});
+          amount = new BN("3000");
+        } catch (error) {
+          throw error;
+        }
       });
-      it("Expects to get correct unclaimed amount if address not in referral registry", async () => {});
+      it("Expects to get correct unclaimed amount", async () => {
+        await ReferralContract.registerReferral(referrer, user, {from: admin});
+        const unclaimed = await ReferralContract.getUnclaimedAmount(referrer);
+        expect(Number(unclaimed)).to.equal(Number(Bonus));
+      });
+      it("Expects to get correct unclaimed amount if address not in referral registry", async () => {
+        const unclaimed = await ReferralContract.getUnclaimedAmount(referrer);
+        expect(Number(unclaimed)).to.equal(0);
+      });
+    });
+    describe("method isAddressInRegistry", () => {
+      beforeEach(async () => {
+        try {
+          await generateReferral();
+          await ReferralContract.setAdministrator(admin, {from: owner});
+          await ReferralContract.addRegistryAddress(admin, {from: admin});
+          amount = new BN("3000");
+        } catch (error) {
+          throw error;
+        }
+      });
+      it("Expects to get true if address in registry", async () => {
+        const isRegistered = await ReferralContract.isAddressInRegistry(admin);
+        expect(isRegistered).to.equal(true);
+      });
+      it("Expects to get false if address not in registry", async () => {
+        const isRegistered = await ReferralContract.isAddressInRegistry(referrer);
+        expect(isRegistered).to.equal(false);
+      });
+    });
+    describe("method isAddressReferred", () => {
+      beforeEach(async () => {
+        try {
+          await generateReferral();
+          await ReferralContract.setAdministrator(admin, {from: owner});
+          await ReferralContract.addRegistryAddress(admin, {from: admin});
+          amount = new BN("3000");
+        } catch (error) {
+          throw error;
+        }
+      });
+      it("Expects to get true if address previously referred", async () => {
+        await ReferralContract.registerReferral(referrer, user, {from: admin});
+        const isReferred = await ReferralContract.isAddressReferred(user);
+        expect(isReferred).to.equal(true);
+      });
+      it("Expects to get false if address not previously referred", async () => {
+        const isReferred = await ReferralContract.isAddressReferred(user);
+        expect(isReferred).to.equal(false);
+      });
     });
   });
 });

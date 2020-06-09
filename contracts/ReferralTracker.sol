@@ -101,7 +101,7 @@ contract ReferralTracker is Ownable, Pausable {
     }
 
     function setReferralBonus(uint256 newBonus) external onlyAdmin {
-        require(newBonus >= 0, "Bonus needs to be greater than 0");
+        require(newBonus > 0, "Bonus needs to be greater than 0");
         REFERRAL_BONUS = newBonus;
         emit UpdateReferralBonus(address(this), REFERRAL_BONUS);
     }
