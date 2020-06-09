@@ -72,7 +72,7 @@ const migration = async (deployer, network, accounts) => {
     await deployer.deploy(DAIProxy, authAddress, swapperFactoryAddress, {
       from: deployerAddress
     });
-
+    console.log("uniswap address=========> ", swapFactoryAddress);
     await deployer.deploy(LoanDispatcher, authAddress, DAIProxy.address, swapFactoryAddress, {
       from: deployerAddress
     });

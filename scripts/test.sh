@@ -51,5 +51,5 @@ else
     echo "Starting our own ganache instance"
     start_ganache
   fi
-  npx truffle test --network test "./test/referrals.js" "$@"
+  npx truffle test --network test "$@"
 fi
