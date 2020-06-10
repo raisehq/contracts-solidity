@@ -1,4 +1,5 @@
 usePlugin("@nomiclabs/buidler-truffle5");
+usePlugin("buidler-gas-reporter");
 
 // This is a sample Buidler task. To learn how to create your own go to
 // https://buidler.dev/guides/create-task.html
@@ -13,9 +14,19 @@ task("accounts", "Prints the list of accounts", async () => {
 console.log("Reading buidler config");
 
 module.exports = {
-  solc: {version: "0.5.12"},
+  gasReporter: {
+    enabled: process.env.REPORT_GAS ? true : false
+  },
+  solc: {
+    version: "0.5.12",
+    optimizer: {
+      enabled: false, // enable logs and stacktrace for testing
+      runs: 200
+    }
+  },
   networks: {
     buidlerevm: {
+      blockGasLimit: 100000000,
       accounts: [
         {
           privateKey: "0x6d05fe3bbf9ae5807ed83bcc59f871c01cdb7c1e78f0cc4395561f07dc0dda72",

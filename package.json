@@ -28,8 +28,8 @@
     "migration:reset": "truffle migration --reset --network development",
     "migration:cypress": "truffle migration --reset --network cypress",
     "console": "truffle console --network kovan",
-    "tests": "env-cmd npm run test",
-    "test": "bash scripts/test.sh",
+    "test:script": "bash scripts/test.sh",
+    "test": "npx buidler test --network buidlerevm",
     "coverage": "truffle run coverage --solcoverjs ./.solcover.js",
     "solhint": "./node_modules/.bin/solhint -f table contracts/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/*.sol"
@@ -74,6 +74,7 @@
     "@nomiclabs/buidler": "1.1.2",
     "@nomiclabs/buidler-truffle5": "1.1.2",
     "@nomiclabs/buidler-web3": "1.1.2",
+    "buidler-gas-reporter": "^0.1.3",
     "husky": "^2.7.0",
     "npm-watch": "^0.6.0",
     "prettier": "^1.19.1",

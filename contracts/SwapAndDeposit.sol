@@ -6,7 +6,6 @@ import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/IDepositRegistry.sol";
 import "./interfaces/IUniswapFactory.sol";
 import "./interfaces/IUniswapExchange.sol";
-import "@nomiclabs/buidler/console.sol";
 
 contract SwapAndDeposit is ISwapAndDeposit {
     using SafeMath for uint256;
