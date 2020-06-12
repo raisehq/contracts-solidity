@@ -8,6 +8,7 @@ import "./interfaces/ISwapAndDepositFactory.sol";
 import "./libs/ERC20Wrapper.sol";
 import "@nomiclabs/buidler/console.sol";
 
+
 contract LoanInstalments is ILoanInstalments {
     using SafeMath for uint256;
     address public swapFactory;
@@ -453,9 +454,9 @@ contract LoanInstalments is ILoanInstalments {
     function withdrawLoan() external onlyActive notTemplate {
         require(!loanWithdrawn, "Already withdrawn");
         loanWithdrawn = true;
-        emit LoanFundsWithdrawn(address(this), originator, auctionBalance);
+        emit LoanFundsWithdrawn(address(this), originator, auctionBalance.sub(operatorBalance));
         require(
-            ERC20Wrapper.transfer(tokenAddress, originator, auctionBalance),
+            ERC20Wrapper.transfer(tokenAddress, originator, auctionBalance.sub(operatorBalance)),
             "error while transfer"
         );
     }
@@ -621,11 +622,11 @@ contract LoanInstalments is ILoanInstalments {
 
     function getCurrentInstalment() public view returns (uint256) {
         uint256 timeSinceLoan = block.timestamp.sub(auctionEndTimestamp);
-        if (timeSinceLoan < getInstalmentLenght()) {
-            return 0;
-        }
         uint256 currentInstalmentNumber = timeSinceLoan.mul(1000).div(getInstalmentLenght());
         currentInstalmentNumber = ceil(currentInstalmentNumber, 1000).div(1000);
+        if (currentInstalmentNumber <= 0) {
+            return 1;
+        }
         if (currentInstalmentNumber > instalments) {
             return instalments;
         }
@@ -638,9 +639,9 @@ contract LoanInstalments is ILoanInstalments {
 
     function getInstalmentPenalty() public view returns (uint256) {
         return
-            (auctionBalance.add(auctionBalance.mul(operatorFee).div(ONE_HUNDRED)))
-                .mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS))
-                .div(ONE_HUNDRED);
+            auctionBalance.mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS)).div(
+                ONE_HUNDRED
+            );
     }
 
     function ceil(uint256 a, uint256 m) internal pure returns (uint256) {

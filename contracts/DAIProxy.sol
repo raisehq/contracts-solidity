@@ -161,6 +161,7 @@ contract DAIProxy is IDAIProxy, Ownable {
 
     function _calculateFunds(address loanAddress, uint256 fundingAmount)
         internal
+        view
         returns (uint256)
     {
         uint256 newFundingAmount = fundingAmount;
