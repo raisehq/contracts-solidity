@@ -47,9 +47,9 @@ contract("LoanContractDispatcher", accounts => {
       try {
         // Link the library
         ERC20Wrapper = await ERC20WrapperContract.new();
-        await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-        await LoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
-        await LoanContractDispatcherContract.link("ERC20Wrapper", ERC20Wrapper.address);
+        await DAIProxyContract.link(ERC20Wrapper);
+        await LoanContract.link(ERC20Wrapper);
+        await LoanContractDispatcherContract.link(ERC20Wrapper);
 
         DAIToken = await DAITokenContract.new({from: owner});
         RaiseToken = await RaiseTokenContract.new({from: owner});

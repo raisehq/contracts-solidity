@@ -57,7 +57,7 @@ contract("Authorization", accounts => {
           await truffleAssert.fails(
             Auth.setKYCRegistry(KYCRegistry2.address, {from: user1}),
             truffleAssert.ErrorType.REVERT,
-            "caller is not the owner."
+            "Ownable: caller is not the owner"
           );
         });
       });
@@ -77,7 +77,7 @@ contract("Authorization", accounts => {
           await truffleAssert.fails(
             Auth.setDepositRegistry(DR2.address, {from: user1}),
             truffleAssert.ErrorType.REVERT,
-            "caller is not the owner."
+            "Ownable: caller is not the owner"
           );
         });
       });

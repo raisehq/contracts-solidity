@@ -1,6 +1,5 @@
 const chai = require("chai");
 const bnChai = require("bn-chai");
-const web3 = global.web3;
 const {toWei, fromWei, BN} = web3.utils;
 const chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
@@ -24,7 +23,7 @@ const helpers = require("./helpers.js");
 const {revertToSnapShot, takeSnapshot} = helpers;
 const DAI_COST_200_RAISE = new BN("4596059099803939333");
 
-describe.only("LoanInstalments", () => {
+describe("LoanInstalments", () => {
   let accounts = [];
   let owner, lender, borrower, admin, bob, otherLender;
   // evm snapshot to revert all state per test

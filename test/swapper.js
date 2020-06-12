@@ -1,7 +1,6 @@
 const chai = require("chai");
 const bnChai = require("bn-chai");
 const chaiAsPromised = require("chai-as-promised");
-const web3 = global.web3;
 const {BN} = web3.utils;
 chai.use(chaiAsPromised);
 chai.use(bnChai(BN));
@@ -26,6 +25,7 @@ const {initializeUniswap} = require("./uniswap.utils");
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 contract("UniswapSwapper", accounts => {
+  const {fromWei} = web3.utils;
   const web3One = getWeb3(web3);
 
   // Activate better error handling with revert reasons
@@ -58,16 +58,22 @@ contract("UniswapSwapper", accounts => {
 
       uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
 
-      UniswapSwapperFactory = await UniswapSwapperFactoryContract.new(UniswapSwapperTemplate.address, uniswapAddress, {
-        from: owner
-      });
+      UniswapSwapperFactory = await UniswapSwapperFactoryContract.new(
+        UniswapSwapperTemplate.address,
+        uniswapAddress,
+        {
+          from: owner
+        }
+      );
     } catch (error) {
       throw error;
     }
   };
 
   describe("UniswapSwapper Factory", () => {
-    beforeEach(beforeTest);
+    beforeEach(async () => {
+      await beforeTest();
+    });
     it("Expects to deploy a initiated minimal proxy", async () => {
       const tx = await UniswapSwapperFactory.deploy();
       truffleAssert.eventEmitted(tx, "NewSwapContract");
@@ -79,7 +85,10 @@ contract("UniswapSwapper", accounts => {
       const tx = await UniswapSwapperFactory.deploy();
       const {proxyAddress} = tx.logs[0].args;
 
-      const isClone = await UniswapSwapperFactory.isCloned(UniswapSwapperTemplate.address, proxyAddress);
+      const isClone = await UniswapSwapperFactory.isCloned(
+        UniswapSwapperTemplate.address,
+        proxyAddress
+      );
       expect(isClone).to.be.true;
     });
 
@@ -98,20 +107,13 @@ contract("UniswapSwapper", accounts => {
     });
 
     it("Expects to NOT SET uniswap if other", async () => {
-      const swapFactory = new web3One.eth.Contract(
-        UniswapSwapperFactoryContract.abi,
-        UniswapSwapperFactory.address
-      );
       const currentAddress = await UniswapSwapperFactory.uniswapAddress();
       const randomAddress = "0xda6494Ed9cfED40f2321adcFbcca8f80fD764ed2";
-      try {
-        await swapFactory.methods.setUniswapAddress(randomAddress).send({from: other});
-        assert.fail("Other user should not be alllowed to set");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "Ownable: caller is not the owner");
-        assert(error.message.includes("reverted"));
-      }
+      await truffleAssert.fails(
+        UniswapSwapperFactory.setUniswapAddress(randomAddress, {from: other}),
+        truffleAssert.ErrorType.REVERT,
+        "Ownable: caller is not the owner"
+      );
       const newAddress = await UniswapSwapperFactory.uniswapAddress();
       expect(newAddress).to.not.be.equals(randomAddress);
       expect(newAddress).to.be.equals(currentAddress);
@@ -124,37 +126,29 @@ contract("UniswapSwapper", accounts => {
       );
       const currentAddress = await UniswapSwapperFactory.libraryAddress();
       const randomAddress = "0xda9B6bE048aEaA333290226F07BD6B0A7AFE4B49";
-      try {
-        await swapFactory.methods.setLibraryAddress(randomAddress).send({from: other});
-        assert.fail("Other user should not be alllowed to set");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "Ownable: caller is not the owner");
-        assert(error.message.includes("reverted"));
-      }
+      await truffleAssert.fails(
+        UniswapSwapperFactory.setLibraryAddress(randomAddress, {from: other}),
+        truffleAssert.ErrorType.REVERT,
+        "Ownable: caller is not the owner"
+      );
       const newAddress = await UniswapSwapperFactory.libraryAddress();
       expect(newAddress).to.not.be.equals(randomAddress);
       expect(newAddress).to.be.equals(currentAddress);
     });
 
     it("Expects to NOT deploy if library is not set", async () => {
-      const swapFactoryTrufle = await UniswapSwapperFactoryContract.new(zeroAddress, uniswapAddress, {
-        from: owner
-      });
-      const swapFactory = new web3One.eth.Contract(
-        UniswapSwapperFactoryContract.abi,
-        swapFactoryTrufle.address
+      const swapFactoryTrufle = await UniswapSwapperFactoryContract.new(
+        zeroAddress,
+        uniswapAddress,
+        {
+          from: owner
+        }
       );
-
-      try {
-        await swapFactory.methods.deploy().send({from: owner});
-
-        assert.fail("Tx should not success");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "library must be set");
-        assert(error.message.includes("reverted"));
-      }
+      await truffleAssert.fails(
+        swapFactoryTrufle.deploy({from: other}),
+        truffleAssert.ErrorType.REVERT,
+        "library must be set"
+      );
     });
     it("Expects to NOT deploy if uniswap factory is not set", async () => {
       const swapFactoryTrufle = await UniswapSwapperFactoryContract.new(
@@ -164,19 +158,11 @@ contract("UniswapSwapper", accounts => {
           from: owner
         }
       );
-      const swapFactory = new web3One.eth.Contract(
-        UniswapSwapperFactoryContract.abi,
-        swapFactoryTrufle.address
+      await truffleAssert.fails(
+        swapFactoryTrufle.deploy({from: other}),
+        truffleAssert.ErrorType.REVERT,
+        "uniswap must be set"
       );
-      try {
-        await swapFactory.methods.deploy().send({from: owner});
-
-        assert.fail("Tx should not success");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "uniswap must be set");
-        assert(error.message.includes("reverted"));
-      }
     });
   });
   describe("UniswapSwapper Master Template", () => {
@@ -188,15 +174,11 @@ contract("UniswapSwapper", accounts => {
         swapTemplateTruffle.address
       );
 
-      try {
-        await swapTemplate.methods.init(uniswapAddress).send({from: lender});
-
-        assert.fail("Tx should not success");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "is template contract");
-        assert(error.message.includes("reverted"));
-      }
+      await truffleAssert.fails(
+        swapTemplateTruffle.init(uniswapAddress, {from: lender}),
+        truffleAssert.ErrorType.REVERT,
+        "is template contract"
+      );
     });
     it("Expects to UniswapSwapper Template to NOT be able to swap token to token", async () => {
       const swapTemplateTruffle = await UniswapSwapper.new({from: owner});
@@ -206,16 +188,19 @@ contract("UniswapSwapper", accounts => {
       );
 
       await DAIToken.approve(swapTemplateTruffle.address, INPUT_AMOUNT, {from: lender});
-      try {
-        await swapTemplate.methods
-          .swap(lender, DAIToken.address, RaiseToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT)
-          .send({from: lender, gas: 6000000});
-        assert.fail("Tx should not success");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "is template contract");
-        assert(error.message.includes("reverted"));
-      }
+
+      await truffleAssert.fails(
+        swapTemplateTruffle.swap(
+          lender,
+          DAIToken.address,
+          RaiseToken.address,
+          INPUT_AMOUNT,
+          OUTPUT_AMOUNT,
+          {from: lender}
+        ),
+        truffleAssert.ErrorType.REVERT,
+        "is template contract"
+      );
     });
 
     it("Expects to UniswapSwapper Template to NOT be able to swap eth to token", async () => {
@@ -226,16 +211,16 @@ contract("UniswapSwapper", accounts => {
       );
 
       await DAIToken.approve(swapTemplateTruffle.address, INPUT_AMOUNT, {from: lender});
-      try {
-        await swapTemplate.methods
-          .swapEth(lender, RaiseToken.address, OUTPUT_AMOUNT)
-          .send({value: web3.utils.toWei("10"), from: lender, gas: 6000000});
-        assert.fail("Tx should not success");
-      } catch (error) {
-        assert.equal(error.signature, "Error(String)");
-        assert.equal(error.reason, "is template contract");
-        assert(error.message.includes("reverted"));
-      }
+
+      await truffleAssert.fails(
+        swapTemplateTruffle.swapEth(lender, RaiseToken.address, OUTPUT_AMOUNT, {
+          value: web3.utils.toWei("10"),
+          from: lender,
+          gas: 6000000
+        }),
+        truffleAssert.ErrorType.REVERT,
+        "is template contract"
+      );
     });
   });
   describe("UniswapSwapper Minimal Proxy: Token to Token", () => {
@@ -261,23 +246,10 @@ contract("UniswapSwapper", accounts => {
       const swapGas = await swapProxy.methods
         .swap(lender, DAIToken.address, RaiseToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT)
         .estimateGas({from: lender});
-      console.log("Gas needed to swap", swapGas);
       // Swap DAI to 200 RAISE
-      const swapTx = await swapProxy.methods
+      await swapProxy.methods
         .swap(lender, DAIToken.address, RaiseToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT)
         .send({from: lender, gas: swapGas});
-
-      // Create truffle assert contexts
-      const swapContext = await truffleAssert.createTransactionResult(
-        swapProxyTruffle,
-        swapTx.transactionHash
-      );
-
-      truffleAssert.eventEmitted(
-        swapContext,
-        "Swap"
-        //({loan, guy}) => loan === lender && guy === lender
-      );
 
       // All the remaining DAI should come back to the user
       const afterDaiBalance = await DAIToken.balanceOf(lender);
@@ -302,9 +274,14 @@ contract("UniswapSwapper", accounts => {
       await DAIToken.mintTokens(doubleSwap.address, {from: owner});
       const doubleSwapBalancePrior = await DAIToken.balanceOf(DAIToken.address);
       await truffleAssert.fails(
-        doubleSwap.tryDoubleSwap(UniswapSwapperFactory.address, DAIToken.address, RaiseToken.address, {
-          from: lender
-        }),
+        doubleSwap.tryDoubleSwap(
+          UniswapSwapperFactory.address,
+          DAIToken.address,
+          RaiseToken.address,
+          {
+            from: lender
+          }
+        ),
         truffleAssert.ErrorType.REVERT,
         "this contract will selfdestruct"
       );
@@ -318,9 +295,14 @@ contract("UniswapSwapper", accounts => {
       await DAIToken.mintTokens(doubleSwap.address, {from: owner});
       const doubleSwapBalancePrior = await DAIToken.balanceOf(DAIToken.address);
       await truffleAssert.fails(
-        doubleSwap.tryDoubleSwap(UniswapSwapperFactory.address, DAIToken.address, RaiseToken.address, {
-          from: lender
-        }),
+        doubleSwap.tryDoubleSwap(
+          UniswapSwapperFactory.address,
+          DAIToken.address,
+          RaiseToken.address,
+          {
+            from: lender
+          }
+        ),
         truffleAssert.ErrorType.REVERT,
         "this contract will selfdestruct"
       );
@@ -333,9 +315,14 @@ contract("UniswapSwapper", accounts => {
       const doubleSwap = await DoubleSwapMock.new();
       await DAIToken.mintTokens(doubleSwap.address, {from: owner});
       await truffleAssert.passes(
-        doubleSwap.checkDestroyed(UniswapSwapperFactory.address, DAIToken.address, RaiseToken.address, {
-          from: lender
-        })
+        doubleSwap.checkDestroyed(
+          UniswapSwapperFactory.address,
+          DAIToken.address,
+          RaiseToken.address,
+          {
+            from: lender
+          }
+        )
       );
     });
 
@@ -674,10 +661,14 @@ contract("UniswapSwapper", accounts => {
       const doubleSwap = await DoubleSwapMock.new();
       const anotherToken = await DAITokenContract.new();
       await truffleAssert.fails(
-        doubleSwap.checkMissingExchangeEthSwap(UniswapSwapperFactory.address, anotherToken.address, {
-          value: web3.utils.toWei("1"),
-          from: lender
-        }),
+        doubleSwap.checkMissingExchangeEthSwap(
+          UniswapSwapperFactory.address,
+          anotherToken.address,
+          {
+            value: web3.utils.toWei("1"),
+            from: lender
+          }
+        ),
         truffleAssert.ErrorType.REVERT,
         "exchange can not be 0 address"
       );

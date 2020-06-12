@@ -46,6 +46,7 @@ const initializeUniswap = async (anyWeb3, tokenA, tokenB, owner) => {
   })
     .deploy({arguments: []})
     .send(defaultOptions);
+
   // Initialize factory
   await uniswapFactory.methods
     .initializeFactory(uniswapExchange.options.address)
@@ -60,23 +61,27 @@ const initializeUniswap = async (anyWeb3, tokenA, tokenB, owner) => {
   const exchangeBetaAddress = await uniswapFactory.methods.getExchange(tokenB).call();
   const exchangeBeta = new web3One.eth.Contract(UniswapExchangeAbi, exchangeBetaAddress);
 
-  const deadline = Math.floor(new Date().getTime() / 1000 + 600000);
+  const deadline = Math.floor(new Date().getTime() / 1000 + 600000000000);
+
   // Approve to exchanges
   await tokenInstanceA.methods
     .approve(exchangeAlphaAddress, exchangeAlphaPool.tokenPool)
     .send(defaultOptions);
+
   await tokenInstanceB.methods
     .approve(exchangeBetaAddress, exchangeBetaPool.tokenPool)
     .send(defaultOptions);
 
   // Add liquidity to uniswap exchanges
-  await exchangeBeta.methods
-    .addLiquidity("0", exchangeBetaPool.tokenPool, deadline.toString())
-    .send({value: exchangeBetaPool.ethPool, from: owner, gas: 9000000});
 
   await exchangeAlpha.methods
     .addLiquidity("0", exchangeAlphaPool.tokenPool, deadline.toString())
     .send({value: exchangeAlphaPool.ethPool, from: owner, gas: 9000000});
+
+  await exchangeBeta.methods
+    .addLiquidity("0", exchangeBetaPool.tokenPool, deadline.toString())
+    .send({value: exchangeBetaPool.ethPool, from: owner, gas: 9000000});
+
   // return factory address;
   return uniswapFactory.options.address;
 };
