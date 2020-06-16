@@ -1,6 +1,7 @@
 const chai = require("chai");
 const bnChai = require("bn-chai");
 const {toWei, fromWei, BN} = web3.utils;
+const Bluebird = require("bluebird");
 const chaiAsPromised = require("chai-as-promised");
 chai.use(chaiAsPromised);
 chai.use(bnChai(BN));
@@ -22,6 +23,10 @@ const {initializeUniswap} = require("./uniswap.utils");
 const helpers = require("./helpers.js");
 const {revertToSnapShot, takeSnapshot} = helpers;
 const DAI_COST_200_RAISE = new BN("4596059099803939333");
+
+const RevertErrors = {
+  repayAmount: "amount to be eq than getInstalmentDebt or getTotalDebt"
+};
 
 describe("LoanInstalments", () => {
   let accounts = [];
@@ -181,7 +186,7 @@ describe("LoanInstalments", () => {
     await onBeforeEach();
   });
 
-  describe("Unit tests for LoanInstalments", () => {
+  describe.only("Unit tests for LoanInstalments", () => {
     describe("Method onFundingReceived", () => {
       it("Expect onFundingReceived to revert if caller is NOT DaiProxy", async () => {
         // LoanInstalments state should start with CREATED == 0
@@ -762,7 +767,6 @@ describe("LoanInstalments", () => {
         await Loan.withdrawLoan({from: borrower});
 
         const amountToRepay = await Loan.borrowerDebt();
-        const amountToRepay2 = await Loan.getTotalDebt();
 
         const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
@@ -1057,7 +1061,7 @@ describe("LoanInstalments", () => {
         }
       });
     });
-    describe("Method onRepaymentReceived", () => {
+    describe("Method onRepaymentReceived: full repayment", () => {
       it("Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID", async () => {
         // Partially fund the Loan
         await DAIToken.approve(DAIProxy.address, 100, {from: lender});
@@ -1073,18 +1077,88 @@ describe("LoanInstalments", () => {
         expect(Number(stateAfterDeadline)).to.equal(4);
       });
       it("Expect onRepaymentReceived to revert borrower not to return the loan if incorrect ammount", async () => {
-        try {
-          await DAIToken.approve(DAIProxy.address, 100, {from: lender});
-          await DAIProxy.fund(Loan.address, 100, {from: lender});
+        await DAIToken.approve(DAIProxy.address, 100, {from: lender});
+        await DAIProxy.fund(Loan.address, 100, {from: lender});
 
-          await Loan.withdrawLoan({from: borrower});
-          const amountToRepay = Number(await Loan.borrowerDebt());
+        await Loan.withdrawLoan({from: borrower});
+        const amountToRepay = await Loan.borrowerDebt();
 
-          await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
-          await DAIProxy.repay(Loan.address, amountToRepay - 10, {from: borrower});
-        } catch (error) {
-          expect(error).to.not.equal(undefined);
-        }
+        await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
+        await truffleAssert.fails(
+          DAIProxy.repay(Loan.address, amountToRepay.sub(new BN("10")), {from: borrower}),
+          truffleAssert.ErrorType.REVERT,
+          RevertErrors.repayAmount
+        );
+      });
+    });
+    describe.only("Method onRepaymentReceived: instalments", () => {
+      const payInstalment = (loan, daiToken, daiProxy) => async (x, index) => {
+        const block1 = await web3.eth.getBlock("latest");
+        const nextInstalment = await loan.getNextInstalmentDate();
+        const remainingTime = nextInstalment.sub(new BN(block1.timestamp));
+        await helpers.increaseTime(remainingTime);
+        const currentInstalment = await loan.getCurrentInstalment();
+        expect(currentInstalment).eq.BN(new BN(index + 1));
+        const amountToRepay = await loan.getInstalmentDebt({from: borrower});
+        await daiToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
+        return daiProxy.repay(Loan.address, amountToRepay, {from: borrower});
+      };
+
+      it("Expect onRepaymentReceived to let borrower pay 1 instalment", async () => {
+        // Lender fully fund the loan
+        await DAIToken.approve(DAIProxy.address, 100, {from: lender});
+        await DAIProxy.fund(Loan.address, 100, {from: lender});
+
+        // Borrower withdraw loan
+        await Loan.withdrawLoan({from: borrower});
+
+        // Pass time to fist instalment
+        const nextInstalment = await Loan.getNextInstalmentDate();
+        const remainingTime = nextInstalment.sub(new BN(new Date().getTime() / 1000));
+        await helpers.increaseTime(remainingTime);
+
+        // Borrower pays first instalment
+        const amountToRepay = await Loan.getInstalmentDebt({from: borrower});
+        await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
+        await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+        const instalmentsPaid = await Loan.instalmentsPaid({from: borrower});
+        expect(instalmentsPaid).to.eq.BN("1");
+      });
+      it("Expect onRepaymentReceived to let borrower pay 12 instalments", async () => {
+        // Lender fully fund the loan
+        await DAIToken.approve(DAIProxy.address, 100, {from: lender});
+        await DAIProxy.fund(Loan.address, 100, {from: lender});
+        await Loan.withdrawLoan({from: borrower});
+
+        // Borrower withdraw loan
+        const instalments = await Loan.instalments();
+        const paidInstalments = await Loan.instalmentsPaid();
+        const remainingInstalments = Number(instalments.sub(paidInstalments));
+
+        // Pay remaining instances
+        const payments = await Bluebird.mapSeries(
+          Array(remainingInstalments),
+          payInstalment(Loan, DAIToken, DAIProxy)
+        );
+        const instalmentsPaid = await Loan.instalmentsPaid({from: borrower});
+        expect(instalmentsPaid).to.eq.BN(payments.length.toString());
+        const loanState = await Loan.currentState();
+        expect(loanState).to.eq.BN("4");
+      });
+      it("Expect onRepaymentReceived to revert borrower not to return the loan if incorrect ammount", async () => {
+        await DAIToken.approve(DAIProxy.address, 100, {from: lender});
+        await DAIProxy.fund(Loan.address, 100, {from: lender});
+
+        await Loan.withdrawLoan({from: borrower});
+        const amountToRepay = await Loan.getInstalmentDebt();
+
+        await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
+        await truffleAssert.fails(
+          DAIProxy.repay(Loan.address, amountToRepay.sub(new BN("10")), {from: borrower}),
+          truffleAssert.ErrorType.REVERT,
+          RevertErrors.repayAmount
+        );
       });
     });
     describe("Method isAuctionExpired", () => {

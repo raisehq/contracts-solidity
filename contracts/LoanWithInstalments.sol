@@ -462,16 +462,18 @@ contract LoanInstalments is ILoanInstalments {
 
     function getInstalmentDebt() public view returns (uint256) {
         uint256 remainder = 0;
-        if (instalments == instalmentsPaid) {
+        uint256 penaltyInstalments = 0;
+        // Return 0 debt if all instalments are paid, or if current instalment is paid
+        if (instalments == instalmentsPaid || getCurrentInstalment() == instalmentsPaid) {
             return 0;
         }
-
         // Handle integer division remainder in the latest payment
         if (getCurrentInstalment() == instalments) {
             remainder = borrowerDebt.sub(getInstalmentAmount().mul(instalments));
         }
-
-        uint256 penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
+        if (getCurrentInstalment() > instalmentsPaid.add(1)) {
+            penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
+        }
         return
             getInstalmentAmount().add(getInstalmentPenalty().mul(penaltyInstalments)).add(
                 remainder
@@ -483,11 +485,15 @@ contract LoanInstalments is ILoanInstalments {
             return 0;
         }
 
-        return
-            getInstalmentAmount()
-                .mul(instalments.sub(instalmentsPaid))
-                .add(getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1)))
-                .add(borrowerDebt.sub(getInstalmentAmount().mul(instalments)));
+        uint256 totalDebt = getInstalmentAmount().mul(instalments.sub(instalmentsPaid)).add(
+            borrowerDebt.sub(getInstalmentAmount().mul(instalments))
+        );
+        if (getCurrentInstalment() > instalmentsPaid.add(1)) {
+            totalDebt = totalDebt.add(
+                getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
+            );
+        }
+        return totalDebt;
     }
 
     function onRepaymentReceived(address from, uint256 amount)
@@ -497,17 +503,27 @@ contract LoanInstalments is ILoanInstalments {
         notTemplate
         returns (bool)
     {
+        require(amount > 0, "amount can not be zero");
+        require(loanAmountPaid < borrowerDebt, "debt is paid");
+        require(instalmentsPaid < instalments, "instalments paid");
         require(from == originator, "from address is not the originator");
 
-        if (amount == getInstalmentDebt() || amount == getTotalDebt()) {
-            borrowerDebt += getInstalmentPenalty().mul(
-                getCurrentInstalment().sub(instalmentsPaid).sub(1)
+        if (getCurrentInstalment() > instalmentsPaid.add(1)) {
+            borrowerDebt = borrowerDebt.add(
+                getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
             );
-            penaltiesPaid += getCurrentInstalment().sub(instalmentsPaid).sub(1);
+            penaltiesPaid = penaltiesPaid.add(getCurrentInstalment().sub(instalmentsPaid).sub(1));
+        }
+
+        if (amount == getInstalmentDebt()) {
+            instalmentsPaid = getCurrentInstalment();
+        } else if (amount == getTotalDebt()) {
             instalmentsPaid = instalments;
         } else {
-            revert("amount should be equal than getInstalmentDebt or getTotalDebt");
+            revert("amount to be eq than getInstalmentDebt or getTotalDebt");
         }
+
+        loanAmountPaid = loanAmountPaid.add(amount);
 
         if (instalmentsPaid == instalments) {
             setState(LoanState.REPAID);
@@ -522,7 +538,7 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function isDefaulted() public view returns (bool) {
-        if (block.timestamp <= auctionEndTimestamp || block.timestamp <= termEndTimestamp) {
+        if (block.timestamp <= auctionEndTimestamp || block.timestamp <= termEndTimestamp.add(getInstalmentLenght())) {
             return false;
         }
 
@@ -619,12 +635,18 @@ contract LoanInstalments is ILoanInstalments {
         return (termEndTimestamp.sub(auctionEndTimestamp)).div(instalments);
     }
 
+    function getNextInstalmentDate() public view returns (uint256) {
+        return auctionEndTimestamp.add((getCurrentInstalment().add(1)).mul(getInstalmentLenght()));
+    }
+
     function getCurrentInstalment() public view returns (uint256) {
         uint256 timeSinceLoan = block.timestamp.sub(auctionEndTimestamp);
-        uint256 currentInstalmentNumber = timeSinceLoan.mul(1000).div(getInstalmentLenght());
-        currentInstalmentNumber = ceil(currentInstalmentNumber, 1000).div(1000);
+        if (timeSinceLoan < getInstalmentLenght()) {
+            return 0;
+        }
+        uint256 currentInstalmentNumber = timeSinceLoan.div(getInstalmentLenght());
         if (currentInstalmentNumber <= 0) {
-            return 1;
+            return 0;
         }
         if (currentInstalmentNumber > instalments) {
             return instalments;
@@ -641,9 +663,5 @@ contract LoanInstalments is ILoanInstalments {
             auctionBalance.mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS)).div(
                 ONE_HUNDRED
             );
-    }
-
-    function ceil(uint256 a, uint256 m) internal pure returns (uint256) {
-        return ((a.add(m).sub(1)).div(m)).mul(m);
     }
 }
