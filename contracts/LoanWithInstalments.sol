@@ -198,9 +198,11 @@ contract LoanInstalments is ILoanInstalments {
 
         auctionLength = _auctionLength;
         auctionStartTimestamp = block.timestamp;
-        auctionEndTimestamp = auctionStartTimestamp + auctionLength;
+        auctionEndTimestamp = auctionStartTimestamp.add(auctionLength);
 
         termLength = _termLength;
+
+        termEndTimestamp = auctionEndTimestamp.add(termLength);
 
         loanWithdrawnAmount = 0;
 
@@ -538,7 +540,10 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function isDefaulted() public view returns (bool) {
-        if (block.timestamp <= auctionEndTimestamp || block.timestamp <= termEndTimestamp.add(getInstalmentLenght())) {
+        if (
+            block.timestamp <= auctionEndTimestamp ||
+            block.timestamp <= termEndTimestamp.add(getInstalmentLenght())
+        ) {
             return false;
         }
 
@@ -601,8 +606,6 @@ contract LoanInstalments is ILoanInstalments {
 
         if (block.timestamp < auctionEndTimestamp) {
             termEndTimestamp = block.timestamp.add(termLength);
-        } else {
-            termEndTimestamp = auctionEndTimestamp.add(termLength);
         }
 
         auctionEndTimestamp = block.timestamp;

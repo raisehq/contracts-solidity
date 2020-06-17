@@ -30,7 +30,7 @@
     "console": "truffle console --network kovan",
     "test:script": "bash scripts/test.sh",
     "test": "npx buidler test --network buidlerevm",
-    "coverage": "truffle run coverage --solcoverjs ./.solcover.js",
+    "coverage": "buidler coverage --solcoverjs ./.solcover.js",
     "solhint": "./node_modules/.bin/solhint -f table contracts/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/*.sol"
   },
@@ -81,7 +81,7 @@
     "prettier-plugin-solidity": "^1.0.0-alpha.44",
     "solhint": "^2.1.0",
     "solhint-plugin-prettier": "0.0.3",
-    "solidity-coverage": "^0.7.2",
+    "solidity-coverage": "^0.7.7",
     "web3": "1.2.6"
   }
 }

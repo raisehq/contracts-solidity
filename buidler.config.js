@@ -1,5 +1,6 @@
 usePlugin("@nomiclabs/buidler-truffle5");
 usePlugin("buidler-gas-reporter");
+usePlugin("solidity-coverage");
 
 // This is a sample Buidler task. To learn how to create your own go to
 // https://buidler.dev/guides/create-task.html
@@ -25,6 +26,12 @@ module.exports = {
     }
   },
   networks: {
+    soliditycoverage: {
+      allowUnlimitedContractSize: true,
+      url: "http://localhost:8555",
+      vmErrorsOnRPCResponse: false,
+      gasLimit: 0x1fffffffffffff
+    },
     buidlerevm: {
       allowUnlimitedContractSize: true,
       blockGasLimit: 100000000,
