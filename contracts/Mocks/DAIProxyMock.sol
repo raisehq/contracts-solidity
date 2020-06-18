@@ -10,6 +10,7 @@ contract DAIProxyMock is IDAIProxy {
     constructor(address daiAddress) public {
         DAIToken = ERC20(daiAddress);
     }
+
     function fund(address loanAddress, uint256 fundingAmount) public {
         uint256 newFundingAmount = fundingAmount;
         ILoanContract loanContract = ILoanContract(loanAddress);
@@ -21,12 +22,10 @@ contract DAIProxyMock is IDAIProxy {
             newFundingAmount = maxAmount - auctionBalance;
         }
 
-        bool canTransfer = loanContract.onFundingReceived(msg.sender, newFundingAmount);
-        if (canTransfer == true) {
-            DAIToken.transferFrom(msg.sender, loanAddress, newFundingAmount);
-        }
-
+        require(loanContract.onFundingReceived(msg.sender, newFundingAmount), "bad investment");
+        require(DAIToken.transferFrom(msg.sender, loanAddress, newFundingAmount), "bad transfer");
     }
+
     function repay(address loanAddress, uint256 repaymentAmount) public {
         ILoanContract loanContract = ILoanContract(loanAddress);
         bool canTransfer = loanContract.onRepaymentReceived(msg.sender, repaymentAmount);

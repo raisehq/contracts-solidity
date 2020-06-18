@@ -254,7 +254,7 @@ contract("LoanContract", accounts => {
           throw error;
         }
       });
-      it("Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND", async () => {
+      it("Expects lender to NOT fund Loan if expires in time", async () => {
         try {
           // Contract init state should be CREATED
           const initState = await Loan.currentState();
@@ -272,7 +272,10 @@ contract("LoanContract", accounts => {
 
           // Try to fund the Loan
           await DAIToken.approve(DAIProxy.address, 100, {from: lender});
-          await DAIProxy.fund(Loan.address, 100, {from: lender});
+          await truffleAssert.fails(
+            DAIProxy.fund(Loan.address, 100, {from: lender}),
+            truffleAssert.ErrorType.REVERT
+          );
 
           // Check Loan funds inside contract, should be ZERO
           const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
@@ -280,9 +283,9 @@ contract("LoanContract", accounts => {
           expect(Number(auctionBalanceAmount)).to.equal(0);
           expect(Number(loanRawTokens)).to.equal(0);
 
-          // Contract state should be mutated to FAILED_TO_FUND
+          // Contract state should be still ACTIVE
           const stateAfterFailedFund = await Loan.currentState();
-          expect(Number(stateAfterFailedFund)).to.equal(1);
+          expect(Number(stateAfterFailedFund)).to.equal(0);
 
           // Lender ERC20 balance should still be 150
           const lenderBalance = await DAIToken.balanceOf(lender, {from: lender});

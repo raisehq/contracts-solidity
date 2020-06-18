@@ -30,7 +30,7 @@
     "console": "truffle console --network kovan",
     "test:script": "bash scripts/test.sh",
     "test": "npx buidler test --network buidlerevm",
-    "coverage": "buidler coverage --solcoverjs ./.solcover.js",
+    "coverage": "buidler coverage --network coverage",
     "solhint": "./node_modules/.bin/solhint -f table contracts/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/*.sol"
   },

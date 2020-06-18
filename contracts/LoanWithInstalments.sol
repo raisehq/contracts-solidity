@@ -269,7 +269,9 @@ contract LoanInstalments is ILoanInstalments {
         notTemplate
         returns (bool)
     {
+        require(block.timestamp > auctionStartTimestamp, "can not invest prior the start");
         require(amount > 0, "amount must be greater than 0");
+        require(!isAuctionExpired(), "auction is expired, lenders can withdrawRefund");
         if (isAuctionExpired()) {
             if (auctionBalance < minAmount) {
                 setState(LoanState.FAILED_TO_FUND);

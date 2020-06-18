@@ -231,17 +231,8 @@ contract LoanContract is ILoanContract {
         onlyProxy
         returns (bool)
     {
-        if (isAuctionExpired()) {
-            if (auctionBalance < minAmount) {
-                setState(LoanState.FAILED_TO_FUND);
-                emit FailedToFund(address(this), lender, amount);
-                return false;
-            } else {
-                require(setSuccessfulAuction(), "error while transitioning to successful auction");
-                emit FailedToFund(address(this), lender, amount);
-                return false;
-            }
-        }
+        require(amount > 0, "amount must be greater than 0");
+        require(!isAuctionExpired(), "auction is expired, lenders can withdrawRefund");
         uint256 interest = getInterestRate();
         lenderPosition[lender].bidAmount = lenderPosition[lender].bidAmount.add(amount);
         auctionBalance = auctionBalance.add(amount);
