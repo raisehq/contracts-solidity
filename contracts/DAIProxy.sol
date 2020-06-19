@@ -152,11 +152,15 @@ contract DAIProxy is IDAIProxy, Ownable {
         onlyKYCCanFund
     {
         uint256 newFundingAmount = _calculateFunds(loanAddress, fundingAmount);
+        address tokenAddress = ILoanContract(loanAddress).getTokenAddress();
+
+        ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), newFundingAmount);
+        ERC20Wrapper.approve(tokenAddress, loanAddress, newFundingAmount);
         require(
             ILoanContract(loanAddress).onFundingReceived(msg.sender, newFundingAmount),
             "funding failed at loan contract"
         );
-        require(transfer(loanAddress, newFundingAmount), "erc20 transfer failed");
+        // require(transfer(loanAddress, newFundingAmount), "erc20 transfer failed");
     }
 
     function _calculateFunds(address loanAddress, uint256 fundingAmount)
