@@ -403,7 +403,8 @@ describe("LoanInstalments", () => {
         expect(borrowerDebt).to.eq.BN(desiredBorrowerDebt);
       });
     });
-    describe("Method getUpdateState", () => {
+    describe("Method updateStateMachine", () => {
+      it.skip("Expects to set succesful auction", async () => {});
       it("Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ", async () => {
         try {
           // Contract init state should be CREATED
@@ -525,6 +526,8 @@ describe("LoanInstalments", () => {
       });
     });
     describe("Method withdrawLoan", () => {
+      it.skip("Expects withdrawLoan to NOT allow to withdraw twice", async () => {});
+      it.skip("Expects withdrawLoan to NOT allow withdraw if transfer fails", async () => {});
       it("Expect withdrawLoan to allow Borrower take loan if state == ACTIVE", async () => {
         try {
           const fundAmount = maxAmount;
@@ -718,6 +721,16 @@ describe("LoanInstalments", () => {
         await onBeforeEach();
       });
 
+      it.skip("Expects withdrawRepaymentAndDeposit to not be able to allow Lender withdraw twice", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to not be able to withdraw if not lender (no bidAmount)", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to close the Loan once all lenders refund", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to not be able to withdraw if transfer fails", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to add the division remainder to the latest lender", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to NOT add the division remainder it NOT the latest lender", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to revert if error while swap deployment", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to revert if error if swap contract is not destroyed", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to not close if is not the latest loan", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to not set loan withdraw if is not latest instalment", async () => {});
       it("Expect withdrawRepaymentAndDeposit to allow Lender take repaid loan + interest if state == REPAID", async () => {
         await DAIToken.approve(DAIProxy.address, maxAmount, {from: otherLender});
         await DAIProxy.fund(Loan.address, maxAmount, {from: otherLender});
@@ -754,7 +767,7 @@ describe("LoanInstalments", () => {
         expect(deposited).to.equal(true);
       });
     });
-    describe("Method withdrawRepayment 2", () => {
+    describe("Method withdrawRepayment", () => {
       beforeEach(async () => {
         await revertToSnapShot(startSnapshot);
         termLength = "31540000"; // 1 year in seconds
@@ -762,6 +775,16 @@ describe("LoanInstalments", () => {
         maxInterestRate = new BN("1000000000000000000");
         await onBeforeEach();
       });
+      it.skip("Expects withdrawRepayment to not be able to allow Lender withdraw twice", async () => {});
+      it.skip("Expects withdrawRepayment to not be able to withdraw if not lender (no bidAmount)", async () => {});
+      it.skip("Expects withdrawRepayment to close the Loan once all lenders refund", async () => {});
+      it.skip("Expects withdrawRepayment to not be able to withdraw if transfer fails", async () => {});
+      it.skip("Expects withdrawRepayment to add the division remainder to the latest lender", async () => {});
+      it.skip("Expects withdrawRepayment to NOT add the division remainder it NOT the latest lender", async () => {});
+      it.skip("Expects withdrawRepayment to revert if error while swap deployment", async () => {});
+      it.skip("Expects withdrawRepayment to revert if error if swap contract is not destroyed", async () => {});
+      it.skip("Expects withdrawRepayment to not close if is not the latest loan", async () => {});
+      it.skip("Expects withdrawRepayment to not set loan withdraw if is not latest instalment", async () => {});
       it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
         await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
@@ -940,6 +963,10 @@ describe("LoanInstalments", () => {
         termEndTimestamp = currentBlock.timestamp + 2;
         await onBeforeEach();
       });
+      it.skip("Expects withdrawRefund to not be able to allow Lender withdraw twice", async () => {});
+      it.skip("Expects withdrawRefund to not be able to withdraw if not lender (no bidAmount)", async () => {});
+      it.skip("Expects withdrawRefund to close the Loan once all lenders refund", async () => {});
+      it.skip("Expects withdrawRefund to not be able to withdraw if transfer fails", async () => {});
       it("Expect withdrawRefund to allow Lender refund if state == FAILED_TO_FUND", async () => {
         const lenderBalancePrior = await DAIToken.balanceOf(lender);
 
@@ -1094,6 +1121,7 @@ describe("LoanInstalments", () => {
           RevertErrors.repayAmount
         );
       });
+      it.skip("Expects to pay with penalties and go REPAID state if all paid", async () => {});
     });
     describe("Method onRepaymentReceived: instalments", () => {
       const payInstalment = (loan, daiToken, daiProxy) => async (x, index) => {
@@ -1108,6 +1136,8 @@ describe("LoanInstalments", () => {
         return daiProxy.repay(Loan.address, amountToRepay, {from: borrower});
       };
 
+      it.skip("Expects to pay 1 instalment with penalties (check division reminder)", async () => {});
+      it.skip("Expects to pay all instalments with penalties and go REPAID state (check division reminder)", async () => {});
       it("Expect onRepaymentReceived to let borrower pay 1 instalment", async () => {
         const balance = await DAIToken.balanceOf(lender);
         console.log("balance", fromWei(balance));
@@ -1209,6 +1239,7 @@ describe("LoanInstalments", () => {
         minInterestRate = 0;
         await onBeforeEach();
       });
+      it.skip("Expects to return zero if state is FAILED_TO_FUND", async () => {});
       it("Expects to calculate correctly the interest rate when loan is in state = CREATED", async () => {
         await DAIToken.approve(DAIProxy.address, 50, {from: lender});
         await DAIProxy.fund(Loan.address, 50, {from: lender});
@@ -1254,6 +1285,12 @@ describe("LoanInstalments", () => {
         termEndTimestamp = currentBlock.timestamp + 2;
         await onBeforeEach();
       });
+      it.skip("Expects withdrawFundsUnlocked to not be able to withdraw twice", async () => {});
+      it.skip("Expects withdrawFundsUnlocked to not be able to allow Lender withdraw twice", async () => {});
+      it.skip("Expects withdrawFundsUnlocked to not be able to withdraw if Borrower has withdrawLoan()", async () => {});
+      it.skip("Expects withdrawFundsUnlocked to not be able to withdraw if not lender (no bidAmount)", async () => {});
+      it.skip("Expects withdrawFundsUnlocked to close the Loan once all lenders withdraw", async () => {});
+      it.skip("Expects withdrawFundsUnlocked to not be able to withdraw if transfer fails", async () => {});
       it("Expects lender to withdraw funds after unlocked", async () => {
         const balanceBefore = Number(await DAIToken.balanceOf(lender));
         await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
@@ -1345,6 +1382,7 @@ describe("LoanInstalments", () => {
       });
     });
     describe("Method withdrawFees", () => {
+      it.skip("Expect to NOT withdraw fees if an error happens while transfer", async () => {});
       it("Expect operators to withdraw the loan operator fee if borrower has withdraw", async () => {
         const adminBalancePrior = await DAIToken.balanceOf(admin);
         const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
@@ -1414,6 +1452,45 @@ describe("LoanInstalments", () => {
         const stateAfterFund = await Loan.currentState();
         expect(Number(stateAfterFund)).to.equal(2);
       });
+    });
+    describe("Loan Instalment template", () => {});
+    describe("Method getInstalmentDebt", () => {
+      it.skip("Expects to calculate current instalment debt without penalties", async () => {});
+      it.skip("Expects to calculate correct instalment debt and penalties", async () => {});
+      it.skip("Expects to be zero if all instalments paid", async () => {});
+      it.skip("Expects to be zero if current instalment is paid", async () => {});
+    });
+    describe("Method getTotalDebt", () => {
+      it.skip("Expects to calculate total debt without penalties", async () => {});
+      it.skip("Expects to calculate total debt and penalties", async () => {});
+      it.skip("Expects to be zero if all instalments paid", async () => {});
+    });
+    describe("Method getCurrentInstalment", () => {
+      it.skip("Expects to calculate first instalment", async () => {});
+      it.skip("Expects to calculate all instalments (try to get each instalment)", async () => {});
+      it.skip("Expects to return zero if still is not first instalment or is in auction phase", async () => {});
+      it.skip("Expects to return last instalment if timestamp is greater than latest instalment", async () => {});
+    });
+    describe("Getter getLenderWithdrawn", () => {
+      it.skip("Expects to be false if not withdrawn", async () => {});
+      it.skip("Expects to be true ifwithdrawn", async () => {});
+    });
+    describe("Getter getTokenAddress", () => {
+      it.skip("Expects to get loan token address", async () => {});
+    });
+    describe("Getter getLenderInstalmentsWithdrawed", () => {
+      it.skip("Expects to get withdrawn instalments by a lender", async () => {});
+      it.skip("Expects to NOT get withdrawn instalments by a lender if not withdrawn", async () => {});
+    });
+    describe("Method getTotalDebt", () => {
+      it.skip("Expects to calculate total debt without penalties", async () => {});
+      it.skip("Expects to calculate total debt and penalties", async () => {});
+      it.skip("Expects to be zero if all instalments paid", async () => {});
+    });
+    describe("Edge cases", () => {
+      it.skip("Invest should not be possible in the same timestamp of creation", async () => {});
+      it.skip("Invest should not be possible in a before timestamp of creation", async () => {});
+      it.skip("Invest should not be possible in a before timestamp of creation", async () => {});
     });
   });
 });
