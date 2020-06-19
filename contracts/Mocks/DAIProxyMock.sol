@@ -21,9 +21,9 @@ contract DAIProxyMock is IDAIProxy {
         if (auctionBalance + fundingAmount > maxAmount) {
             newFundingAmount = maxAmount - auctionBalance;
         }
-
+        DAIToken.transferFrom(msg.sender, address(this), newFundingAmount);
+        DAIToken.approve(address(loanContract), newFundingAmount);
         require(loanContract.onFundingReceived(msg.sender, newFundingAmount), "bad investment");
-        require(DAIToken.transferFrom(msg.sender, loanAddress, newFundingAmount), "bad transfer");
     }
 
     function repay(address loanAddress, uint256 repaymentAmount) public {

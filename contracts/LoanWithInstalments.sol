@@ -260,8 +260,6 @@ contract LoanInstalments is ILoanInstalments {
         return tokenAddress;
     }
 
-    // Notes:
-    // - This function does not track if real IERC20 balance has changed. Needs to blindly "trust" DaiProxy.
     function onFundingReceived(address lender, uint256 amount)
         external
         onlyCreated
@@ -272,6 +270,9 @@ contract LoanInstalments is ILoanInstalments {
         require(block.timestamp > auctionStartTimestamp, "can not invest prior the start");
         require(amount > 0, "amount must be greater than 0");
         require(!isAuctionExpired(), "auction is expired, lenders can withdrawRefund");
+        
+        require(ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), amount), 'failed to transfer');
+
         if (isAuctionExpired()) {
             if (auctionBalance < minAmount) {
                 setState(LoanState.FAILED_TO_FUND);
@@ -334,7 +335,7 @@ contract LoanInstalments is ILoanInstalments {
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
 
-        if (loanWithdrawnAmount == auctionBalance.add(operatorBalance)) {
+        if (loanWithdrawnAmount == auctionBalance) {
             setState(LoanState.CLOSED);
             emit FullyFundsUnlockedWithdrawn(address(this));
         }
