@@ -958,12 +958,12 @@ describe.only("LoanInstalments", () => {
       });
       it.skip("Expects withdrawRepaymentAndDeposit to add the division remainder to the latest lender", async () => {});
       it.only("OTHER WIP", async () => {
-        await DAIToken.approve(DAIProxy.address, new BN("668"), {from: lender});
-        await DAIToken.approve(DAIProxy.address, new BN("666"), {from: otherLender});
-        await DAIToken.approve(DAIProxy.address, new BN("666"), {from: thirdLender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: otherLender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: thirdLenderAmount});
+        await DAIToken.approve(DAIProxy.address, toWei("668"), {from: lender});
+        await DAIToken.approve(DAIProxy.address, toWei("666"), {from: otherLender});
+        await DAIToken.approve(DAIProxy.address, toWei("666"), {from: thirdLender});
+        await DAIProxy.fund(Loan.address, toWei("668"), {from: lender});
+        await DAIProxy.fund(Loan.address, toWei("666"), {from: otherLender});
+        await DAIProxy.fund(Loan.address, toWei("666"), {from: thirdLender});
         // Retrieve current state == ACTIVE
         const stateAfterFund = await Loan.currentState({from: owner});
         expect(Number(stateAfterFund)).to.equal(2);
@@ -984,7 +984,12 @@ describe.only("LoanInstalments", () => {
         const lenderAmount = await Loan.getWithdrawAmount(lender);
         const otherLenderAmount = await Loan.getWithdrawAmount(otherLender);
         const thirdLenderAmount = await Loan.getWithdrawAmount(thirdLender);
-        console.log(fromWei(lenderAmount), fromWei(otherLenderAmount), fromWei(thirdLenderAmount));
+        console.log(
+          "aaa",
+          fromWei(lenderAmount),
+          fromWei(otherLenderAmount),
+          fromWei(thirdLenderAmount)
+        );
       });
       it.skip("Expects withdrawRepaymentAndDeposit to NOT add the division remainder it NOT the latest lender", async () => {});
       it.skip("Expects withdrawRepaymentAndDeposit to revert if error while swap deployment", async () => {});
