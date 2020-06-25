@@ -32,9 +32,9 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-describe.only("LoanInstalments", () => {
+describe("LoanInstalments", () => {
   let accounts = [];
-  let owner, lender, borrower, admin, bob, otherLender;
+  let owner, lender, borrower, admin, bob, otherLender, lender3;
   // evm snapshot to revert all state per test
   let startSnapshot;
   let uniswapAddress;
@@ -67,6 +67,7 @@ describe.only("LoanInstalments", () => {
 
     DAIToken = await DAITokenContract.new({from: owner});
     await DAIToken.transferAmountToAddress(otherLender, initialBalance, {from: owner});
+    await DAIToken.transferAmountToAddress(lender3, initialBalance, {from: owner});
     await DAIToken.transferAmountToAddress(lender, initialBalance, {from: owner});
     await DAIToken.transferAmountToAddress(borrower, initialBalance, {from: owner});
     await DAIToken.transferAmountToAddress(bob, 1, {from: owner});
@@ -82,6 +83,7 @@ describe.only("LoanInstalments", () => {
     await KYCRegistry.addAddressToKYC(borrower, {from: admin});
     await KYCRegistry.addAddressToKYC(lender, {from: admin});
     await KYCRegistry.addAddressToKYC(otherLender, {from: admin});
+    await KYCRegistry.addAddressToKYC(lender3, {from: admin});
 
     DepositRegistry = await DepositRegistryContract.new(RaiseToken.address, KYCRegistry.address, {
       from: owner
@@ -132,6 +134,7 @@ describe.only("LoanInstalments", () => {
     bob = accounts[4];
     otherLender = accounts[5];
     other = accounts[6];
+    lender3 = accounts[7];
 
     await deployDependencies();
 
@@ -182,7 +185,7 @@ describe.only("LoanInstalments", () => {
     await onBeforeEach();
   });
 
-  describe.only("Unit tests for LoanInstalments", () => {
+  describe("Unit tests for LoanInstalments", () => {
     describe("Method onFundingReceived", () => {
       it("Expect onFundingReceived to revert if caller is NOT DaiProxy", async () => {
         // LoanInstalments state should start with CREATED == 0
@@ -908,7 +911,7 @@ describe.only("LoanInstalments", () => {
           throw error;
         }
       });
-      it.only("Expects withdrawRepaymentAndDeposit to not be able to withdraw if transfer fails", async () => {
+      it("Expects withdrawRepaymentAndDeposit to not be able to withdraw if transfer fails", async () => {
         try {
           await DAIToken.approve(DAIProxy.address, maxAmount, {from: otherLender});
           await DAIProxy.fund(Loan.address, maxAmount, {from: otherLender});
@@ -948,7 +951,92 @@ describe.only("LoanInstalments", () => {
           throw error;
         }
       });
-      it.skip("Expects withdrawRepaymentAndDeposit to add the division remainder to the latest lender", async () => {});
+      it.only("Expects withdrawRepaymentAndDeposit to add the division remainder to the latest lender", async () => {
+        try {
+          const fundAmount = maxAmount.div(new BN("3"));
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: otherLender});
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender3});
+
+          await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, fundAmount, {from: otherLender});
+          await DAIProxy.fund(Loan.address, fundAmount.add(new BN("1000")), {from: lender3});
+          console.log(Number(await Loan.auctionBalance()));
+          // Retrieve current state == ACTIVE
+          const stateAfterFund = await Loan.currentState({from: owner});
+          expect(Number(stateAfterFund)).to.equal(2);
+          await Loan.withdrawLoan({from: borrower});
+
+          const instalmentLength = await Loan.getInstalmentLenght();
+          await helpers.increaseTime(instalmentLength.add(new BN("1")));
+          console.log("borrower total debt before===> ", Number(await Loan.getTotalDebt()));
+          const amountToRepay = await Loan.getTotalDebt();
+          const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+
+          await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
+          await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+          console.log("borrower total debt===> ", Number(await Loan.getTotalDebt()));
+          console.log("borrower debt===> ", Number(await Loan.borrowerDebt()));
+          const borrowerBalanceAfter = await DAIToken.balanceOf(borrower);
+          // Fast way to check. TODO: Use BN.js to exact calc-
+          expect(borrowerBalanceAfter).to.be.eq.BN(borrowerBalancePrior.sub(amountToRepay));
+
+          // State should change to REPAID
+          const endState = await Loan.currentState({from: owner});
+          expect(Number(endState)).to.equal(4);
+
+          console.log("lender === > ", Number(await Loan.getWithdrawAmount(lender)));
+          console.log("otherlender === > ", Number(await Loan.getWithdrawAmount(otherLender)));
+          console.log("lender3 === > ", Number(await Loan.getWithdrawAmount(lender3)));
+
+          const lenderAmount = await Loan.getLenderBidAmount(lender);
+          const otherLenderAmount = await Loan.getLenderBidAmount(otherLender);
+          const lender3Amount = await Loan.getLenderBidAmount(lender3);
+
+          const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+          const otherLenderAmountWithInterest = await Loan.calculateValueWithInterest(
+            otherLenderAmount
+          );
+          const lender3AmountWithInterest = await Loan.calculateValueWithInterest(lender3Amount);
+
+          const lenderBalanceBefore = await DAIToken.balanceOf(lender);
+          const otherLenderBalanceBefore = await DAIToken.balanceOf(otherLender);
+          const lender3BalanceBefore = await DAIToken.balanceOf(lender3);
+
+          await Loan.withdrawRepaymentAndDeposit({from: lender});
+          await Loan.withdrawRepaymentAndDeposit({from: otherLender});
+          await Loan.withdrawRepaymentAndDeposit({from: lender3});
+
+          const lenderBalanceAfter = await DAIToken.balanceOf(lender);
+          const otherLenderBalanceAfter = await DAIToken.balanceOf(otherLender);
+          const lender3BalanceAfter = await DAIToken.balanceOf(lender3);
+
+          expect(lenderBalanceAfter).to.be.eq.BN(
+            lenderBalanceBefore.add(lenderAmountWithInterest).sub(DAI_COST_200_RAISE)
+          );
+          expect(otherLenderBalanceAfter).to.be.eq.BN(
+            otherLenderBalanceBefore.add(otherLenderAmountWithInterest).sub(DAI_COST_200_RAISE)
+          );
+          expect(lender3BalanceAfter).to.be.eq.BN(
+            lender3BalanceBefore.add(lender3AmountWithInterest).sub(DAI_COST_200_RAISE)
+          );
+
+          // User have deposit inside the DepositRegistry
+          const depositedLender = await DepositRegistry.hasDeposited(lender);
+          const depositedOtherLender = await DepositRegistry.hasDeposited(otherLender);
+          const depositedLender3 = await DepositRegistry.hasDeposited(lender3);
+
+          expect(depositedLender).to.equal(true);
+          expect(depositedOtherLender).to.equal(true);
+          expect(depositedLender3).to.equal(true);
+
+          // State should change to CLOSED
+          const closedState = await Loan.currentState({from: owner});
+          expect(Number(closedState)).to.equal(5);
+        } catch (error) {
+          throw error;
+        }
+      });
       it.skip("Expects withdrawRepaymentAndDeposit to NOT add the division remainder it NOT the latest lender", async () => {});
       it.skip("Expects withdrawRepaymentAndDeposit to revert if error while swap deployment", async () => {});
       it.skip("Expects withdrawRepaymentAndDeposit to revert if error if swap contract is not destroyed", async () => {});
@@ -1502,7 +1590,7 @@ describe.only("LoanInstalments", () => {
         expect(calculatedInterest).to.equal(calculatedInterest2);
       });
     });
-    describe.only("Method withdrawFundsUnlocked", async () => {
+    describe("Method withdrawFundsUnlocked", async () => {
       beforeEach(async () => {
         auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
         termEndTimestamp = currentBlock.timestamp + 2;

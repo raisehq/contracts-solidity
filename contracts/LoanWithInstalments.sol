@@ -270,8 +270,11 @@ contract LoanInstalments is ILoanInstalments {
         require(block.timestamp > auctionStartTimestamp, "can not invest prior the start");
         require(amount > 0, "amount must be greater than 0");
         require(!isAuctionExpired(), "auction is expired, lenders can withdrawRefund");
-        
-        require(ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), amount), 'failed to transfer');
+
+        require(
+            ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), amount),
+            "failed to transfer"
+        );
 
         if (isAuctionExpired()) {
             if (auctionBalance < minAmount) {
@@ -376,6 +379,7 @@ contract LoanInstalments is ILoanInstalments {
     function getWithdrawAmount(address lender) public view returns (uint256) {
         uint256 pendingInstalments = instalmentsPaid -
             lenderPosition[msg.sender].instalmentsWithdrawed;
+        console.log("pendingInstalments:: ", pendingInstalments);
         uint256 pendingPenalties = penaltiesPaid - lenderPosition[msg.sender].penaltiesWithdrawed;
         return
             (lenderPosition[lender].bidAmount.div(auctionBalance)).mul(
@@ -426,6 +430,7 @@ contract LoanInstalments is ILoanInstalments {
         );
         // calculate value with pending instalments from the user
         uint256 amount = getWithdrawAmount(msg.sender);
+        console.log("amount:: ", amount);
         lenderPosition[msg.sender].instalmentsWithdrawed = instalmentsPaid;
         lenderPosition[msg.sender].penaltiesWithdrawed = penaltiesPaid;
 
