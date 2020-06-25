@@ -383,16 +383,15 @@ contract LoanInstalments is ILoanInstalments {
             lenderPosition[msg.sender].instalmentsWithdrawed;
         console.log("pendingInstalments:: ", pendingInstalments);
         uint256 pendingPenalties = penaltiesPaid - lenderPosition[msg.sender].penaltiesWithdrawed;
-        console.log("penalties::: ", pendingPenalties);
-
-        console.log("proportion ::: ", lenderPosition[lender].bidAmount.div(auctionBalance));
-        console.log("pasta instalments:: ", getInstalmentAmount().mul(pendingInstalments));
-        return
-            MonkCalcs.mulDiv(lenderPosition[lender].bidAmount, 100e18, auctionBalance).mul(
-                (getInstalmentAmount().mul(pendingInstalments)).add(
-                    getInstalmentPenalty().mul(pendingPenalties)
-                )
-            );
+        uint256 ratio = MonkCalcs.mulDiv(
+            lenderPosition[lender].bidAmount,
+            100 ether,
+            auctionBalance
+        );
+        uint256 total = (getInstalmentAmount().mul(pendingInstalments)).add(
+            getInstalmentPenalty().mul(pendingPenalties)
+        );
+        return MonkCalcs.mulDiv(ratio, total, 100 ether);
     }
 
     function withdrawRepayment() external onlyActiveOrRepaid notTemplate {
