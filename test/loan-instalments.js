@@ -19,7 +19,7 @@ const AuthContract = artifacts.require("Authorization");
 const DepositRegistryContract = artifacts.require("DepositRegistry");
 const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
 const LoanInstalmentsCloner = artifacts.require("LoanInstalmentsCloner");
-const FloatLibrary = artifacts.require("ABDKMathQuad");
+const MonkCalcs = artifacts.require("MonkCalcs");
 const {initializeUniswap} = require("./uniswap.utils");
 const helpers = require("./helpers.js");
 const {revertToSnapShot, takeSnapshot} = helpers;
@@ -77,9 +77,9 @@ describe("LoanInstalments", () => {
 
   const deployDependencies = async () => {
     ERC20Wrapper = await ERC20WrapperContract.new();
-    FloatLibraryInstance = await FloatLibrary.new();
+    const MonkCalcsInstance = await MonkCalcs.new();
+    await LoanInstalments.link(MonkCalcsInstance);
     await LoanInstalments.link(ERC20Wrapper);
-    await LoanInstalments.link(FloatLibraryInstance);
 
     DAIToken = await DAITokenContract.new({from: owner});
     await DAIToken.transferAmountToAddress(otherLender, initialBalance, {from: owner});
