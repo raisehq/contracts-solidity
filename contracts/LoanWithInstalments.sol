@@ -19,6 +19,8 @@ contract LoanInstalments is ILoanInstalments {
     address public administrator;
 
     uint256 public minAmount;
+    uint256 public investors;
+    uint256 public totalWithdraws;
     uint256 public maxAmount;
     uint256 public auctionEndTimestamp;
     uint256 public auctionStartTimestamp;
@@ -290,9 +292,12 @@ contract LoanInstalments is ILoanInstalments {
             }
         }
         uint256 interest = getInterestRate();
+        if (lenderPosition[lender].bidAmount == 0) {
+            investors += 1;
+        }
         lenderPosition[lender].bidAmount = lenderPosition[lender].bidAmount.add(amount);
         auctionBalance = auctionBalance.add(amount);
-
+        
         lastFundedTimestamp = block.timestamp;
 
         if (auctionBalance >= minAmount && !minimumReached) {
@@ -405,19 +410,18 @@ contract LoanInstalments is ILoanInstalments {
         lenderPosition[msg.sender].instalmentsWithdrawed = instalmentsPaid;
         lenderPosition[msg.sender].penaltiesWithdrawed = penaltiesPaid;
 
-        uint256 remainder = borrowerDebt.sub(getInstalmentAmount().mul(instalments));
-        if (loanWithdrawnAmount.add(amount).add(remainder) == borrowerDebt) {
-            loanWithdrawnAmount = loanWithdrawnAmount.add(amount).add(remainder);
-            amount = amount.add(remainder);
-        } else {
-            loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
-        }
+        totalWithdraws += lenderPosition[msg.sender].instalmentsWithdrawed;
+        loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
+
         // If lender withdraw all payments, then cant claim frozen funds
         if (lenderPosition[msg.sender].instalmentsWithdrawed == instalments) {
             lenderPosition[msg.sender].loanWithdrawn = true;
         }
-        if (loanWithdrawnAmount == borrowerDebt) {
+        if (totalWithdraws == investors.mul(instalments)) {
             setState(LoanState.CLOSED);
+            if (borrowerDebt > loanWithdrawnAmount) {
+                ERC20Wrapper.transfer(tokenAddress, administrator, borrowerDebt.sub(loanWithdrawnAmount));
+            }
             emit FullyRefunded(address(this));
         }
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
@@ -432,34 +436,35 @@ contract LoanInstalments is ILoanInstalments {
             lenderPosition[msg.sender].instalmentsWithdrawed < instalmentsPaid,
             "Lender already withdrawn this instalment"
         );
+        require(totalWithdraws < investors, 'can not withdraw more');
         // calculate value with pending instalments from the user
         uint256 amount = getWithdrawAmount(msg.sender);
         lenderPosition[msg.sender].instalmentsWithdrawed = instalmentsPaid;
         lenderPosition[msg.sender].penaltiesWithdrawed = penaltiesPaid;
 
-        uint256 remainder = borrowerDebt.sub(getInstalmentAmount().mul(instalments));
-        if (loanWithdrawnAmount.add(amount).add(remainder) == borrowerDebt) {
-            loanWithdrawnAmount = loanWithdrawnAmount.add(amount).add(remainder);
-            amount = amount.add(remainder);
-        } else {
-            loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
-        }
+        loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
+
         // If lender withdraw all payments, then cant claim frozen funds
         if (lenderPosition[msg.sender].instalmentsWithdrawed == instalments) {
             lenderPosition[msg.sender].loanWithdrawn = true;
+            totalWithdraws+=1;
         }
         address swapAddress = ISwapAndDepositFactory(swapFactory).deploy();
         require(swapAddress != address(0), "error swap deploy");
-        if (loanWithdrawnAmount == borrowerDebt) {
-            setState(LoanState.CLOSED);
-            emit FullyRefunded(address(this));
-        }
+
         ERC20Wrapper.approve(tokenAddress, swapAddress, amount);
         ISwapAndDeposit(swapAddress).swapAndDeposit(msg.sender, tokenAddress, amount);
         require(
             ISwapAndDeposit(swapAddress).isDestroyed(),
             "Swap contract error, should self-destruct"
         );
+        if (totalWithdraws == investors) {
+            setState(LoanState.CLOSED);
+            if (borrowerDebt > loanWithdrawnAmount) {
+                ERC20Wrapper.transfer(tokenAddress, administrator, borrowerDebt.sub(loanWithdrawnAmount));
+            }
+            emit FullyRefunded(address(this));
+        }
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
     }
 
