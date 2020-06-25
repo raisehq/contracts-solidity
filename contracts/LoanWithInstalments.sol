@@ -6,10 +6,12 @@ import "./interfaces/ILoanInstalments.sol";
 import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/ISwapAndDepositFactory.sol";
 import "./libs/ERC20Wrapper.sol";
+import "./libs/ABDKMathQuad.sol";
 import "@nomiclabs/buidler/console.sol";
 
 contract LoanInstalments is ILoanInstalments {
     using SafeMath for uint256;
+
     address public swapFactory;
     address public proxyAddress;
     address public tokenAddress;
@@ -386,7 +388,7 @@ contract LoanInstalments is ILoanInstalments {
         console.log("proportion ::: ", lenderPosition[lender].bidAmount.div(auctionBalance));
         console.log("pasta instalments:: ", getInstalmentAmount().mul(pendingInstalments));
         return
-            (lenderPosition[lender].bidAmount.div(auctionBalance)).mul(
+            mulDiv(lenderPosition[lender].bidAmount, 100e18, auctionBalance).mul(
                 (getInstalmentAmount().mul(pendingInstalments)).add(
                     getInstalmentPenalty().mul(pendingPenalties)
                 )
@@ -678,6 +680,20 @@ contract LoanInstalments is ILoanInstalments {
         return
             auctionBalance.mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS)).div(
                 ONE_HUNDRED
+            );
+    }
+
+    function mulDiv(
+        uint256 x,
+        uint256 y,
+        uint256 z
+    ) public pure returns (uint256) {
+        return
+            ABDKMathQuad.toUInt(
+                ABDKMathQuad.div(
+                    ABDKMathQuad.mul(ABDKMathQuad.fromUInt(x), ABDKMathQuad.fromUInt(y)),
+                    ABDKMathQuad.fromUInt(z)
+                )
             );
     }
 }
