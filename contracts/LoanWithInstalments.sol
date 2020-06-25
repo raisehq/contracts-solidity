@@ -382,12 +382,15 @@ contract LoanInstalments is ILoanInstalments {
         uint256 pendingInstalments = instalmentsPaid -
             lenderPosition[msg.sender].instalmentsWithdrawed;
         uint256 pendingPenalties = penaltiesPaid - lenderPosition[msg.sender].penaltiesWithdrawed;
-        return
-            MonkCalcs.mulDiv(lenderPosition[lender].bidAmount, 100e18, auctionBalance).mul(
-                (getInstalmentAmount().mul(pendingInstalments)).add(
-                    getInstalmentPenalty().mul(pendingPenalties)
-                )
-            );
+        uint256 ratio = MonkCalcs.mulDiv(
+            lenderPosition[lender].bidAmount,
+            100 ether,
+            auctionBalance
+        );
+        uint256 total = (getInstalmentAmount().mul(pendingInstalments)).add(
+            getInstalmentPenalty().mul(pendingPenalties)
+        );
+        return MonkCalcs.mulDiv(ratio, total, 100 ether);
     }
 
     function withdrawRepayment() external onlyActiveOrRepaid notTemplate {
