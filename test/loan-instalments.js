@@ -586,16 +586,6 @@ describe("LoanInstalments", () => {
           throw error;
         }
       });
-      it("Expects withdrawLoan to NOT allow withdraw if transfer fails", async () => {
-        await Loan.setProxyAddress(admin, {from: admin});
-        await Loan.onFundingReceived(lender, maxAmount, {from: admin});
-
-        // Try to withdraw
-        await truffleAssert.fails(
-          Loan.withdrawLoan({from: borrower}),
-          truffleAssert.ErrorType.REVERT
-        );
-      });
       it("Expect withdrawLoan to allow Borrower take loan if state == ACTIVE", async () => {
         try {
           const fundAmount = maxAmount;
@@ -1039,7 +1029,7 @@ describe("LoanInstalments", () => {
       });
       it.skip("Expects withdrawRepaymentAndDeposit to NOT add the division remainder it NOT the latest lender", async () => {});
       it.skip("Expects withdrawRepaymentAndDeposit to revert if error while swap deployment", async () => {});
-      it.skip("Expects withdrawRepaymentAndDeposit to revert if error if swap contract is not destroyed", async () => {});
+      it.skip("Expects withdrawRepaymentAndDeposit to revert esif error if swap contract is not destroyed", async () => {});
       it.skip("Expects withdrawRepaymentAndDeposit to not close if is not the latest loan", async () => {});
       it.skip("Expects withdrawRepaymentAndDeposit to not set loan withdraw if is not latest instalment", async () => {});
       it("Expect withdrawRepaymentAndDeposit to allow Lender take repaid loan + interest if state == REPAID", async () => {
@@ -1451,7 +1441,6 @@ describe("LoanInstalments", () => {
       it.skip("Expects to pay all instalments with penalties and go REPAID state (check division reminder)", async () => {});
       it("Expect onRepaymentReceived to let borrower pay 1 instalment", async () => {
         const balance = await DAIToken.balanceOf(lender);
-        console.log("balance", fromWei(balance));
         // Lender fully fund the loan
         await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
         await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
@@ -1590,361 +1579,425 @@ describe("LoanInstalments", () => {
         expect(calculatedInterest).to.equal(calculatedInterest2);
       });
     });
-    describe("Method withdrawFundsUnlocked", async () => {
-      beforeEach(async () => {
-        auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
-        termEndTimestamp = currentBlock.timestamp + 2;
-        await onBeforeEach();
-      });
-      it("Expects withdrawFundsUnlocked to not be able to allow Lender withdraw twice", async () => {
-        const balanceBefore = await DAIToken.balanceOf(lender);
+    describe("david", () => {
+      describe("Method withdrawFundsUnlocked", async () => {
+        beforeEach(async () => {
+          auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
+          termEndTimestamp = currentBlock.timestamp + 2;
+          await onBeforeEach();
+        });
+        it("Expects withdrawFundsUnlocked to not be able to allow Lender withdraw twice", async () => {
+          const balanceBefore = await DAIToken.balanceOf(lender);
 
-        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
-
-        await Loan.unlockFundsWithdrawal({from: admin});
-
-        const state = Number(await Loan.currentState());
-        expect(state).to.equal(6);
-
-        await Loan.withdrawFundsUnlocked({from: lender});
-        const balance = await DAIToken.balanceOf(lender);
-
-        expect(balance).to.eq.BN(balanceBefore);
-
-        await truffleAssert.fails(
-          Loan.withdrawFundsUnlocked({from: lender}),
-          truffleAssert.ErrorType.REVERT,
-          "Loan status is not FROZEN"
-        );
-
-        const balanceAfterFailedWithdraw = await DAIToken.balanceOf(lender);
-
-        expect(balanceAfterFailedWithdraw).to.eq.BN(balance);
-      });
-      it("Expects Lender not be able to withdraw otherLender balance", async () => {
-        const lenderBeforeFund = await DAIToken.balanceOf(lender);
-        const otherLenderBeforeFund = await DAIToken.balanceOf(lender);
-        await DAIToken.approve(DAIProxy.address, minAmount, {from: lender});
-        await DAIToken.approve(DAIProxy.address, minAmount, {from: otherLender});
-        await DAIProxy.fund(Loan.address, minAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, minAmount, {from: otherLender});
-
-        // Admin unlock funds after borrower withdrawed loan
-        await Loan.unlockFundsWithdrawal({from: admin});
-
-        const state = Number(await Loan.currentState());
-        expect(state).to.equal(6);
-
-        // Lender withdraws
-        await Loan.withdrawFundsUnlocked({from: lender});
-
-        // Lender tries to withdraw but fails, Lender can not steal otherLender money
-        await truffleAssert.fails(
-          Loan.withdrawFundsUnlocked({from: lender}),
-          truffleAssert.ErrorType.REVERT,
-          "Lender already withdrawn"
-        );
-
-        // Other lender withdraws succesfully
-        await Loan.withdrawFundsUnlocked({from: otherLender});
-
-        // Lender has the same balance after he invested
-        const lenderBalance = await DAIToken.balanceOf(lender);
-        expect(lenderBalance).to.eq.BN(lenderBeforeFund);
-
-        // otherLender has the same balance after he invested
-        const otherLenderBalance = await DAIToken.balanceOf(otherLender);
-        expect(otherLenderBalance).to.eq.BN(otherLenderBeforeFund);
-      });
-      it("Expects withdrawFundsUnlocked to not be able to withdraw if Borrower has withdrawLoan()", async () => {
-        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
-
-        const balanceAfterFund = await DAIToken.balanceOf(lender);
-
-        // Borrower withdraws the loan
-        await Loan.withdrawLoan({from: borrower});
-
-        // Admin unlock funds after borrower withdrawed loan
-        await Loan.unlockFundsWithdrawal({from: admin});
-
-        const state = Number(await Loan.currentState());
-        expect(state).to.equal(6);
-
-        // Lender tries to withdraw but fails
-        await truffleAssert.fails(
-          Loan.withdrawFundsUnlocked({from: lender}),
-          truffleAssert.ErrorType.REVERT,
-          "Loan already withdrawn"
-        );
-
-        // User has the same balance after he invested
-        const balance = await DAIToken.balanceOf(lender);
-        expect(balance).to.eq.BN(balanceAfterFund);
-      });
-      it("Expects withdrawFundsUnlocked to not be able to withdraw if not lender (no bidAmount)", async () => {
-        const balanceBefore = await DAIToken.balanceOf(other);
-        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
-
-        await Loan.unlockFundsWithdrawal({from: admin});
-
-        const state = Number(await Loan.currentState());
-        expect(state).to.equal(6);
-
-        await truffleAssert.fails(
-          Loan.withdrawFundsUnlocked({from: other}),
-          truffleAssert.ErrorType.REVERT,
-          "Account did not deposit"
-        );
-
-        const balanceAfter = await DAIToken.balanceOf(other);
-
-        expect(balanceAfter).to.eq.BN(balanceBefore);
-      });
-      it("Expects withdrawFundsUnlocked to close the Loan once all lenders withdraw", async () => {
-        const balanceBeforeLender = await DAIToken.balanceOf(lender);
-        const balanceBeforeOther = await DAIToken.balanceOf(otherLender);
-        // Invests lender
-        await DAIToken.approve(DAIProxy.address, minAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, minAmount, {from: lender});
-        // Invests otherLender
-        await DAIToken.approve(DAIProxy.address, minAmount, {from: otherLender});
-        await DAIProxy.fund(Loan.address, minAmount, {from: otherLender});
-
-        // Freeze loan
-        await Loan.unlockFundsWithdrawal({from: admin});
-        const state = Number(await Loan.currentState());
-        expect(state).to.equal(6);
-
-        // Withdraw lender
-        const txLender = await Loan.withdrawFundsUnlocked({from: lender});
-        await truffleAssert.eventNotEmitted(txLender, "FullyFundsUnlockedWithdrawn");
-        const lenderAfterBalance = await DAIToken.balanceOf(lender);
-        const stateAfterLender = Number(await Loan.currentState());
-        expect(stateAfterLender).to.equal(6);
-        expect(lenderAfterBalance).to.eq.BN(balanceBeforeLender);
-        // Withdraw otherLender
-        const txOther = await Loan.withdrawFundsUnlocked({from: otherLender});
-        await truffleAssert.eventEmitted(txOther, "FullyFundsUnlockedWithdrawn");
-        const otherAfterBalance = await DAIToken.balanceOf(otherLender);
-        const stateAfterOther = Number(await Loan.currentState());
-        expect(stateAfterOther).to.equal(5);
-        expect(otherAfterBalance).to.eq.BN(balanceBeforeOther);
-      });
-      it.skip("Expects withdrawFundsUnlocked to not be able to withdraw if transfer fails", async () => {
-        // Freeze loan
-        await Loan.unlockFundsWithdrawal({from: admin});
-        const state = Number(await Loan.currentState());
-        expect(state).to.equal(6);
-
-        // Try to withdraw
-        await truffleAssert.fails(
-          Loan.withdrawFundsUnlocked({from: lender}),
-          truffleAssert.ErrorType.REVERT
-        );
-      });
-      it("Expects lender to withdraw funds after unlocked", async () => {
-        const balanceBefore = Number(await DAIToken.balanceOf(lender));
-        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
-
-        await Loan.unlockFundsWithdrawal({from: admin});
-
-        const state = Number(await Loan.currentState());
-        expect(state).to.equal(6);
-
-        await Loan.withdrawFundsUnlocked({from: lender});
-        const balance = Number(await DAIToken.balanceOf(lender));
-
-        expect(balance).to.equal(balanceBefore);
-      });
-      it("Expects lender to not be able to withdraw funds if not unlocked", async () => {
-        try {
           await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
           await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
 
+          await Loan.unlockFundsWithdrawal({from: admin});
+
+          const state = Number(await Loan.currentState());
+          expect(state).to.equal(6);
+
           await Loan.withdrawFundsUnlocked({from: lender});
-        } catch (error) {
-          expect(error).to.not.equal(undefined);
-        }
+          const balance = await DAIToken.balanceOf(lender);
+
+          expect(balance).to.eq.BN(balanceBefore);
+
+          await truffleAssert.fails(
+            Loan.withdrawFundsUnlocked({from: lender}),
+            truffleAssert.ErrorType.REVERT,
+            "Loan status is not FROZEN"
+          );
+
+          const balanceAfterFailedWithdraw = await DAIToken.balanceOf(lender);
+
+          expect(balanceAfterFailedWithdraw).to.eq.BN(balance);
+        });
+        it("Expects Lender not be able to withdraw otherLender balance", async () => {
+          const lenderBeforeFund = await DAIToken.balanceOf(lender);
+          const otherLenderBeforeFund = await DAIToken.balanceOf(lender);
+          await DAIToken.approve(DAIProxy.address, minAmount, {from: lender});
+          await DAIToken.approve(DAIProxy.address, minAmount, {from: otherLender});
+          await DAIProxy.fund(Loan.address, minAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, minAmount, {from: otherLender});
+
+          // Admin unlock funds after borrower withdrawed loan
+          await Loan.unlockFundsWithdrawal({from: admin});
+
+          const state = Number(await Loan.currentState());
+          expect(state).to.equal(6);
+
+          // Lender withdraws
+          await Loan.withdrawFundsUnlocked({from: lender});
+
+          // Lender tries to withdraw but fails, Lender can not steal otherLender money
+          await truffleAssert.fails(
+            Loan.withdrawFundsUnlocked({from: lender}),
+            truffleAssert.ErrorType.REVERT,
+            "Lender already withdrawn"
+          );
+
+          // Other lender withdraws succesfully
+          await Loan.withdrawFundsUnlocked({from: otherLender});
+
+          // Lender has the same balance after he invested
+          const lenderBalance = await DAIToken.balanceOf(lender);
+          expect(lenderBalance).to.eq.BN(lenderBeforeFund);
+
+          // otherLender has the same balance after he invested
+          const otherLenderBalance = await DAIToken.balanceOf(otherLender);
+          expect(otherLenderBalance).to.eq.BN(otherLenderBeforeFund);
+        });
+        it("Expects withdrawFundsUnlocked to not be able to withdraw if Borrower has withdrawLoan()", async () => {
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+          const balanceAfterFund = await DAIToken.balanceOf(lender);
+
+          // Borrower withdraws the loan
+          await Loan.withdrawLoan({from: borrower});
+
+          // Admin unlock funds after borrower withdrawed loan
+          await Loan.unlockFundsWithdrawal({from: admin});
+
+          const state = Number(await Loan.currentState());
+          expect(state).to.equal(6);
+
+          // Lender tries to withdraw but fails
+          await truffleAssert.fails(
+            Loan.withdrawFundsUnlocked({from: lender}),
+            truffleAssert.ErrorType.REVERT,
+            "Loan already withdrawn"
+          );
+
+          // User has the same balance after he invested
+          const balance = await DAIToken.balanceOf(lender);
+          expect(balance).to.eq.BN(balanceAfterFund);
+        });
+        it("Expects withdrawFundsUnlocked to not be able to withdraw if not lender (no bidAmount)", async () => {
+          const balanceBefore = await DAIToken.balanceOf(other);
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+          await Loan.unlockFundsWithdrawal({from: admin});
+
+          const state = Number(await Loan.currentState());
+          expect(state).to.equal(6);
+
+          await truffleAssert.fails(
+            Loan.withdrawFundsUnlocked({from: other}),
+            truffleAssert.ErrorType.REVERT,
+            "Account did not deposit"
+          );
+
+          const balanceAfter = await DAIToken.balanceOf(other);
+
+          expect(balanceAfter).to.eq.BN(balanceBefore);
+        });
+        it("Expects withdrawFundsUnlocked to close the Loan once all lenders withdraw", async () => {
+          const balanceBeforeLender = await DAIToken.balanceOf(lender);
+          const balanceBeforeOther = await DAIToken.balanceOf(otherLender);
+          // Invests lender
+          await DAIToken.approve(DAIProxy.address, minAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, minAmount, {from: lender});
+          // Invests otherLender
+          await DAIToken.approve(DAIProxy.address, minAmount, {from: otherLender});
+          await DAIProxy.fund(Loan.address, minAmount, {from: otherLender});
+
+          // Freeze loan
+          await Loan.unlockFundsWithdrawal({from: admin});
+          const state = Number(await Loan.currentState());
+          expect(state).to.equal(6);
+
+          // Withdraw lender
+          const txLender = await Loan.withdrawFundsUnlocked({from: lender});
+          await truffleAssert.eventNotEmitted(txLender, "FullyFundsUnlockedWithdrawn");
+          const lenderAfterBalance = await DAIToken.balanceOf(lender);
+          const stateAfterLender = Number(await Loan.currentState());
+          expect(stateAfterLender).to.equal(6);
+          expect(lenderAfterBalance).to.eq.BN(balanceBeforeLender);
+          // Withdraw otherLender
+          const txOther = await Loan.withdrawFundsUnlocked({from: otherLender});
+          await truffleAssert.eventEmitted(txOther, "FullyFundsUnlockedWithdrawn");
+          const otherAfterBalance = await DAIToken.balanceOf(otherLender);
+          const stateAfterOther = Number(await Loan.currentState());
+          expect(stateAfterOther).to.equal(5);
+          expect(otherAfterBalance).to.eq.BN(balanceBeforeOther);
+        });
+        it("Expects lender to withdraw funds after unlocked", async () => {
+          const balanceBefore = Number(await DAIToken.balanceOf(lender));
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+          await Loan.unlockFundsWithdrawal({from: admin});
+
+          const state = Number(await Loan.currentState());
+          expect(state).to.equal(6);
+
+          await Loan.withdrawFundsUnlocked({from: lender});
+          const balance = Number(await DAIToken.balanceOf(lender));
+
+          expect(balance).to.equal(balanceBefore);
+        });
+        it("Expects lender to not be able to withdraw funds if not unlocked", async () => {
+          try {
+            await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+            await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+            await Loan.withdrawFundsUnlocked({from: lender});
+          } catch (error) {
+            expect(error).to.not.equal(undefined);
+          }
+        });
       });
-    });
-    describe("Method unlockFundsWithdrawal", () => {
-      beforeEach(async () => {
-        auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
-        termEndTimestamp = currentBlock.timestamp + 2;
-        await onBeforeEach();
+      describe("Method unlockFundsWithdrawal", () => {
+        beforeEach(async () => {
+          auctionBlockLength = 30 / averageMiningBlockTime; // 1 min in seconds
+          termEndTimestamp = currentBlock.timestamp + 2;
+          await onBeforeEach();
+        });
+        it("Expects to unlock the funds if admin", async () => {
+          await Loan.unlockFundsWithdrawal({from: admin});
+          const unlocked = Number(await Loan.currentState());
+          expect(unlocked).to.equal(6);
+        });
+        it("Expects to not unlock the funds if not admin", async () => {
+          try {
+            await Loan.unlockFundsWithdrawal({from: owner});
+          } catch (error) {
+            expect(error).to.not.equal(undefined);
+          }
+        });
       });
-      it("Expects to unlock the funds if admin", async () => {
-        await Loan.unlockFundsWithdrawal({from: admin});
-        const unlocked = Number(await Loan.currentState());
-        expect(unlocked).to.equal(6);
+      describe("Tests for when withdrawn even if DAI is transfered [Community found]", () => {
+        beforeEach(async () => {
+          DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+          currentBlock = await web3.eth.getBlock("latest");
+
+          await onBeforeEach();
+        });
+        it("Expects to get closed if an abritrary amount of DAI is sent to loan contract when withdrawn", async () => {
+          const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+          const fundAmount = maxAmount;
+          await DAIToken.approve(DAIProxy.address, fundAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
+
+          // Retrieve current state == ACTIVE
+          const stateAfterFund = await Loan.currentState({from: owner});
+          expect(stateAfterFund).to.eq.BN(2);
+
+          await Loan.withdrawLoan({from: borrower});
+          const borrowerBalance = await DAIToken.balanceOf(borrower);
+          const auctionBalance = await Loan.auctionBalance();
+          const operatorBalance = await Loan.operatorBalance();
+          const netBalance = auctionBalance.sub(operatorBalance);
+
+          expect(borrowerBalance).to.eq.BN(borrowerBalancePrior.add(netBalance));
+          // State should still be ACTIVE
+
+          const endState = await Loan.currentState({from: owner});
+          expect(endState).to.eq.BN(2);
+
+          const amountToRepay = await Loan.borrowerDebt();
+          await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
+          await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+          const stateAfterDeadline = await Loan.currentState();
+          expect(stateAfterDeadline).to.eq.BN(4);
+
+          //if bobs send an arbitrary amount of dai to the contract it will never go to "CLOSED" state
+          await DAIToken.transfer(Loan.address, 1, {from: bob});
+
+          await Loan.withdrawRepayment({from: lender});
+
+          //will fail because state is still REPAID although all repayments where withdrawn
+          expect(await Loan.currentState()).to.eq.BN(5);
+        });
       });
-      it("Expects to not unlock the funds if not admin", async () => {
-        try {
-          await Loan.unlockFundsWithdrawal({from: owner});
-        } catch (error) {
-          expect(error).to.not.equal(undefined);
-        }
+      describe("Method withdrawFees", () => {
+        it("Expect operators to withdraw the loan operator fee if borrower has withdraw", async () => {
+          const adminBalancePrior = await DAIToken.balanceOf(admin);
+          const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+          await Loan.withdrawLoan({from: borrower});
+          await Loan.withdrawFees({from: admin});
+          const adminBalanceAfter = await DAIToken.balanceOf(admin);
+          expect(adminBalanceAfter).to.eq.BN(adminBalancePrior.add(expectedFee));
+        });
+        it("Expect operators to NOT withdraw the loan operator fee if borrower did NOT withdraw", async () => {
+          const adminBalancePrior = await DAIToken.balanceOf(admin);
+          const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+          await truffleAssert.fails(
+            Loan.withdrawFees({from: admin}),
+            truffleAssert.ErrorType.REVERT,
+            "borrower didnt withdraw"
+          );
+
+          const adminBalanceAfter = await DAIToken.balanceOf(admin);
+          expect(adminBalanceAfter).to.eq.BN(adminBalancePrior);
+        });
+        it("Expect operators to NOT withdraw the loan operator fee if already done", async () => {
+          const adminBalancePrior = await DAIToken.balanceOf(admin);
+          const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+          await Loan.withdrawLoan({from: borrower});
+          await Loan.withdrawFees({from: admin});
+          const adminBalanceAfter = await DAIToken.balanceOf(admin);
+          expect(adminBalanceAfter).to.eq.BN(adminBalancePrior.add(expectedFee));
+
+          await truffleAssert.fails(
+            Loan.withdrawFees({from: admin}),
+            truffleAssert.ErrorType.REVERT,
+            "no funds to withdraw"
+          );
+          const adminBalanceAfterError = await DAIToken.balanceOf(admin);
+          expect(adminBalanceAfterError).to.eq.BN(adminBalanceAfter);
+        });
       });
-    });
-    describe("Tests for when withdrawn even if DAI is transfered [Community found]", () => {
-      beforeEach(async () => {
-        DAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
-        currentBlock = await web3.eth.getBlock("latest");
+      describe("Method setDAIProxy", () => {
+        it("Update DAI proxy address", async () => {
+          const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+          const proxyAddress = await Loan.proxyAddress();
+          await Loan.setProxyAddress(newDAIProxy.address, {from: admin});
+          const newProxyAddress = await Loan.proxyAddress();
+          expect(proxyAddress).to.not.equal(newProxyAddress);
+          expect(newProxyAddress).equal(newDAIProxy.address);
+        });
 
-        await onBeforeEach();
+        it("Fund from different DAI Proxy", async () => {
+          const halfInvestment = maxAmount.div(new BN("2"));
+          await DAIToken.approve(DAIProxy.address, halfInvestment, {from: lender});
+          await DAIProxy.fund(Loan.address, halfInvestment, {from: lender});
+
+          const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
+          await Loan.setProxyAddress(newDAIProxy.address, {from: admin});
+          const newProxyAddress = await Loan.proxyAddress();
+          expect(newProxyAddress).equal(newDAIProxy.address);
+          await DAIToken.approve(newDAIProxy.address, halfInvestment, {from: lender});
+          await newDAIProxy.fund(Loan.address, halfInvestment, {from: lender});
+          // Retrieve current state == ACTIVE
+          const stateAfterFund = await Loan.currentState();
+          expect(Number(stateAfterFund)).to.equal(2);
+        });
       });
-      it("Expects to get closed if an abritrary amount of DAI is sent to loan contract when withdrawn", async () => {
-        const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
-        const fundAmount = maxAmount;
-        await DAIToken.approve(DAIProxy.address, fundAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, fundAmount, {from: lender});
+      describe("Loan Instalment template", () => {});
+      describe.only("Method getInstalmentDebt", () => {
+        it("Expects to calculate current instalment debt without penalties: 1nd instalment + 0 penalties", async () => {
+          const balance = await DAIToken.balanceOf(lender);
+          // Lender fully fund the loan
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
 
-        // Retrieve current state == ACTIVE
-        const stateAfterFund = await Loan.currentState({from: owner});
-        expect(stateAfterFund).to.eq.BN(2);
+          // Borrower withdraw loan
+          await Loan.withdrawLoan({from: borrower});
 
-        await Loan.withdrawLoan({from: borrower});
-        const borrowerBalance = await DAIToken.balanceOf(borrower);
-        const auctionBalance = await Loan.auctionBalance();
-        const operatorBalance = await Loan.operatorBalance();
-        const netBalance = auctionBalance.sub(operatorBalance);
+          // Pass time to first instalment
+          const nextInstalment = await Loan.getNextInstalmentDate();
+          const {timestamp} = await web3.eth.getBlock("latest");
+          const remainingTime = nextInstalment.sub(new BN(timestamp));
+          await helpers.increaseTime(remainingTime);
 
-        expect(borrowerBalance).to.eq.BN(borrowerBalancePrior.add(netBalance));
-        // State should still be ACTIVE
+          // Debt (1nd instalment + 0 penalties)
+          const amountToRepay = await Loan.getInstalmentDebt({from: borrower});
+          console.log(fromWei(amountToRepay));
+        });
+        it("Expects to calculate current instalment debt without penalties: 2nd instalment + 0 penalties", async () => {
+          const balance = await DAIToken.balanceOf(lender);
+          // Lender fully fund the loan
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
 
-        const endState = await Loan.currentState({from: owner});
-        expect(endState).to.eq.BN(2);
+          // Borrower withdraw loan
+          await Loan.withdrawLoan({from: borrower});
 
-        const amountToRepay = await Loan.borrowerDebt();
-        await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
-        await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+          // Pass time to first instalment
+          const nextInstalment = await Loan.getNextInstalmentDate();
+          const {timestamp} = await web3.eth.getBlock("latest");
+          const remainingTime = nextInstalment.sub(new BN(timestamp));
+          await helpers.increaseTime(remainingTime);
 
-        const stateAfterDeadline = await Loan.currentState();
-        expect(stateAfterDeadline).to.eq.BN(4);
+          // Get current debt (1nd instalment + 0 penalties)
+          const firstInstalment = await Loan.getInstalmentDebt({from: borrower});
+          console.log(fromWei(firstInstalment));
+          await DAIToken.approve(DAIProxy.address, firstInstalment, {from: borrower});
+          await DAIProxy.repay(Loan.address, firstInstalment, {from: borrower});
 
-        //if bobs send an arbitrary amount of dai to the contract it will never go to "CLOSED" state
-        await DAIToken.transfer(Loan.address, 1, {from: bob});
+          // Pass time to second instalment
+          const secondInstalment = await Loan.getNextInstalmentDate();
+          const {timestamp: secondTime} = await web3.eth.getBlock("latest");
+          const remainingTimeSecond = secondInstalment.sub(new BN(secondTime));
+          await helpers.increaseTime(remainingTimeSecond);
 
-        await Loan.withdrawRepayment({from: lender});
+          // Get current debt (2nd instalment + 0 penalties)
+          const amountToRepay = await Loan.getInstalmentDebt({from: borrower});
+          console.log(fromWei(amountToRepay));
 
-        //will fail because state is still REPAID although all repayments where withdrawn
-        expect(await Loan.currentState()).to.eq.BN(5);
+          require(amountToRepay).eq.BN(firstInstalment);
+        });
+        it("Expects to calculate correct instalment debt and penalties: 2nd instalment + 1 penaltie", async () => {
+          const balance = await DAIToken.balanceOf(lender);
+          // Lender fully fund the loan
+          await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+          await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+          // Borrower withdraw loan
+          await Loan.withdrawLoan({from: borrower});
+
+          // Pass time to second instalments
+          const firstInstalment = await Loan.getNextInstalmentDate();
+          const {timestamp: timeFirst} = await web3.eth.getBlock("latest");
+          const remainingTimeFirstInstalment = firstInstalment.sub(new BN(timeFirst));
+          await helpers.increaseTime(remainingTimeFirstInstalment);
+
+          const nextInstalment = await Loan.getNextInstalmentDate();
+          const {timestamp: timeSecond} = await web3.eth.getBlock("latest");
+          const remainingTimeSecondInstalment = nextInstalment.sub(new BN(timeSecond));
+          await helpers.increaseTime(remainingTimeSecondInstalment);
+
+          // Get current debt (2nd instalment + 1 penalties)
+          const amountToRepay = await Loan.getInstalmentDebt({from: borrower});
+          const currentInstalment = await Loan.getCurrentInstalment();
+          console.log(fromWei(amountToRepay), currentInstalment.toString());
+        });
+        it.skip("Expects to be zero if all instalments paid", async () => {});
+        it.skip("Expects to be zero if current instalment is paid", async () => {});
       });
-    });
-    describe("Method withdrawFees", () => {
-      it.skip("Expect to NOT withdraw fees if an error happens while transfer", async () => {});
-      it("Expect operators to withdraw the loan operator fee if borrower has withdraw", async () => {
-        const adminBalancePrior = await DAIToken.balanceOf(admin);
-        const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
-        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
-        await Loan.withdrawLoan({from: borrower});
-        await Loan.withdrawFees({from: admin});
-        const adminBalanceAfter = await DAIToken.balanceOf(admin);
-        expect(adminBalanceAfter).to.eq.BN(adminBalancePrior.add(expectedFee));
+      describe("Method getTotalDebt", () => {
+        it.skip("Expects to calculate total debt without penalties", async () => {});
+        it.skip("Expects to calculate total debt and penalties", async () => {});
+        it.skip("Expects to be zero if all instalments paid", async () => {});
       });
-      it("Expect operators to NOT withdraw the loan operator fee if borrower did NOT withdraw", async () => {
-        const adminBalancePrior = await DAIToken.balanceOf(admin);
-        const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
-        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
-
-        await truffleAssert.fails(
-          Loan.withdrawFees({from: admin}),
-          truffleAssert.ErrorType.REVERT,
-          "borrower didnt withdraw"
-        );
-
-        const adminBalanceAfter = await DAIToken.balanceOf(admin);
-        expect(adminBalanceAfter).to.eq.BN(adminBalancePrior);
+      describe("Method getCurrentInstalment", () => {
+        it.skip("Expects to calculate first instalment", async () => {});
+        it.skip("Expects to calculate all instalments (try to get each instalment)", async () => {});
+        it.skip("Expects to return zero if still is not first instalment or is in auction phase", async () => {});
+        it.skip("Expects to return last instalment if timestamp is greater than latest instalment", async () => {});
       });
-      it("Expect operators to NOT withdraw the loan operator fee if already done", async () => {
-        const adminBalancePrior = await DAIToken.balanceOf(admin);
-        const expectedFee = maxAmount.mul(operatorPercentFee).div(toWei(new BN(100)));
-        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
-        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
-        await Loan.withdrawLoan({from: borrower});
-        await Loan.withdrawFees({from: admin});
-        const adminBalanceAfter = await DAIToken.balanceOf(admin);
-        expect(adminBalanceAfter).to.eq.BN(adminBalancePrior.add(expectedFee));
-
-        await truffleAssert.fails(
-          Loan.withdrawFees({from: admin}),
-          truffleAssert.ErrorType.REVERT,
-          "no funds to withdraw"
-        );
-        const adminBalanceAfterError = await DAIToken.balanceOf(admin);
-        expect(adminBalanceAfterError).to.eq.BN(adminBalanceAfter);
+      describe("Getter getLenderWithdrawn", () => {
+        it.skip("Expects to be false if not withdrawn", async () => {});
+        it.skip("Expects to be true ifwithdrawn", async () => {});
       });
-    });
-    describe("Method setDAIProxy", () => {
-      it("Update DAI proxy address", async () => {
-        const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
-        const proxyAddress = await Loan.proxyAddress();
-        await Loan.setProxyAddress(newDAIProxy.address, {from: admin});
-        const newProxyAddress = await Loan.proxyAddress();
-        expect(proxyAddress).to.not.equal(newProxyAddress);
-        expect(newProxyAddress).equal(newDAIProxy.address);
+      describe("Getter getTokenAddress", () => {
+        it.skip("Expects to get loan token address", async () => {});
       });
-
-      it("Fund from different DAI Proxy", async () => {
-        const halfInvestment = maxAmount.div(new BN("2"));
-        await DAIToken.approve(DAIProxy.address, halfInvestment, {from: lender});
-        await DAIProxy.fund(Loan.address, halfInvestment, {from: lender});
-
-        const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
-        await Loan.setProxyAddress(newDAIProxy.address, {from: admin});
-        const newProxyAddress = await Loan.proxyAddress();
-        expect(newProxyAddress).equal(newDAIProxy.address);
-        await DAIToken.approve(newDAIProxy.address, halfInvestment, {from: lender});
-        await newDAIProxy.fund(Loan.address, halfInvestment, {from: lender});
-        // Retrieve current state == ACTIVE
-        const stateAfterFund = await Loan.currentState();
-        expect(Number(stateAfterFund)).to.equal(2);
+      describe("Getter getLenderInstalmentsWithdrawed", () => {
+        it.skip("Expects to get withdrawn instalments by a lender", async () => {});
+        it.skip("Expects to NOT get withdrawn instalments by a lender if not withdrawn", async () => {});
       });
-    });
-    describe("Loan Instalment template", () => {});
-    describe("Method getInstalmentDebt", () => {
-      it.skip("Expects to calculate current instalment debt without penalties", async () => {});
-      it.skip("Expects to calculate correct instalment debt and penalties", async () => {});
-      it.skip("Expects to be zero if all instalments paid", async () => {});
-      it.skip("Expects to be zero if current instalment is paid", async () => {});
-    });
-    describe("Method getTotalDebt", () => {
-      it.skip("Expects to calculate total debt without penalties", async () => {});
-      it.skip("Expects to calculate total debt and penalties", async () => {});
-      it.skip("Expects to be zero if all instalments paid", async () => {});
-    });
-    describe("Method getCurrentInstalment", () => {
-      it.skip("Expects to calculate first instalment", async () => {});
-      it.skip("Expects to calculate all instalments (try to get each instalment)", async () => {});
-      it.skip("Expects to return zero if still is not first instalment or is in auction phase", async () => {});
-      it.skip("Expects to return last instalment if timestamp is greater than latest instalment", async () => {});
-    });
-    describe("Getter getLenderWithdrawn", () => {
-      it.skip("Expects to be false if not withdrawn", async () => {});
-      it.skip("Expects to be true ifwithdrawn", async () => {});
-    });
-    describe("Getter getTokenAddress", () => {
-      it.skip("Expects to get loan token address", async () => {});
-    });
-    describe("Getter getLenderInstalmentsWithdrawed", () => {
-      it.skip("Expects to get withdrawn instalments by a lender", async () => {});
-      it.skip("Expects to NOT get withdrawn instalments by a lender if not withdrawn", async () => {});
-    });
-    describe("Method getTotalDebt", () => {
-      it.skip("Expects to calculate total debt without penalties", async () => {});
-      it.skip("Expects to calculate total debt and penalties", async () => {});
-      it.skip("Expects to be zero if all instalments paid", async () => {});
-    });
-    describe("Edge cases", () => {
-      it.skip("Invest should not be possible in the same timestamp of creation", async () => {});
-      it.skip("Invest should not be possible in a before timestamp of creation", async () => {});
-      it.skip("Invest should not be possible in a before timestamp of creation", async () => {});
+      describe("Method getTotalDebt", () => {
+        it.skip("Expects to calculate total debt without penalties", async () => {});
+        it.skip("Expects to calculate total debt and penalties", async () => {});
+        it.skip("Expects to be zero if all instalments paid", async () => {});
+      });
+      describe("Edge cases", () => {
+        it.skip("Invest should not be possible in the same timestamp of creation", async () => {});
+        it.skip("Invest should not be possible in a before timestamp of creation", async () => {});
+        it.skip("Invest should not be possible in a before timestamp of creation", async () => {});
+      });
     });
   });
 });

@@ -381,6 +381,10 @@ contract LoanInstalments is ILoanInstalments {
             lenderPosition[msg.sender].instalmentsWithdrawed;
         console.log("pendingInstalments:: ", pendingInstalments);
         uint256 pendingPenalties = penaltiesPaid - lenderPosition[msg.sender].penaltiesWithdrawed;
+        console.log("penalties::: ", pendingPenalties);
+
+        console.log("proportion ::: ", lenderPosition[lender].bidAmount.div(auctionBalance));
+        console.log("pasta instalments:: ", getInstalmentAmount().mul(pendingInstalments));
         return
             (lenderPosition[lender].bidAmount.div(auctionBalance)).mul(
                 (getInstalmentAmount().mul(pendingInstalments)).add(
@@ -485,9 +489,10 @@ contract LoanInstalments is ILoanInstalments {
             penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
         }
         return
-            getInstalmentAmount().add(getInstalmentPenalty().mul(penaltyInstalments)).add(
-                remainder
-            );
+            getInstalmentAmount()
+                .mul(getCurrentInstalment().sub(instalmentsPaid))
+                .add(getInstalmentPenalty().mul(penaltyInstalments))
+                .add(remainder);
     }
 
     function getTotalDebt() public view returns (uint256) {
