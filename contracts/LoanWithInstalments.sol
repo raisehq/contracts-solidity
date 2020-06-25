@@ -480,7 +480,7 @@ contract LoanInstalments is ILoanInstalments {
             penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
         }
         return
-            getInstalmentAmount().add(getInstalmentPenalty().mul(penaltyInstalments)).add(
+            getInstalmentAmount().mul(getCurrentInstalment().sub(instalmentsPaid)).add(getInstalmentPenalty().mul(penaltyInstalments)).add(
                 remainder
             );
     }
