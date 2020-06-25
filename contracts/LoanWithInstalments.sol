@@ -270,8 +270,11 @@ contract LoanInstalments is ILoanInstalments {
         require(block.timestamp > auctionStartTimestamp, "can not invest prior the start");
         require(amount > 0, "amount must be greater than 0");
         require(!isAuctionExpired(), "auction is expired, lenders can withdrawRefund");
-        
-        require(ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), amount), 'failed to transfer');
+
+        require(
+            ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), amount),
+            "failed to transfer"
+        );
 
         if (isAuctionExpired()) {
             if (auctionBalance < minAmount) {
@@ -480,9 +483,10 @@ contract LoanInstalments is ILoanInstalments {
             penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
         }
         return
-            getInstalmentAmount().mul(getCurrentInstalment().sub(instalmentsPaid)).add(getInstalmentPenalty().mul(penaltyInstalments)).add(
-                remainder
-            );
+            getInstalmentAmount()
+                .mul(getCurrentInstalment().sub(instalmentsPaid))
+                .add(getInstalmentPenalty().mul(penaltyInstalments))
+                .add(remainder);
     }
 
     function getTotalDebt() public view returns (uint256) {
