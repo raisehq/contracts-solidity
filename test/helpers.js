@@ -104,11 +104,12 @@ const takeSnapshot = () => {
         params: [],
         id: new Date().getTime()
       },
-      (err, snapshotId) => {
+      async (err, snapshotId) => {
         if (err) {
           return reject(err);
         }
         console.log("sa resueltooo");
+        await advanceBlock();
         return resolve(snapshotId);
       }
     );

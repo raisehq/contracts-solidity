@@ -20,7 +20,7 @@ const DepositRegistryContract = artifacts.require("DepositRegistry");
 const ERC20WrapperContract = artifacts.require("ERC20Wrapper");
 const LoanInstalmentsCloner = artifacts.require("LoanInstalmentsCloner");
 const MonkCalcs = artifacts.require("MonkCalcs");
-const {initializeUniswap} = require("./uniswap.utils");
+const {initializeUniswap, tokenInputToTokenCosts} = require("./uniswap.utils");
 const helpers = require("./helpers.js");
 const {revertToSnapShot, takeSnapshot} = helpers;
 const DAI_COST_200_RAISE = new BN("4596059099803939333");
@@ -154,7 +154,7 @@ describe("LoanInstalments", () => {
     // await LoanInstalments.link(MonkCalcsInstance);
     await LoanInstalments.link(ERC20Wrapper);
 
-    startSnapshot = await takeSnapshot();
+    await deployDependencies();
   });
 
   // Deploy contracts related with this test where their params can be mocked
@@ -190,9 +190,8 @@ describe("LoanInstalments", () => {
   };
 
   beforeEach(async () => {
-    console.log("onBeforeEach master", startSnapshot.id);
     startSnapshot = await takeSnapshot();
-    await deployDependencies();
+    console.log("onBeforeEach master", startSnapshot.result);
 
     // Set default Loan variables
     minAmount = new BN(toWei("1000"));
@@ -204,7 +203,7 @@ describe("LoanInstalments", () => {
     await onBeforeEach();
   });
   afterEach(async () => {
-    await revertToSnapShot(startSnapshot.id);
+    await revertToSnapShot(startSnapshot.result);
   });
 
   describe("Unit tests for LoanInstalments", () => {
@@ -783,9 +782,6 @@ describe("LoanInstalments", () => {
     });
     describe.only("Method withdrawRepaymentAndDeposit", () => {
       beforeEach(async () => {
-        console.log("onBeforeEach inside method describe");
-        const Depositor = await DepositRegistry.hasDeposited(otherLender);
-        console.log("otherLender deposited", Depositor);
         uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
 
         const SwapAndDepositTemplate = await SwapAndDepositContract.new({from: owner});
@@ -967,8 +963,7 @@ describe("LoanInstalments", () => {
           throw error;
         }
       });
-      // TODO: fix decimals
-      it.skip("Expects withdrawRepaymentAndDeposit to add the division remainder to the latest lender", async () => {
+      it.only("Expects withdrawRepaymentAndDeposit to add the division remainder to the loan administrator", async () => {
         await DAIToken.approve(DAIProxy.address, toWei("668"), {from: lender});
         await DAIToken.approve(DAIProxy.address, toWei("666"), {from: otherLender});
         await DAIToken.approve(DAIProxy.address, toWei("666"), {from: thirdLender});
@@ -992,34 +987,43 @@ describe("LoanInstalments", () => {
         const endState = await Loan.currentState({from: owner});
 
         expect(Number(endState)).to.equal(4);
-        // const lenderAmount = await Loan.getWithdrawAmount(lender);
-        // const otherLenderAmount = await Loan.getWithdrawAmount(otherLender);
-        // const thirdLenderAmount = await Loan.getWithdrawAmount(thirdLender);
-
-        // console.log(
-        //   "aaa",
-        //   fromWei(lenderAmount),
-        //   fromWei(otherLenderAmount),
-        //   fromWei(thirdLenderAmount),
-        //   Number(await DAIToken.balanceOf(Loan.address))
-        // );
 
         const lenderAmount = await Loan.getLenderBidAmount(lender);
         const otherLenderAmount = await Loan.getLenderBidAmount(otherLender);
         const thirdLenderAmount = await Loan.getLenderBidAmount(thirdLender);
-        const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
-        const otherLenderAmountWithInterest = await Loan.calculateValueWithInterest(
-          otherLenderAmount
-        );
-        const thirdLenderAmountWithInterest = await Loan.calculateValueWithInterest(
-          thirdLenderAmount
-        );
+        const lenderAmountWithInterest = await Loan.getWithdrawAmount(lender);
+        const otherLenderAmountWithInterest = await Loan.getWithdrawAmount(otherLender);
+        const thirdLenderAmountWithInterest = await Loan.getWithdrawAmount(thirdLender);
         const lenderBalanceBefore = await DAIToken.balanceOf(lender);
         const otherLenderBalanceBefore = await DAIToken.balanceOf(otherLender);
         const thirdLenderBalanceBefore = await DAIToken.balanceOf(thirdLender);
 
+        const daiCostLender = await tokenInputToTokenCosts(
+          web3,
+          uniswapAddress,
+          DAIToken.address,
+          RaiseToken.address,
+          toWei("200"),
+          lender
+        );
         await Loan.withdrawRepaymentAndDeposit({from: lender});
+        const daiCostOtherLender = await tokenInputToTokenCosts(
+          web3,
+          uniswapAddress,
+          DAIToken.address,
+          RaiseToken.address,
+          toWei("200"),
+          otherLender
+        );
         await Loan.withdrawRepaymentAndDeposit({from: otherLender});
+        const daiCostThirdLender = await tokenInputToTokenCosts(
+          web3,
+          uniswapAddress,
+          DAIToken.address,
+          RaiseToken.address,
+          toWei("200"),
+          thirdLender
+        );
         await Loan.withdrawRepaymentAndDeposit({from: thirdLender});
 
         const lenderBalanceAfter = await DAIToken.balanceOf(lender);
@@ -1027,13 +1031,13 @@ describe("LoanInstalments", () => {
         const thirdLenderBalanceAfter = await DAIToken.balanceOf(thirdLender);
 
         expect(lenderBalanceAfter).to.be.eq.BN(
-          lenderBalanceBefore.add(lenderAmountWithInterest).sub(DAI_COST_200_RAISE)
+          lenderBalanceBefore.add(lenderAmountWithInterest).sub(daiCostLender)
         );
         expect(otherLenderBalanceAfter).to.be.eq.BN(
-          otherLenderBalanceBefore.add(otherLenderAmountWithInterest).sub(DAI_COST_200_RAISE)
+          otherLenderBalanceBefore.add(otherLenderAmountWithInterest).sub(daiCostOtherLender)
         );
         expect(thirdLenderBalanceAfter).to.be.eq.BN(
-          thirdLenderBalanceBefore.add(thirdLenderAmountWithInterest).sub(DAI_COST_200_RAISE)
+          thirdLenderBalanceBefore.add(thirdLenderAmountWithInterest).sub(daiCostThirdLender)
         );
         // User have deposit inside the DepositRegistry
         const depositedLender = await DepositRegistry.hasDeposited(lender);
@@ -1526,9 +1530,7 @@ describe("LoanInstalments", () => {
           const lender3Amount = await Loan.getLenderBidAmount(lender3);
 
           const lenderAmountWithInterest = await Loan.getWithdrawAmount(lender);
-          const otherLenderAmountWithInterest = await Loan.getWithdrawAmount(
-            otherLender
-          );
+          const otherLenderAmountWithInterest = await Loan.getWithdrawAmount(otherLender);
           const lender3AmountWithInterest = await Loan.getWithdrawAmount(lender3);
 
           const lenderBalanceBefore = await DAIToken.balanceOf(lender);
@@ -1888,7 +1890,7 @@ describe("LoanInstalments", () => {
           RevertErrors.repayAmount
         );
       });
-      it.only("Expects to pay with penalties and go REPAID state if all paid", async () => {
+      it("Expects to pay with penalties and go REPAID state if all paid", async () => {
         // Lender fully fund the loan
         await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
         await DAIProxy.fund(Loan.address, maxAmount, {from: lender});

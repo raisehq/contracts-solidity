@@ -86,6 +86,43 @@ const initializeUniswap = async (anyWeb3, tokenA, tokenB, owner) => {
   return uniswapFactory.options.address;
 };
 
+const tokenInputToTokenCosts = async (
+  anyWeb3,
+  uniswapFactoryAddress,
+  inputToken,
+  outputToken,
+  amount,
+  from
+) => {
+  const web3One = getWeb3(anyWeb3);
+  const uniswapFactory = await new web3One.eth.Contract(UniswapFactoryAbi, uniswapFactoryAddress);
+  const inputExchangeAddress = await uniswapFactory.methods.getExchange(inputToken).call();
+  const inputExchange = new web3One.eth.Contract(UniswapExchangeAbi, inputExchangeAddress);
+  const block = await web3.eth.getBlock("latest");
+  console.log(
+    "prior",
+    inputToken,
+    uniswapFactoryAddress,
+    inputExchangeAddress,
+    amount,
+    "999999999999999999999999", // at least prevent to consume more input tokens than the transfer
+    "999999999999999999999999", // do not check how much eth is sold prior the swap: input token --> eth --> output token
+    Number(block.timestamp) + 300, // prevent swap to go throught if is not mined after deadline
+    outputToken
+  );
+  const costs = await inputExchange.methods
+    .tokenToTokenSwapOutput(
+      amount,
+      "5000000000000000000000", // at least prevent to consume more input tokens than the transfer
+      "5000000000000000000000", // do not check how much eth is sold prior the swap: input token --> eth --> output token
+      Number(block.timestamp) + 300, // prevent swap to go throught if is not mined after deadline
+      outputToken
+    )
+    .call({from});
+  console.log("costs", costs);
+  return costs;
+};
 module.exports = {
-  initializeUniswap
+  initializeUniswap,
+  tokenInputToTokenCosts
 };
