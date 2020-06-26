@@ -78,7 +78,7 @@ describe.only("LoanInstalments", () => {
   const deployDependencies = async () => {
     ERC20Wrapper = await ERC20WrapperContract.new();
     const MonkCalcsInstance = await MonkCalcs.new();
-    await LoanInstalments.link(MonkCalcsInstance);
+    // await LoanInstalments.link(MonkCalcsInstance);
     await LoanInstalments.link(ERC20Wrapper);
 
     DAIToken = await DAITokenContract.new({from: owner});
@@ -1001,9 +1001,9 @@ describe.only("LoanInstalments", () => {
     describe("Method withdrawRepayment", () => {
       beforeEach(async () => {
         await revertToSnapShot(startSnapshot);
-        termLength = "31540000"; // 1 year in seconds
-        minInterestRate = new BN("1000000000000000000");
-        maxInterestRate = new BN("1000000000000000000");
+        termLength = "31104000"; // 1 year in seconds
+        minInterestRate = new BN(toWei("0.833333333"));
+        maxInterestRate = new BN(toWei("0.833333333"));
         await onBeforeEach();
       });
       it.skip("Expects withdrawRepayment to not be able to allow Lender withdraw twice", async () => {});
@@ -1035,15 +1035,17 @@ describe.only("LoanInstalments", () => {
 
         const borrowerBalanceAfter = await DAIToken.balanceOf(borrower);
         expect(borrowerBalanceAfter).eq.BN(borrowerBalancePrior.sub(amountToRepay));
+        const interestRate = await Loan.getInterestRate();
+        const lenderAmount = await Loan.getLenderBidAmount(lender);
+        const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+        const lenderBalanceBefore = await DAIToken.balanceOf(lender);
 
         // State should change to REPAID
         const endState = await Loan.currentState({from: owner});
         expect(Number(endState)).to.equal(4);
-        const lenderAmount = await Loan.getLenderBidAmount(lender);
-        const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
-        const lenderBalanceBefore = await DAIToken.balanceOf(lender);
         await Loan.withdrawRepayment({from: lender});
         const lenderBalanceAfter = await DAIToken.balanceOf(lender);
+        console.log(fromWei(lenderBalanceAfter));
         expect(lenderBalanceAfter).to.eq.BN(lenderBalanceBefore.add(lenderAmountWithInterest));
       });
       it("Expect withdrawRepayment to NOT allow Lender take repayament if state == CLOSED", async () => {
