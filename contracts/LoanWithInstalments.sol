@@ -388,7 +388,6 @@ contract LoanInstalments is ILoanInstalments {
         uint256 _penaltyAmount;
         uint256 pendingInstalments = instalmentsPaid -
             lenderPosition[msg.sender].instalmentsWithdrawed;
-        console.log("pendingInstalments:: ", pendingInstalments);
         uint256 pendingPenalties = penaltiesPaid - lenderPosition[msg.sender].penaltiesWithdrawed;
         if (getInstalmentAmount().mul(instalmentsPaid) > 0) {
             _instalmentAmount =
@@ -436,7 +435,6 @@ contract LoanInstalments is ILoanInstalments {
         require(totalWithdraws < investors, "can not withdraw more");
         // calculate value with pending instalments from the user
         uint256 amount = getWithdrawAmount(msg.sender);
-        console.log("amount:: ", amount);
         lenderPosition[msg.sender].instalmentsWithdrawed = instalmentsPaid;
         lenderPosition[msg.sender].penaltiesWithdrawed = penaltiesPaid;
 

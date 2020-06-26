@@ -963,7 +963,7 @@ describe("LoanInstalments", () => {
           throw error;
         }
       });
-      it.only("Expects withdrawRepaymentAndDeposit to add the division remainder to the loan administrator", async () => {
+      it("Expects withdrawRepaymentAndDeposit to add the division remainder to the loan administrator", async () => {
         await DAIToken.approve(DAIProxy.address, toWei("668"), {from: lender});
         await DAIToken.approve(DAIProxy.address, toWei("666"), {from: otherLender});
         await DAIToken.approve(DAIProxy.address, toWei("666"), {from: thirdLender});
@@ -978,7 +978,6 @@ describe("LoanInstalments", () => {
         const instalmentLength = await Loan.getInstalmentLenght();
         await helpers.increaseTime(instalmentLength.add(new BN("1")));
         const amountToRepay = await Loan.getTotalDebt();
-        const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
 
         await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
         await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
@@ -988,15 +987,21 @@ describe("LoanInstalments", () => {
 
         expect(Number(endState)).to.equal(4);
 
-        const lenderAmount = await Loan.getLenderBidAmount(lender);
-        const otherLenderAmount = await Loan.getLenderBidAmount(otherLender);
-        const thirdLenderAmount = await Loan.getLenderBidAmount(thirdLender);
         const lenderAmountWithInterest = await Loan.getWithdrawAmount(lender);
         const otherLenderAmountWithInterest = await Loan.getWithdrawAmount(otherLender);
         const thirdLenderAmountWithInterest = await Loan.getWithdrawAmount(thirdLender);
         const lenderBalanceBefore = await DAIToken.balanceOf(lender);
         const otherLenderBalanceBefore = await DAIToken.balanceOf(otherLender);
         const thirdLenderBalanceBefore = await DAIToken.balanceOf(thirdLender);
+        const adminBalanceBefore = await DAIToken.balanceOf(admin);
+
+        // Division remainder caused by calculating proportions and ratios
+        const borrowerDebt = await Loan.borrowerDebt();
+        const remainder = borrowerDebt.sub(
+          lenderAmountWithInterest
+            .add(otherLenderAmountWithInterest)
+            .add(thirdLenderAmountWithInterest)
+        );
 
         const daiCostLender = await tokenInputToTokenCosts(
           web3,
@@ -1006,10 +1011,6 @@ describe("LoanInstalments", () => {
           toWei("200"),
           lender
         );
-        console.log("first", fromWei(daiCostLender));
-        console.log("---->", fromWei(DAI_COST_200_RAISE));
-        console.log();
-        console.log();
         await Loan.withdrawRepaymentAndDeposit({from: lender});
         const daiCostOtherLender = await tokenInputToTokenCosts(
           web3,
@@ -1033,6 +1034,7 @@ describe("LoanInstalments", () => {
         const lenderBalanceAfter = await DAIToken.balanceOf(lender);
         const otherLenderBalanceAfter = await DAIToken.balanceOf(otherLender);
         const thirdLenderBalanceAfter = await DAIToken.balanceOf(thirdLender);
+        const adminBalanceAfter = await DAIToken.balanceOf(admin);
 
         expect(lenderBalanceAfter).to.be.eq.BN(
           lenderBalanceBefore.add(lenderAmountWithInterest).sub(daiCostLender)
@@ -1054,7 +1056,14 @@ describe("LoanInstalments", () => {
         // State should change to CLOSED
         const closedState = await Loan.currentState({from: owner});
         expect(Number(closedState)).to.equal(5);
-        expect(Number(await DAIToken.balanceOf(Loan.address))).to.equal(0);
+
+        // Remaining balance should be operator fee
+        const remainingLoanBalance = await DAIToken.balanceOf(Loan.address);
+        const operatorFee = await Loan.operatorBalance();
+        expect(remainingLoanBalance.sub(operatorFee)).to.eq.BN("0");
+
+        // Admin should have the remainder
+        expect(adminBalanceAfter).to.eq.BN(adminBalanceBefore.add(remainder));
       });
       it.skip("Expects withdrawRepaymentAndDeposit to revert if error while swap deployment", async () => {
         try {
