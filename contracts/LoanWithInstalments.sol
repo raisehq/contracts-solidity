@@ -525,9 +525,10 @@ contract LoanInstalments is ILoanInstalments {
         require(from == originator, "from address is not the originator");
 
         if (getCurrentInstalment() > instalmentsPaid.add(1)) {
-            borrowerDebt = borrowerDebt.add(
-                getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
-            );
+            // TODO: have a look penalty withdraw
+            // borrowerDebt = borrowerDebt.add(
+            //     getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
+            // );
             penaltiesPaid = penaltiesPaid.add(getCurrentInstalment().sub(instalmentsPaid).sub(1));
         }
 
@@ -672,7 +673,7 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function getInstalmentAmount() public view returns (uint256) {
-        return borrowerDebt.div(instalments);
+        return calculateValueWithInterest(auctionBalance).div(instalments);
     }
 
     function getInstalmentPenalty() public view returns (uint256) {

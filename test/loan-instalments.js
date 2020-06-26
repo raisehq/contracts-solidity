@@ -1558,7 +1558,7 @@ describe("LoanInstalments", () => {
         } catch (error) {
           throw error;
         }
-        it.only("OTHER WIP", async () => {
+        it("OTHER WIP", async () => {
           await DAIToken.approve(DAIProxy.address, new BN("668"), {from: lender});
           await DAIToken.approve(DAIProxy.address, new BN("666"), {from: otherLender});
           await DAIToken.approve(DAIProxy.address, new BN("666"), {from: thirdLender});
@@ -1878,7 +1878,51 @@ describe("LoanInstalments", () => {
           RevertErrors.repayAmount
         );
       });
-      it.skip("Expects to pay with penalties and go REPAID state if all paid", async () => {});
+      it.only("Expects to pay with penalties and go REPAID state if all paid", async () => {
+        // Lender fully fund the loan
+        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+        // Borrower withdraw loan
+        await Loan.withdrawLoan({from: borrower});
+
+        // Calculations
+        const borrowerDebt = await Loan.borrowerDebt();
+        const monthlyDebt = borrowerDebt.div(new BN("12"));
+
+        const auctionBalance = await Loan.auctionBalance();
+        const interestRate = await Loan.getInterestRate();
+        const termLength = await Loan.termLength();
+        const penalty = getPenalty(auctionBalance, interestRate, termLength);
+
+        // Pass time to second instalments
+        const firstInstalment = await Loan.getNextInstalmentDate();
+        const {timestamp: timeFirst} = await web3.eth.getBlock("latest");
+        const remainingTimeFirstInstalment = firstInstalment.sub(new BN(timeFirst));
+        await helpers.increaseTime(remainingTimeFirstInstalment);
+
+        const nextInstalment = await Loan.getNextInstalmentDate();
+        const {timestamp: timeSecond} = await web3.eth.getBlock("latest");
+        const remainingTimeSecondInstalment = nextInstalment.sub(new BN(timeSecond));
+        await helpers.increaseTime(remainingTimeSecondInstalment);
+
+        // Get current debt (2nd instalment + 1 penalties)
+        const amountToRepay = await Loan.getInstalmentDebt({from: borrower});
+        expect(amountToRepay).eq.BN(monthlyDebt.mul(new BN("2")).add(penalty));
+
+        await Loan.updateStateMachine();
+        const middleState = await Loan.currentState({from: owner});
+        expect(Number(middleState)).to.equal(2);
+
+        // repay rest of loan
+        await Loan.updateStateMachine();
+        const remainingAmountToRepay = await Loan.getTotalDebt();
+        await DAIToken.approve(DAIProxy.address, remainingAmountToRepay, {from: borrower});
+        await DAIProxy.repay(Loan.address, remainingAmountToRepay, {from: borrower});
+
+        const closedState = await Loan.currentState({from: owner});
+        expect(Number(closedState)).to.equal(4);
+      });
     });
     describe("Method onRepaymentReceived: instalments", () => {
       const payInstalment = (loan, daiToken, daiProxy) => async (x, index) => {
@@ -1893,8 +1937,83 @@ describe("LoanInstalments", () => {
         return daiProxy.repay(Loan.address, amountToRepay, {from: borrower});
       };
 
-      it.skip("Expects to pay 1 instalment with penalties (check division reminder)", async () => {});
-      it.skip("Expects to pay all instalments with penalties and go REPAID state (check division reminder)", async () => {});
+      it("Expects to pay 1 instalment with penalties (check division reminder)", async () => {
+        // Lender fully fund the loan
+        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+        // Borrower withdraw loan
+        await Loan.withdrawLoan({from: borrower});
+
+        // Calculations
+        const borrowerDebt = await Loan.borrowerDebt();
+        const monthlyDebt = borrowerDebt.div(new BN("12"));
+
+        const auctionBalance = await Loan.auctionBalance();
+        const interestRate = await Loan.getInterestRate();
+        const termLength = await Loan.termLength();
+        const penalty = getPenalty(auctionBalance, interestRate, termLength);
+
+        // Pass time to second instalments
+        const firstInstalment = await Loan.getNextInstalmentDate();
+        const {timestamp: timeFirst} = await web3.eth.getBlock("latest");
+        const remainingTimeFirstInstalment = firstInstalment.sub(new BN(timeFirst));
+        await helpers.increaseTime(remainingTimeFirstInstalment);
+
+        const nextInstalment = await Loan.getNextInstalmentDate();
+        const {timestamp: timeSecond} = await web3.eth.getBlock("latest");
+        const remainingTimeSecondInstalment = nextInstalment.sub(new BN(timeSecond));
+        await helpers.increaseTime(remainingTimeSecondInstalment);
+
+        // Get current debt (2nd instalment + 1 penalties)
+        const amountToRepay = await Loan.getInstalmentDebt({from: borrower});
+        expect(amountToRepay).eq.BN(monthlyDebt.mul(new BN("2")).add(penalty));
+      });
+      it("Expects to pay all instalments with penalties and go REPAID state (check division reminder)", async () => {
+        // Lender fully fund the loan
+        await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
+        await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
+
+        // Borrower withdraw loan
+        await Loan.withdrawLoan({from: borrower});
+
+        // Calculations
+        const borrowerDebt = await Loan.borrowerDebt();
+        const monthlyDebt = borrowerDebt.div(new BN("12"));
+
+        const auctionBalance = await Loan.auctionBalance();
+        const interestRate = await Loan.getInterestRate();
+        const termLength = await Loan.termLength();
+        const penalty = getPenalty(auctionBalance, interestRate, termLength);
+
+        // Pass time to second instalments
+        const firstInstalment = await Loan.getNextInstalmentDate();
+        const {timestamp: timeFirst} = await web3.eth.getBlock("latest");
+        const remainingTimeFirstInstalment = firstInstalment.sub(new BN(timeFirst));
+        await helpers.increaseTime(remainingTimeFirstInstalment);
+
+        const nextInstalment = await Loan.getNextInstalmentDate();
+        const {timestamp: timeSecond} = await web3.eth.getBlock("latest");
+        const remainingTimeSecondInstalment = nextInstalment.sub(new BN(timeSecond));
+        await helpers.increaseTime(remainingTimeSecondInstalment);
+
+        // Get current debt (2nd instalment + 1 penalties)
+        const amountToRepay = await Loan.getInstalmentDebt({from: borrower});
+        expect(amountToRepay).eq.BN(monthlyDebt.mul(new BN("2")).add(penalty));
+
+        await Loan.updateStateMachine();
+        const middleState = await Loan.currentState({from: owner});
+        expect(Number(middleState)).to.equal(2);
+
+        // repay rest of loan
+        await Loan.updateStateMachine();
+        const remainingAmountToRepay = await Loan.getTotalDebt();
+        await DAIToken.approve(DAIProxy.address, remainingAmountToRepay, {from: borrower});
+        await DAIProxy.repay(Loan.address, remainingAmountToRepay, {from: borrower});
+
+        const closedState = await Loan.currentState({from: owner});
+        expect(Number(closedState)).to.equal(4);
+      });
       it("Expect onRepaymentReceived to let borrower pay 1 instalment", async () => {
         const balance = await DAIToken.balanceOf(lender);
         // Lender fully fund the loan
@@ -2356,7 +2475,7 @@ describe("LoanInstalments", () => {
         });
       });
       describe("Loan Instalment template", () => {});
-      describe.only("Method getInstalmentDebt", () => {
+      describe("Method getInstalmentDebt", () => {
         it("Expects to calculate current instalment debt without penalties: 1nd instalment + 0 penalties", async () => {
           // Lender fully fund the loan
           await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
