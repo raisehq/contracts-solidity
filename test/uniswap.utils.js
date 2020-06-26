@@ -1,6 +1,9 @@
 const UniswapExchangeAbi = artifacts.require("IUniswapExchange").abi;
 const UniswapFactoryAbi = artifacts.require("IUniswapFactory").abi;
 const AbiERC20 = artifacts.require("DAIFake").abi;
+const uniswap = require("@uniswap/sdk");
+const BN = require("bn.js");
+const BigNumber = uniswap.BigNumber;
 
 const {
   getWeb3,
@@ -96,31 +99,96 @@ const tokenInputToTokenCosts = async (
 ) => {
   const web3One = getWeb3(anyWeb3);
   const uniswapFactory = await new web3One.eth.Contract(UniswapFactoryAbi, uniswapFactoryAddress);
-  const inputExchangeAddress = await uniswapFactory.methods.getExchange(inputToken).call();
-  const inputExchange = new web3One.eth.Contract(UniswapExchangeAbi, inputExchangeAddress);
-  const block = await web3.eth.getBlock("latest");
-  console.log(
-    "prior",
-    inputToken,
-    uniswapFactoryAddress,
-    inputExchangeAddress,
-    amount,
-    "999999999999999999999999", // at least prevent to consume more input tokens than the transfer
-    "999999999999999999999999", // do not check how much eth is sold prior the swap: input token --> eth --> output token
-    Number(block.timestamp) + 300, // prevent swap to go throught if is not mined after deadline
-    outputToken
+  const exchangeAddressA = await uniswapFactory.methods.getExchange(inputToken).call();
+  const exchangeAddressB = await uniswapFactory.methods.getExchange(outputToken).call();
+  const inputExchange = new web3One.eth.Contract(UniswapExchangeAbi, exchangeAddressA);
+  const outputExchange = new web3One.eth.Contract(UniswapExchangeAbi, exchangeAddressB);
+  const inputTokenContract = new web3One.eth.Contract(AbiERC20, inputToken);
+  const outputTokenContract = new web3One.eth.Contract(AbiERC20, outputToken);
+  const inputExchangeTokenBalance = await inputTokenContract.methods
+    .balanceOf(exchangeAddressA)
+    .call();
+  const outputExchangeTokenBalance = await outputTokenContract.methods
+    .balanceOf(exchangeAddressB)
+    .call();
+  const inputExchangeEthBalance = await web3.eth.getBalance(exchangeAddressA);
+  const outputExchangeEthBalance = await web3.eth.getBalance(exchangeAddressB);
+  const inputReserves = {
+    // details for the passed token
+    token: {
+      chainId: 1,
+      address: inputToken,
+      decimals: 18
+    },
+
+    // details for the Uniswap exchange of the passed token
+    exchange: {
+      chainId: 1,
+      address: exchangeAddressA,
+      decimals: 18
+    },
+
+    // details for the ETH portion of the reserves of the passed token
+    ethReserve: {
+      token: {
+        chainId: 1,
+        address: "ETH",
+        decimals: 18
+      },
+      amount: new BigNumber(inputExchangeEthBalance.toString())
+    },
+
+    // details for the token portion of the reserves of the passed token
+    tokenReserve: {
+      token: {
+        chainId: 1,
+        address: inputToken,
+        decimals: 18
+      },
+      amount: new BigNumber(inputExchangeTokenBalance.toString())
+    }
+  };
+  const outputReserves = {
+    // details for the passed token
+    token: {
+      chainId: 1,
+      address: outputToken,
+      decimals: 18
+    },
+
+    // details for the Uniswap exchange of the passed token
+    exchange: {
+      chainId: 1,
+      address: exchangeAddressB,
+      decimals: 18
+    },
+
+    // details for the ETH portion of the reserves of the passed token
+    ethReserve: {
+      token: {
+        chainId: 1,
+        address: "ETH",
+        decimals: 18
+      },
+      amount: new BigNumber(outputExchangeEthBalance.toString())
+    },
+
+    // details for the token portion of the reserves of the passed token
+    tokenReserve: {
+      token: {
+        chainId: 1,
+        address: outputToken,
+        decimals: 18
+      },
+      amount: new BigNumber(outputExchangeTokenBalance.toString())
+    }
+  };
+  const result = uniswap.tradeTokensForExactTokensWithData(
+    inputReserves,
+    outputReserves,
+    BigNumber(amount.toString())
   );
-  const costs = await inputExchange.methods
-    .tokenToTokenSwapOutput(
-      amount,
-      "5000000000000000000000", // at least prevent to consume more input tokens than the transfer
-      "5000000000000000000000", // do not check how much eth is sold prior the swap: input token --> eth --> output token
-      Number(block.timestamp) + 300, // prevent swap to go throught if is not mined after deadline
-      outputToken
-    )
-    .call({from});
-  console.log("costs", costs);
-  return costs;
+  return new BN(result.inputAmount.amount.toString());
 };
 module.exports = {
   initializeUniswap,

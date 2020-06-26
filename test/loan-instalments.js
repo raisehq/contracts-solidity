@@ -1006,6 +1006,10 @@ describe("LoanInstalments", () => {
           toWei("200"),
           lender
         );
+        console.log("first", fromWei(daiCostLender));
+        console.log("---->", fromWei(DAI_COST_200_RAISE));
+        console.log();
+        console.log();
         await Loan.withdrawRepaymentAndDeposit({from: lender});
         const daiCostOtherLender = await tokenInputToTokenCosts(
           web3,
