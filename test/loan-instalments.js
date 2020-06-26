@@ -1334,10 +1334,115 @@ describe("LoanInstalments", () => {
       });
       it.skip("Expects withdrawRepayment to add the division remainder to the latest lender", async () => {});
       it.skip("Expects withdrawRepayment to NOT add the division remainder it NOT the latest lender", async () => {});
-      it.skip("Expects withdrawRepayment to revert if error while swap deployment", async () => {});
-      it.skip("Expects withdrawRepayment to revert if error if swap contract is not destroyed", async () => {});
-      it.skip("Expects withdrawRepayment to not close if is not the latest loan", async () => {});
-      it.skip("Expects withdrawRepayment to not set loan withdraw if is not latest instalment", async () => {});
+      // TODO: decimals
+      it.skip("Expects withdrawRepayment to not close if is not the latest withdraw", async () => {
+        try {
+          await DAIToken.approve(DAIProxy.address, toWei("668"), {from: lender});
+          await DAIToken.approve(DAIProxy.address, toWei("666"), {from: otherLender});
+          await DAIToken.approve(DAIProxy.address, toWei("666"), {from: thirdLender});
+          await DAIProxy.fund(Loan.address, toWei("668"), {from: lender});
+          await DAIProxy.fund(Loan.address, toWei("666"), {from: otherLender});
+          await DAIProxy.fund(Loan.address, toWei("666"), {from: thirdLender});
+          // Retrieve current state == ACTIVE
+          const stateAfterFund = await Loan.currentState({from: owner});
+          expect(Number(stateAfterFund)).to.equal(2);
+          await Loan.withdrawLoan({from: borrower});
+
+          const instalmentLength = await Loan.getInstalmentLenght();
+          await helpers.increaseTime(instalmentLength.add(new BN("1")));
+          const amountToRepay = await Loan.getTotalDebt();
+          const borrowerBalancePrior = await DAIToken.balanceOf(borrower);
+
+          await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
+          await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+          // State should change to REPAID
+          const endState = await Loan.currentState({from: owner});
+
+          expect(Number(endState)).to.equal(4);
+
+          const lenderAmount = await Loan.getLenderBidAmount(lender);
+          const otherLenderAmount = await Loan.getLenderBidAmount(otherLender);
+          const thirdLenderAmount = await Loan.getLenderBidAmount(thirdLender);
+          const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+          const otherLenderAmountWithInterest = await Loan.calculateValueWithInterest(
+            otherLenderAmount
+          );
+          const lenderBalanceBefore = await DAIToken.balanceOf(lender);
+          const otherLenderBalanceBefore = await DAIToken.balanceOf(otherLender);
+
+          await Loan.withdrawRepayment({from: lender});
+          await Loan.withdrawRepayment({from: otherLender});
+
+          const lenderBalanceAfter = await DAIToken.balanceOf(lender);
+          const otherLenderBalanceAfter = await DAIToken.balanceOf(otherLender);
+
+          expect(lenderBalanceAfter).to.be.eq.BN(lenderBalanceBefore.add(lenderAmountWithInterest));
+          expect(otherLenderBalanceAfter).to.be.eq.BN(
+            otherLenderBalanceBefore.add(otherLenderAmountWithInterest)
+          );
+          // User have deposit inside the DepositRegistry
+          const depositedLender = await DepositRegistry.hasDeposited(lender);
+          const depositedOtherLender = await DepositRegistry.hasDeposited(otherLender);
+          const depositedThirdLender = await DepositRegistry.hasDeposited(thirdLender);
+          expect(depositedLender).to.equal(true);
+          expect(depositedOtherLender).to.equal(true);
+          expect(depositedThirdLender).to.equal(false);
+
+          // State should change to CLOSED
+          const closedState = await Loan.currentState({from: owner});
+          expect(Number(closedState)).to.equal(4);
+        } catch (error) {
+          throw error;
+        }
+      });
+      // TODO: decimals
+      it.skip("Expects withdrawRepaymentAndDeposit loanWithdrawnAmount to be the addition of all withdrawns made", async () => {
+        try {
+          await DAIToken.approve(DAIProxy.address, toWei("668"), {from: lender});
+          await DAIToken.approve(DAIProxy.address, toWei("666"), {from: otherLender});
+          await DAIToken.approve(DAIProxy.address, toWei("666"), {from: thirdLender});
+          await DAIProxy.fund(Loan.address, toWei("668"), {from: lender});
+          await DAIProxy.fund(Loan.address, toWei("666"), {from: otherLender});
+          await DAIProxy.fund(Loan.address, toWei("666"), {from: thirdLender});
+          // Retrieve current state == ACTIVE
+          const stateAfterFund = await Loan.currentState({from: owner});
+          expect(Number(stateAfterFund)).to.equal(2);
+          await Loan.withdrawLoan({from: borrower});
+
+          const instalmentLength = await Loan.getInstalmentLenght();
+          await helpers.increaseTime(instalmentLength.add(new BN("1")));
+          const amountToRepay = await Loan.getTotalDebt();
+
+          await DAIToken.approve(DAIProxy.address, amountToRepay, {from: borrower});
+          await DAIProxy.repay(Loan.address, amountToRepay, {from: borrower});
+
+          // State should change to REPAID
+          const endState = await Loan.currentState({from: owner});
+
+          expect(Number(endState)).to.equal(4);
+
+          await Loan.withdrawRepayment({from: lender});
+          await Loan.withdrawRepayment({from: otherLender});
+
+          // State should change to CLOSED
+          const closedState = await Loan.currentState({from: owner});
+          expect(Number(closedState)).to.equal(4);
+
+          const lenderAmount = await Loan.getLenderBidAmount(lender);
+          const otherLenderAmount = await Loan.getLenderBidAmount(otherLender);
+          const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+          const otherLenderAmountWithInterest = await Loan.calculateValueWithInterest(
+            otherLenderAmount
+          );
+          const amountWithdrawn = await Loan.loanWithdrawnAmount();
+          expect(amountWithdrawn).to.be.eq.BN(
+            lenderAmountWithInterest.add(otherLenderAmountWithInterest)
+          );
+        } catch (error) {
+          throw error;
+        }
+      });
       it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         await DAIToken.approve(DAIProxy.address, maxAmount, {from: lender});
         await DAIProxy.fund(Loan.address, maxAmount, {from: lender});
@@ -1534,10 +1639,91 @@ describe("LoanInstalments", () => {
         termEndTimestamp = currentBlock.timestamp + 2;
         await onBeforeEach();
       });
-      it.skip("Expects withdrawRefund to not be able to allow Lender withdraw twice", async () => {});
-      it.skip("Expects withdrawRefund to not be able to withdraw if not lender (no bidAmount)", async () => {});
-      it.skip("Expects withdrawRefund to close the Loan once all lenders refund", async () => {});
-      it.skip("Expects withdrawRefund to not be able to withdraw if transfer fails", async () => {});
+      it("Expects withdrawRefund to not be able to allow Lender withdraw twice", async () => {
+        const lenderBalancePrior = await DAIToken.balanceOf(lender);
+
+        const statePrior = await Loan.currentState();
+        console.log("state", Number(statePrior), fromWei(lenderBalancePrior));
+
+        // Partially fund the Loan
+        const partialFund = new BN("1");
+        await DAIToken.approve(DAIProxy.address, partialFund, {from: lender});
+        await DAIProxy.fund(Loan.address, partialFund, {from: lender});
+
+        // Mine to end of funding\
+        await helpers.increaseTime(auctionLength + 1000);
+        await Loan.updateStateMachine();
+
+        const stateAfterDeadline = await Loan.currentState();
+        expect(Number(stateAfterDeadline)).to.equal(1);
+
+        // Lender withdraws refund
+        const lenderBalancePriorRefund = await DAIToken.balanceOf(lender);
+        await Loan.withdrawRefund({from: lender});
+        const lenderBidAmountInContractAfterWithdraw = await Loan.getLenderBidAmount(lender);
+        const lenderBalanceAfter = await DAIToken.balanceOf(lender);
+        expect(lenderBalancePriorRefund).to.eq.BN(lenderBalancePrior.sub(partialFund));
+        expect(lenderBalanceAfter).to.eq.BN(lenderBalancePrior);
+        expect(lenderBidAmountInContractAfterWithdraw).to.eq.BN(partialFund);
+        await truffleAssert.fails(
+          Loan.withdrawRefund({from: lender}),
+          truffleAssert.ErrorType.REVERT
+        );
+      });
+      it("Expects withdrawRefund to not be able to withdraw if not lender (no bidAmount)", async () => {
+        const lenderBalancePrior = await DAIToken.balanceOf(lender);
+
+        const statePrior = await Loan.currentState();
+        console.log("state", Number(statePrior), fromWei(lenderBalancePrior));
+
+        // Partially fund the Loan
+        const partialFund = new BN("1");
+        await DAIToken.approve(DAIProxy.address, partialFund, {from: lender});
+        await DAIProxy.fund(Loan.address, partialFund, {from: lender});
+
+        // Mine to end of funding\
+        await helpers.increaseTime(auctionLength + 1000);
+        await Loan.updateStateMachine();
+
+        const stateAfterDeadline = await Loan.currentState();
+        expect(Number(stateAfterDeadline)).to.equal(1);
+
+        // Lender withdraws refund
+        await truffleAssert.fails(
+          Loan.withdrawRefund({from: otherLender}),
+          truffleAssert.ErrorType.REVERT
+        );
+      });
+      it("Expects withdrawRefund to close the Loan once all lenders refund", async () => {
+        const lenderBalancePrior = await DAIToken.balanceOf(lender);
+
+        const statePrior = await Loan.currentState();
+        console.log("state", Number(statePrior), fromWei(lenderBalancePrior));
+
+        // Partially fund the Loan
+        const partialFund = new BN("1");
+        await DAIToken.approve(DAIProxy.address, partialFund, {from: lender});
+        await DAIProxy.fund(Loan.address, partialFund, {from: lender});
+
+        // Mine to end of funding\
+        await helpers.increaseTime(auctionLength + 1000);
+        await Loan.updateStateMachine();
+
+        const stateAfterDeadline = await Loan.currentState();
+        expect(Number(stateAfterDeadline)).to.equal(1);
+
+        // Lender withdraws refund
+        const lenderBalancePriorRefund = await DAIToken.balanceOf(lender);
+        await Loan.withdrawRefund({from: lender});
+        const lenderBidAmountInContractAfterWithdraw = await Loan.getLenderBidAmount(lender);
+        const lenderBalanceAfter = await DAIToken.balanceOf(lender);
+        expect(lenderBalancePriorRefund).to.eq.BN(lenderBalancePrior.sub(partialFund));
+        expect(lenderBalanceAfter).to.eq.BN(lenderBalancePrior);
+        expect(lenderBidAmountInContractAfterWithdraw).to.eq.BN(partialFund);
+
+        const stateAfter = await Loan.currentState();
+        expect(Number(stateAfter)).to.equal(5);
+      });
       it("Expect withdrawRefund to allow Lender refund if state == FAILED_TO_FUND", async () => {
         const lenderBalancePrior = await DAIToken.balanceOf(lender);
 
@@ -1809,7 +1995,22 @@ describe("LoanInstalments", () => {
         minInterestRate = 0;
         await onBeforeEach();
       });
-      it.skip("Expects to return zero if state is FAILED_TO_FUND", async () => {});
+      it("Expects to return zero if state is FAILED_TO_FUND", async () => {
+        try {
+          await DAIToken.approve(DAIProxy.address, 50, {from: lender});
+          await DAIProxy.fund(Loan.address, 50, {from: lender});
+
+          await helpers.increaseTime(auctionLength + 5000);
+          await Loan.updateStateMachine();
+
+          const stateAfterDeadline = await Loan.currentState();
+          expect(Number(stateAfterDeadline)).to.equal(1);
+          const interestRateFailed = await Loan.getInterestRate();
+          expect(interestRateFailed).to.be.eq.BN(0);
+        } catch (error) {
+          throw error;
+        }
+      });
       it("Expects to calculate correctly the interest rate when loan is in state = CREATED", async () => {
         await DAIToken.approve(DAIProxy.address, 50, {from: lender});
         await DAIProxy.fund(Loan.address, 50, {from: lender});
