@@ -43,13 +43,13 @@
   "license": "GPL-3.0-only",
   "repository": "https://gitlab.com/herohq/contracts-solidity.git",
   "dependencies": {
-    "@0x/subproviders": "^5.0.4",
+    "@0x/subproviders": "5.0.4",
     "@babel/polyfill": "^7.4.4",
     "@deconet/truffle-ledger-provider": "git+https://github.com/deconet/truffle-ledger-provider.git#2525cbaabcce6c2489dc2c2183c2043883ba2187",
     "@ledgerhq/hw-app-eth": "4.70.0",
     "@ledgerhq/hw-transport-node-hid": "4.70.0",
     "@ledgerhq/web3-subprovider": "4.68.2",
-    "@truffle/hdwallet-provider": "^1.0.33",
+    "@truffle/hdwallet-provider": "1.0.33",
     "axios": "^0.18.0",
     "bignumber.js": "^9.0.0",
     "bluebird": "^3.5.5",
@@ -60,7 +60,7 @@
     "dotenv": "^6.2.0",
     "env-cmd": "^10.1.0",
     "faker": "^4.1.0",
-    "ganache-cli": "^6.9.1",
+    "ganache-cli": "6.9.1",
     "jsondiffpatch": "^0.4.1",
     "openzeppelin-solidity": "2.4.0",
     "raise-token": "git+https://git@gitlab.com/raisehq/raise-token.git",
@@ -78,9 +78,9 @@
     "npm-watch": "^0.6.0",
     "prettier": "^1.19.1",
     "prettier-plugin-solidity": "^1.0.0-alpha.44",
-    "solhint": "^2.1.0",
+    "solhint": "2.1.0",
     "solhint-plugin-prettier": "0.0.3",
-    "solidity-coverage": "^0.7.2",
+    "solidity-coverage": "0.7.2",
     "web3": "1.2.6"
   }
 }
