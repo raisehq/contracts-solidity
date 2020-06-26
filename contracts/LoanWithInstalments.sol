@@ -388,6 +388,7 @@ contract LoanInstalments is ILoanInstalments {
         uint256 _penaltyAmount;
         uint256 pendingInstalments = instalmentsPaid -
             lenderPosition[msg.sender].instalmentsWithdrawed;
+        console.log("pendingInstalments:: ", pendingInstalments);
         uint256 pendingPenalties = penaltiesPaid - lenderPosition[msg.sender].penaltiesWithdrawed;
         if (getInstalmentAmount().mul(instalmentsPaid) > 0) {
             _instalmentAmount =
@@ -435,6 +436,7 @@ contract LoanInstalments is ILoanInstalments {
         require(totalWithdraws < investors, "can not withdraw more");
         // calculate value with pending instalments from the user
         uint256 amount = getWithdrawAmount(msg.sender);
+        console.log("amount:: ", amount);
         lenderPosition[msg.sender].instalmentsWithdrawed = instalmentsPaid;
         lenderPosition[msg.sender].penaltiesWithdrawed = penaltiesPaid;
 
@@ -519,9 +521,10 @@ contract LoanInstalments is ILoanInstalments {
         require(from == originator, "from address is not the originator");
 
         if (getCurrentInstalment() > instalmentsPaid.add(1)) {
-            borrowerDebt = borrowerDebt.add(
-                getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
-            );
+            // TODO: have a look penalty withdraw
+            // borrowerDebt = borrowerDebt.add(
+            //     getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
+            // );
             penaltiesPaid = penaltiesPaid.add(getCurrentInstalment().sub(instalmentsPaid).sub(1));
         }
 
@@ -666,7 +669,7 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function getInstalmentAmount() public view returns (uint256) {
-        return borrowerDebt.div(instalments);
+        return calculateValueWithInterest(auctionBalance).div(instalments);
     }
 
     function getInstalmentPenalty() public view returns (uint256) {
