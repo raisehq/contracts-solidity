@@ -101,12 +101,14 @@ const takeSnapshot = () => {
       {
         jsonrpc: "2.0",
         method: "evm_snapshot",
+        params: [],
         id: new Date().getTime()
       },
       (err, snapshotId) => {
         if (err) {
           return reject(err);
         }
+        console.log("sa resueltooo");
         return resolve(snapshotId);
       }
     );

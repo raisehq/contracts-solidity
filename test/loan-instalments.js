@@ -76,11 +76,6 @@ describe.only("LoanInstalments", () => {
   const initialBalance = toWei("1000000000000");
 
   const deployDependencies = async () => {
-    ERC20Wrapper = await ERC20WrapperContract.new();
-    const MonkCalcsInstance = await MonkCalcs.new();
-    // await LoanInstalments.link(MonkCalcsInstance);
-    await LoanInstalments.link(ERC20Wrapper);
-
     DAIToken = await DAITokenContract.new({from: owner});
     await DAIToken.transferAmountToAddress(otherLender, initialBalance, {from: owner});
     await DAIToken.transferAmountToAddress(lender, initialBalance, {from: owner});
@@ -151,7 +146,10 @@ describe.only("LoanInstalments", () => {
     other = accounts[6];
     thirdLender = accounts[7];
 
-    await deployDependencies();
+    ERC20Wrapper = await ERC20WrapperContract.new();
+    // const MonkCalcsInstance = await MonkCalcs.new();
+    // await LoanInstalments.link(MonkCalcsInstance);
+    await LoanInstalments.link(ERC20Wrapper);
 
     startSnapshot = await takeSnapshot();
   });
@@ -189,7 +187,10 @@ describe.only("LoanInstalments", () => {
   };
 
   beforeEach(async () => {
-    await revertToSnapShot(startSnapshot);
+    console.log("onBeforeEach master", startSnapshot.id);
+    startSnapshot = await takeSnapshot();
+    await deployDependencies();
+
     // Set default Loan variables
     minAmount = new BN(toWei("1000"));
     maxAmount = new BN(toWei("2000"));
@@ -198,6 +199,9 @@ describe.only("LoanInstalments", () => {
     auctionLength = 86400; // 1 day in seconds
     termLength = 360 * 24 * 60 * 60; // 1 year hours in seconds
     await onBeforeEach();
+  });
+  afterEach(async () => {
+    await revertToSnapShot(startSnapshot.id);
   });
 
   describe.only("Unit tests for LoanInstalments", () => {
@@ -774,9 +778,11 @@ describe.only("LoanInstalments", () => {
         }
       });
     });
-    describe("Method withdrawRepaymentAndDeposit", () => {
+    describe.only("Method withdrawRepaymentAndDeposit", () => {
       beforeEach(async () => {
-        await revertToSnapShot(startSnapshot);
+        console.log("onBeforeEach inside method describe");
+        const Depositor = await DepositRegistry.hasDeposited(otherLender);
+        console.log("otherLender deposited", Depositor);
         uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
 
         const SwapAndDepositTemplate = await SwapAndDepositContract.new({from: owner});
@@ -819,10 +825,12 @@ describe.only("LoanInstalments", () => {
           const endState = await Loan.currentState({from: owner});
           expect(Number(endState)).to.equal(4);
           const lenderAmount = await Loan.getLenderBidAmount(otherLender);
-          const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+          const lenderAmountWithInterest = await Loan.getWithdrawAmount(otherLender);
           const lenderBalanceBefore = await DAIToken.balanceOf(otherLender);
           await Loan.withdrawRepaymentAndDeposit({from: otherLender});
           const lenderBalanceAfter = await DAIToken.balanceOf(otherLender);
+          const afterWithState = await Loan.currentState({from: owner});
+          expect(Number(afterWithState)).to.equal(5);
           expect(lenderBalanceAfter).to.be.eq.BN(
             lenderBalanceBefore.add(lenderAmountWithInterest).sub(DAI_COST_200_RAISE)
           );
@@ -898,7 +906,7 @@ describe.only("LoanInstalments", () => {
           const endState = await Loan.currentState({from: owner});
           expect(Number(endState)).to.equal(4);
           const lenderAmount = await Loan.getLenderBidAmount(otherLender);
-          const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+          const lenderAmountWithInterest = await Loan.getWithdrawAmount(otherLender);
           const lenderBalanceBefore = await DAIToken.balanceOf(otherLender);
           await Loan.withdrawRepaymentAndDeposit({from: otherLender});
           const lenderBalanceAfter = await DAIToken.balanceOf(otherLender);
@@ -986,7 +994,7 @@ describe.only("LoanInstalments", () => {
         const endState = await Loan.currentState({from: owner});
         expect(Number(endState)).to.equal(4);
         const lenderAmount = await Loan.getLenderBidAmount(otherLender);
-        const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+        const lenderAmountWithInterest = await Loan.getWithdrawAmount(otherLender);
         const lenderBalanceBefore = await DAIToken.balanceOf(otherLender);
         await Loan.withdrawRepaymentAndDeposit({from: otherLender});
         const lenderBalanceAfter = await DAIToken.balanceOf(otherLender);
@@ -1037,7 +1045,7 @@ describe.only("LoanInstalments", () => {
         expect(borrowerBalanceAfter).eq.BN(borrowerBalancePrior.sub(amountToRepay));
         const interestRate = await Loan.getInterestRate();
         const lenderAmount = await Loan.getLenderBidAmount(lender);
-        const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+        const lenderAmountWithInterest = await Loan.getWithdrawAmount(lender);
         const lenderBalanceBefore = await DAIToken.balanceOf(lender);
 
         // State should change to REPAID
@@ -1073,7 +1081,7 @@ describe.only("LoanInstalments", () => {
           const endState = await Loan.currentState({from: owner});
           expect(Number(endState)).to.equal(4);
           const lenderAmount = await Loan.getLenderBidAmount(lender);
-          const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
+          const lenderAmountWithInterest = await Loan.getWithdrawAmount(lenderAmount);
           const lenderBalanceBefore = await DAIToken.balanceOf(lender);
           await Loan.withdrawRepayment({from: lender});
           const lenderBalanceAfter = await DAIToken.balanceOf(lender);

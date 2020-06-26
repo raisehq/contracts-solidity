@@ -445,7 +445,7 @@ contract LoanInstalments is ILoanInstalments {
             lenderPosition[msg.sender].loanWithdrawn = true;
             totalWithdraws = totalWithdraws.add(1);
         }
-        if (totalWithdraws == investors.mul(instalments)) {
+        if (totalWithdraws == investors) {
             setState(LoanState.CLOSED);
             if (borrowerDebt > loanWithdrawnAmount) {
                 ERC20Wrapper.transfer(
@@ -576,7 +576,7 @@ contract LoanInstalments is ILoanInstalments {
 
     function calculateValueWithInterest(uint256 value) public view returns (uint256) {
         return
-            value.div(instalments).mul(instalments).add(
+            value.add(
                 value.mul(getInterestRate().mul(termLength).div(MONTH_SECONDS)).div(ONE_HUNDRED)
             );
     }
@@ -666,9 +666,6 @@ contract LoanInstalments is ILoanInstalments {
     }
 
     function getInstalmentAmount() public view returns (uint256) {
-        console.log("i amount", borrowerDebt.div(instalments));
-        console.log("mul again", borrowerDebt.div(instalments) * instalments);
-        console.log("debt", borrowerDebt);
         return borrowerDebt.div(instalments);
     }
 
