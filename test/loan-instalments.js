@@ -967,11 +967,6 @@ describe("LoanInstalments", () => {
           throw error;
         }
       });
-<<<<<<< HEAD
-      it.skip("Expects withdrawRepaymentAndDeposit to add the division remainder to the latest lender", async () => {});
-      it.skip("Expects withdrawRepaymentAndDeposit to NOT add the division remainder it NOT the latest lender", async () => {});
-      it.skip("Expects withdrawRepaymentAndDeposit to revert if error while swap deployment", async () => {});
-=======
       // TODO: fix decimals
       it.skip("Expects withdrawRepaymentAndDeposit to add the division remainder to the latest lender", async () => {
         await DAIToken.approve(DAIProxy.address, toWei("668"), {from: lender});
@@ -1059,7 +1054,6 @@ describe("LoanInstalments", () => {
           throw error;
         }
       });
->>>>>>> 739a14c2d660120295292bff333f7bd126706f48
       it.skip("Expects withdrawRepaymentAndDeposit to revert esif error if swap contract is not destroyed", async () => {});
       //TODO: fix decimals
       it.skip("Expects withdrawRepaymentAndDeposit to not close if is not the latest withdraw", async () => {
@@ -1517,21 +1511,7 @@ describe("LoanInstalments", () => {
           console.log("borrower debt===> ", Number(await Loan.borrowerDebt()));
           const borrowerBalanceAfter = await DAIToken.balanceOf(borrower);
           // Fast way to check. TODO: Use BN.js to exact calc-
-<<<<<<< HEAD
-          expect(borrowerBalanceAfter).eq.BN(borrowerBalancePrior.sub(amountToRepay));
-
-          // State should change to REPAID
-          const endState = await Loan.currentState({from: owner});
-          expect(Number(endState)).to.equal(4);
-          const lenderAmount = await Loan.getLenderBidAmount(lender);
-          const lenderAmountWithInterest = await Loan.getWithdrawAmount(lenderAmount);
-          const lenderBalanceBefore = await DAIToken.balanceOf(lender);
-          await Loan.withdrawRepayment({from: lender});
-          const lenderBalanceAfter = await DAIToken.balanceOf(lender);
-          expect(lenderBalanceAfter).to.eq.BN(lenderBalanceBefore.add(lenderAmountWithInterest));
-=======
           expect(borrowerBalanceAfter).to.be.eq.BN(borrowerBalancePrior.sub(amountToRepay));
->>>>>>> 739a14c2d660120295292bff333f7bd126706f48
 
           // State should change to REPAID
           const endState = await Loan.currentState({from: owner});
@@ -1545,11 +1525,11 @@ describe("LoanInstalments", () => {
           const otherLenderAmount = await Loan.getLenderBidAmount(otherLender);
           const lender3Amount = await Loan.getLenderBidAmount(lender3);
 
-          const lenderAmountWithInterest = await Loan.calculateValueWithInterest(lenderAmount);
-          const otherLenderAmountWithInterest = await Loan.calculateValueWithInterest(
-            otherLenderAmount
+          const lenderAmountWithInterest = await Loan.getWithdrawAmount(lender);
+          const otherLenderAmountWithInterest = await Loan.getWithdrawAmount(
+            otherLender
           );
-          const lender3AmountWithInterest = await Loan.calculateValueWithInterest(lender3Amount);
+          const lender3AmountWithInterest = await Loan.getWithdrawAmount(lender3);
 
           const lenderBalanceBefore = await DAIToken.balanceOf(lender);
           const otherLenderBalanceBefore = await DAIToken.balanceOf(otherLender);
