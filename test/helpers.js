@@ -108,7 +108,6 @@ const takeSnapshot = () => {
         if (err) {
           return reject(err);
         }
-        console.log("sa resueltooo");
         await advanceBlock();
         return resolve(snapshotId);
       }
