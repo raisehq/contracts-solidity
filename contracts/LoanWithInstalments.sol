@@ -672,8 +672,9 @@ contract LoanInstalments is ILoanInstalments {
 
     function getInstalmentPenalty() public view returns (uint256) {
         return
-            auctionBalance.mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS)).div(
-                ONE_HUNDRED
-            );
+            auctionBalance
+                .mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS))
+                .div(ONE_HUNDRED)
+                .div(instalments);
     }
 }
