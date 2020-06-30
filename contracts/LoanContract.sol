@@ -231,8 +231,14 @@ contract LoanContract is ILoanContract {
         onlyProxy
         returns (bool)
     {
+        require(block.timestamp > auctionStartTimestamp, "can not invest prior the start");
         require(amount > 0, "amount must be greater than 0");
         require(!isAuctionExpired(), "auction is expired, lenders can withdrawRefund");
+
+        require(
+            ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), amount),
+            "failed to transfer"
+        );
         uint256 interest = getInterestRate();
         lenderPosition[lender].bidAmount = lenderPosition[lender].bidAmount.add(amount);
         auctionBalance = auctionBalance.add(amount);

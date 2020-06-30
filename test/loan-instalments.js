@@ -49,7 +49,7 @@ const getPenalty = (auctionBalance, interestRate, termLength, instalments) => {
     .div(instalments);
 };
 
-describe.only("LoanInstalments", () => {
+describe("LoanInstalments", () => {
   const INSTALMENTS = new BN("12");
   let accounts = [];
   let owner, lender, borrower, admin, bob, otherLender, lender3;

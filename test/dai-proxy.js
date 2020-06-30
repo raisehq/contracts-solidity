@@ -316,6 +316,7 @@ contract("DAIProxy Contract", function(accounts) {
         expect(OUTPUT_AMOUNT.eq(loanBalance));
         expect(userBalanceAfter.eq(userBalanceBefore - INPUT_AMOUNT));
 
+        await DAIToken.approve(DAIProxy.address, INPUT_AMOUNT, {from: user});
         await truffleAssert.fails(
           DAIProxy.swapTokenAndFund(LC.address, DAIToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT, {
             from: user
@@ -401,8 +402,7 @@ contract("DAIProxy Contract", function(accounts) {
         await DAIToken.approve(DAIProxy.address, 100, {from: other_user_kyc_no_dai});
         await truffleAssert.fails(
           DAIProxy.fund(LoanContract.address, 100, {from: other_user_kyc_no_dai}),
-          truffleAssert.ErrorType.REVERT,
-          "Not enough funds"
+          truffleAssert.ErrorType.REVERT
         );
       });
       it("Expects an error when user not KYC", async () => {

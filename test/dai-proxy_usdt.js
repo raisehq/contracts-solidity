@@ -89,8 +89,7 @@ contract("DAIProxy Contract USDT tests", function(accounts) {
         await USDTToken.approve(DAIProxy.address, 100, {from: other_user_kyc_no_dai});
         await truffleAssert.fails(
           DAIProxy.fund(LoanContract.address, 100, {from: other_user_kyc_no_dai}),
-          truffleAssert.ErrorType.REVERT,
-          "Not enough funds"
+          truffleAssert.ErrorType.REVERT
         );
       });
       it("Expects an error when user not KYC", async () => {

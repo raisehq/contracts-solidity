@@ -77,9 +77,9 @@ contract LoanInstalments is ILoanInstalments {
         uint256 maxInterestRate,
         uint256 auctionStartTimestamp,
         uint256 auctionEndTimestamp,
-        address indexed administrator,
         uint256 operatorFee,
-        address tokenAddress
+        address tokenAddress,
+        uint256 instalments
     );
 
     event MinimumFundingReached(address loanAddress, uint256 currentBalance, uint256 interest);
@@ -223,9 +223,9 @@ contract LoanInstalments is ILoanInstalments {
             maxInterestRate,
             auctionStartTimestamp,
             auctionEndTimestamp,
-            administrator,
             operatorFee,
-            tokenAddress
+            tokenAddress,
+            instalments
         );
 
         return true;

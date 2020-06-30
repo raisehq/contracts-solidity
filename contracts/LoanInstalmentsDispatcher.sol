@@ -25,6 +25,8 @@ contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, 
 
     mapping(address => bool) public acceptedTokens;
 
+    mapping(address => bool) public isLoanContract;
+
     modifier onlyKYC {
         require(IAuthorization(auth).isKYCConfirmed(msg.sender), "user does not have KYC");
         _;
@@ -35,21 +37,7 @@ contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, 
         _;
     }
 
-    event LoanContractCreated(
-        address loanDispatcher,
-        address contractAddress,
-        address indexed originator,
-        uint256 minAmount,
-        uint256 maxAmount,
-        uint256 minInterestRate,
-        uint256 maxInterestRate,
-        uint256 termEndTimestamp,
-        address indexed administrator,
-        uint256 operatorFee,
-        uint256 auctionLength,
-        address indexed tokenAddress,
-        uint256 instalments
-    );
+    event LoanContractCreated(address contractAddress, address indexed originator);
 
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
     event MaxAmountUpdated(uint256 maxAmount, address loanDispatcher);
@@ -100,11 +88,11 @@ contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, 
         DAIProxyAddress = _DAIProxyAddress;
         swapFactory = _swapFactory;
         loanTemplate = _loanTemplate;
-        minAmount = 1e18;
+        minAmount = 1;
         maxAmount = 2500000e18;
 
         maxInterestRate = 20e18;
-        minInterestRate = 0e18;
+        minInterestRate = 0;
         operatorFee = 2e18;
 
         minAuctionLength = 604800;
@@ -276,11 +264,16 @@ contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, 
             ),
             "Failed to init"
         );
+        emit LoanContractCreated(loanContract, msg.sender);
 
         return loanContract;
     }
 
     function isCloned(address target, address query) external view returns (bool result) {
         return isClone(target, query);
+    }
+
+    function checkLoanContract(address loanAddress) external view returns (bool) {
+        return isLoanContract[loanAddress];
     }
 }
