@@ -1,6 +1,6 @@
 {
   "name": "herotoken-contracts-solidity",
-  "version": "0.6.18",
+  "version": "0.7.0",
   "description": "Herotoken solidity contracts",
   "private": false,
   "watch": {
@@ -17,7 +17,7 @@
   },
   "scripts": {
     "watch": "npm-watch",
-    "ganache": "ganache-cli",
+    "ganache": "npx ganache-cli --noVMErrorsOnRPCResponse -e 10000000 --gasLimit 0xfffffffffff --port 8545",
     "compile": "truffle compile",
     "migration": "truffle migration --network development",
     "migration:kovan": "truffle migration --network kovan",
