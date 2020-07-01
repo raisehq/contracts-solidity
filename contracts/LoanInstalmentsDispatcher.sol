@@ -264,6 +264,7 @@ contract LoanInstalmentsDispatcher is ILoanInstalmentsDispatcher, CloneFactory, 
             ),
             "Failed to init"
         );
+        isLoanContract[loanContract] = true;
         emit LoanContractCreated(loanContract, msg.sender);
 
         return loanContract;

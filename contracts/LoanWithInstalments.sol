@@ -122,6 +122,11 @@ contract LoanInstalments is ILoanInstalments {
         address loanDispatcher
     );
 
+    modifier notTemplate() {
+        require(isTemplate == false, "you cant call template contract");
+        _;
+    }
+
     modifier onlyFrozen() {
         require(currentState == LoanState.FROZEN, "Loan status is not FROZEN");
         _;
@@ -186,7 +191,7 @@ contract LoanInstalments is ILoanInstalments {
         address _proxyAddress,
         address _administrator,
         address _swapFactory
-    ) public notTemplate returns (bool) {
+    ) external notTemplate returns (bool) {
         require(tokenAddress == address(0), "loan have been initialized");
         tokenAddress = _tokenAddress;
         proxyAddress = _proxyAddress;
@@ -235,11 +240,6 @@ contract LoanInstalments is ILoanInstalments {
         return isTemplate;
     }
 
-    modifier notTemplate() {
-        require(isTemplate == false, "you cant call template contract");
-        _;
-    }
-
     function getMaxAmount() external view returns (uint256) {
         return maxAmount;
     }
@@ -266,9 +266,9 @@ contract LoanInstalments is ILoanInstalments {
 
     function onFundingReceived(address lender, uint256 amount)
         external
+        notTemplate
         onlyCreated
         onlyProxy
-        notTemplate
         returns (bool)
     {
         require(block.timestamp > auctionStartTimestamp, "can not invest prior the start");
@@ -321,12 +321,12 @@ contract LoanInstalments is ILoanInstalments {
         return true;
     }
 
-    function unlockFundsWithdrawal() external onlyAdmin notTemplate {
+    function unlockFundsWithdrawal() external notTemplate onlyAdmin {
         setState(LoanState.FROZEN);
         emit LoanFundsUnlocked(auctionBalance);
     }
 
-    function withdrawFees() external onlyAdmin notTemplate returns (bool) {
+    function withdrawFees() external notTemplate onlyAdmin returns (bool) {
         require(loanWithdrawn == true, "borrower didnt withdraw");
         require(operatorBalance > 0, "no funds to withdraw");
         uint256 allFees = operatorBalance;
@@ -336,7 +336,7 @@ contract LoanInstalments is ILoanInstalments {
         return true;
     }
 
-    function withdrawFundsUnlocked() external onlyFrozen notTemplate {
+    function withdrawFundsUnlocked() external notTemplate onlyFrozen {
         require(!loanWithdrawn, "Loan already withdrawn");
         require(!lenderPosition[msg.sender].loanWithdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposit");
@@ -362,7 +362,7 @@ contract LoanInstalments is ILoanInstalments {
         );
     }
 
-    function withdrawRefund() external onlyFailedToFund notTemplate {
+    function withdrawRefund() external notTemplate onlyFailedToFund {
         require(!lenderPosition[msg.sender].loanWithdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposited.");
 
@@ -404,13 +404,13 @@ contract LoanInstalments is ILoanInstalments {
         return _instalmentAmount.add(_penaltyAmount);
     }
 
-    function withdrawRepayment() external onlyActiveOrRepaid notTemplate {
+    function withdrawRepayment() external notTemplate onlyActiveOrRepaid {
         uint256 amount = priorLenderWithdrawal();
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
         require(ERC20Wrapper.transfer(tokenAddress, msg.sender, amount), "error while transfer");
     }
 
-    function withdrawRepaymentAndDeposit() external onlyActiveOrRepaid notTemplate {
+    function withdrawRepaymentAndDeposit() external notTemplate onlyActiveOrRepaid {
         require(swapFactory != address(0), "swap factory is 0");
         address swapAddress = ISwapAndDepositFactory(swapFactory).deploy();
         require(swapAddress != address(0), "error swap deploy");
@@ -425,7 +425,7 @@ contract LoanInstalments is ILoanInstalments {
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
     }
 
-    function priorLenderWithdrawal() internal onlyActiveOrRepaid notTemplate returns (uint256) {
+    function priorLenderWithdrawal() internal notTemplate onlyActiveOrRepaid returns (uint256) {
         require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
         require(!lenderPosition[msg.sender].loanWithdrawn, "Lender already withdrawn");
         require(
@@ -459,7 +459,7 @@ contract LoanInstalments is ILoanInstalments {
         return amount;
     }
 
-    function withdrawLoan() external onlyActive notTemplate {
+    function withdrawLoan() external notTemplate onlyActive {
         require(!loanWithdrawn, "Already withdrawn");
         loanWithdrawn = true;
         emit LoanFundsWithdrawn(address(this), originator, auctionBalance.sub(operatorBalance));
@@ -508,9 +508,9 @@ contract LoanInstalments is ILoanInstalments {
 
     function onRepaymentReceived(address from, uint256 amount)
         external
+        notTemplate
         onlyActive
         onlyProxy
-        notTemplate
         returns (bool)
     {
         require(amount > 0, "amount can not be zero");
@@ -630,7 +630,7 @@ contract LoanInstalments is ILoanInstalments {
         return true;
     }
 
-    function setProxyAddress(address _proxyAddress) external onlyAdmin notTemplate {
+    function setProxyAddress(address _proxyAddress) external notTemplate onlyAdmin {
         proxyAddress = _proxyAddress;
         emit DaiProxyAddressUpdated(_proxyAddress, administrator, address(this));
     }
