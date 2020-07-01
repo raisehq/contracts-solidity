@@ -47,11 +47,12 @@ contract("LoanContract", accounts => {
     let currentBlock;
     let DepositRegistry;
     const operatorPercentFee = toWei(new BN(5));
-    beforeEach(async () => {
+    before(async () => {
       ERC20Wrapper = await ERC20WrapperContract.new();
-      await LoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
+      await LoanContract.link(ERC20Wrapper);
+    });
 
+    beforeEach(async () => {
       DAIToken = await DAITokenContract.new({from: owner});
       await DAIToken.transferAmountToAddress(otherLender, web3.utils.toWei("3000"), {from: owner});
       await DAIToken.transferAmountToAddress(lender, 150, {from: owner});
@@ -121,16 +122,14 @@ contract("LoanContract", accounts => {
         );
       });
       it("Expect onFundingReceived to revert if caller is NOT DaiProxy", async () => {
-        try {
-          // LoanContract state should start with CREATED == 0
-          const firstState = await Loan.currentState();
-          expect(Number(firstState)).to.equal(0);
-
-          await Loan.onFundingReceived(lender, 100);
-          expect(false, "execution should not reach here.");
-        } catch (error) {
-          expect(error.reason).equal("Caller is not the proxy");
-        }
+        // LoanContract state should start with CREATED == 0
+        const firstState = await Loan.currentState();
+        expect(Number(firstState)).to.equal(0);
+        await truffleAssert.fails(
+          Loan.onFundingReceived(lender, 100),
+          truffleAssert.ErrorType.REVERT,
+          "Caller is not the proxy"
+        );
       });
       it("Expects Lender to be able to partially fund a Loan in CREATED state.", async () => {
         try {
@@ -255,7 +254,7 @@ contract("LoanContract", accounts => {
           throw error;
         }
       });
-      it("Expects lender to NOT fund Loan if expires in time, mutating from CREATED to FAILED_TO_FUND", async () => {
+      it("Expects lender to NOT fund Loan if expires in time", async () => {
         try {
           // Contract init state should be CREATED
           const initState = await Loan.currentState();
@@ -273,7 +272,10 @@ contract("LoanContract", accounts => {
 
           // Try to fund the Loan
           await DAIToken.approve(DAIProxy.address, 100, {from: lender});
-          await DAIProxy.fund(Loan.address, 100, {from: lender});
+          await truffleAssert.fails(
+            DAIProxy.fund(Loan.address, 100, {from: lender}),
+            truffleAssert.ErrorType.REVERT
+          );
 
           // Check Loan funds inside contract, should be ZERO
           const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
@@ -281,9 +283,9 @@ contract("LoanContract", accounts => {
           expect(Number(auctionBalanceAmount)).to.equal(0);
           expect(Number(loanRawTokens)).to.equal(0);
 
-          // Contract state should be mutated to FAILED_TO_FUND
+          // Contract state should be still ACTIVE
           const stateAfterFailedFund = await Loan.currentState();
-          expect(Number(stateAfterFailedFund)).to.equal(1);
+          expect(Number(stateAfterFailedFund)).to.equal(0);
 
           // Lender ERC20 balance should still be 150
           const lenderBalance = await DAIToken.balanceOf(lender, {from: lender});
@@ -1488,10 +1490,9 @@ contract("LoanContract", accounts => {
       });
       it("Update DAI proxy address", async () => {
         const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
-        const proxyAddress = await Loan.proxyAddress();
         await Loan.setProxyAddress(newDAIProxy.address, {from: admin});
         const newProxyAddress = await Loan.proxyAddress();
-        expect(proxyAddress).to.not.equal(newProxyAddress);
+        expect(newProxyAddress).equal(newDAIProxy.address);
       });
 
       it("Fund from different DAI Proxy", async () => {
@@ -1499,7 +1500,9 @@ contract("LoanContract", accounts => {
         await DAIProxy.fund(Loan.address, 50, {from: lender});
 
         const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
-        Loan.setProxyAddress(newDAIProxy.address, {from: admin});
+        await Loan.setProxyAddress(newDAIProxy.address, {from: admin});
+        const newProxyAddress = await Loan.proxyAddress();
+        expect(newProxyAddress).equal(newDAIProxy.address);
         await DAIToken.approve(newDAIProxy.address, 50, {from: lender});
         await newDAIProxy.fund(Loan.address, 50, {from: lender});
         // Retrieve current state == ACTIVE

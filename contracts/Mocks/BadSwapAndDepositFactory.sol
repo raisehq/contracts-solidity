@@ -1,12 +1,12 @@
 pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "./interfaces/ISwapAndDeposit.sol";
-import "./interfaces/ISwapAndDepositFactory.sol";
-import "./interfaces/IAuthorization.sol";
-import "./CloneFactory.sol";
+import "../interfaces/ISwapAndDeposit.sol";
+import "../interfaces/ISwapAndDepositFactory.sol";
+import "../interfaces/IAuthorization.sol";
+import "../CloneFactory.sol";
 
-contract SwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable {
+contract BadSwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable {
     address public libraryAddress;
     address public authAddress;
     address public uniswapAddress;
@@ -41,15 +41,10 @@ contract SwapAndDepositFactory is ISwapAndDepositFactory, CloneFactory, Ownable 
         require(libraryAddress != address(0), "library must be set");
         require(uniswapAddress != address(0), "uniswap must be set");
         require(depositAddress != address(0), "deposit must be set");
-        address proxyAddress = createClone(libraryAddress);
-        require(
-            ISwapAndDeposit(proxyAddress).init(depositAddress, uniswapAddress),
-            "Failed to init"
-        );
 
-        emit NewSwapContract(proxyAddress);
+        emit NewSwapContract(address(0));
 
-        return proxyAddress;
+        return address(0);
     }
 
     function isCloned(address target, address query) external view returns (bool result) {

@@ -5,7 +5,6 @@ import "./interfaces/IUniswapSwapper.sol";
 import "./interfaces/IUniswapSwapperFactory.sol";
 import "./CloneFactory.sol";
 
-
 contract UniswapSwapperFactory is IUniswapSwapperFactory, CloneFactory, Ownable {
     address public libraryAddress;
     address public uniswapAddress;

@@ -1,14 +1,16 @@
 pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "./interfaces/ILoanContractDispatcher.sol";
-import "./interfaces/IAuthorization.sol";
-import "./LoanContract.sol";
+import "../interfaces/ILoanInstalmentsDispatcher.sol";
+import "../interfaces/ILoanInstalments.sol";
+import "../interfaces/IAuthorization.sol";
+import "../CloneFactory.sol";
 
-contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
+contract LoanInstalmentsCloner is ILoanInstalmentsDispatcher, CloneFactory, Ownable {
     address public auth;
     address public DAIProxyAddress;
     address public swapFactory;
+    address public loanTemplate;
 
     address public administrator;
 
@@ -36,18 +38,8 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     }
 
     event LoanContractCreated(
-        address loanDispatcher,
         address contractAddress,
-        address indexed originator,
-        uint256 minAmount,
-        uint256 maxAmount,
-        uint256 minInterestRate,
-        uint256 maxInterestRate,
-        uint256 termEndTimestamp,
-        address indexed administrator,
-        uint256 operatorFee,
-        uint256 auctionLength,
-        address indexed tokenAddress
+        address indexed originator
     );
 
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
@@ -59,6 +51,7 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     event OperatorFeeUpdated(uint256 operatorFee, address loanDispatcher, address administrator);
 
     event AuthAddressUpdated(address newAuthAddress, address administrator, address loanDispatcher);
+    event LoanTemplateUpdated(address newTemplateAddress);
     event DaiProxyAddressUpdated(
         address newDaiProxyAddress,
         address administrator,
@@ -91,16 +84,18 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
     constructor(
         address authAddress,
         address _DAIProxyAddress,
-        address _swapFactory
+        address _swapFactory,
+        address _loanTemplate
     ) public {
         auth = authAddress;
         DAIProxyAddress = _DAIProxyAddress;
         swapFactory = _swapFactory;
-        minAmount = 1e18;
+        loanTemplate = _loanTemplate;
+        minAmount = 0;
         maxAmount = 2500000e18;
 
         maxInterestRate = 20e18;
-        minInterestRate = 0e18;
+        minInterestRate = 0;
         operatorFee = 2e18;
 
         minAuctionLength = 604800;
@@ -119,6 +114,11 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
             minAuctionLength,
             minTermLength
         );
+    }
+
+    function setLoanTemplate(address _loanTemplate) external onlyAdmin {
+        loanTemplate = _loanTemplate;
+        emit LoanTemplateUpdated(loanTemplate);
     }
 
     function isTokenAccepted(address tokenAddress) external view returns (bool) {
@@ -213,72 +213,37 @@ contract LoanContractDispatcher is ILoanContractDispatcher, Ownable {
         uint256 loanMaxInterestRate,
         uint256 termLength,
         uint256 auctionLength,
-        address tokenAddress
-    ) external onlyKYC returns (address) {
-        require(administrator != address(0), "There is no administrator set");
-        require(
-            loanMinAmount >= minAmount &&
-                loanMinAmount <= maxAmount &&
-                loanMinAmount <= loanMaxAmount,
-            "minimum amount not correct"
-        );
-        require(
-            loanMaxAmount >= minAmount &&
-                loanMaxAmount <= maxAmount &&
-                loanMaxAmount >= loanMinAmount,
-            "maximum amount not correct"
-        );
-        require(
-            loanMaxInterestRate >= minInterestRate && loanMaxInterestRate <= maxInterestRate,
-            "maximum interest rate not correct"
-        );
-        require(
-            loanMinInterestRate >= minInterestRate && loanMinInterestRate <= maxInterestRate,
-            "minimum interest rate not correct"
-        );
-        require(
-            loanMaxInterestRate >= loanMinInterestRate,
-            "minimum interest should not be greater than maximum interest"
-        );
-        require(termLength >= minTermLength, "Term length is to small");
-        require(auctionLength >= minAuctionLength, "Auction length is to small");
-        require(acceptedTokens[tokenAddress] == true, "TokenAddress not accepted");
+        address tokenAddress,
+        uint256 instalments
+    ) external returns (address) {
+        // Deploy cloned loan from template
+        address loanContract = createClone(loanTemplate);
 
-        LoanContract loanContract = new LoanContract(
-            termLength,
-            loanMinAmount,
-            loanMaxAmount,
-            loanMinInterestRate,
-            loanMaxInterestRate,
-            msg.sender,
-            tokenAddress,
-            DAIProxyAddress,
-            administrator,
-            operatorFee,
-            auctionLength,
-            swapFactory
+        // Initialize the cloned loan, if not possible force revert
+        require(
+            ILoanInstalments(loanContract).init(
+                termLength,
+                loanMinAmount,
+                loanMaxAmount,
+                loanMinInterestRate,
+                loanMaxInterestRate,
+                operatorFee,
+                auctionLength,
+                instalments,
+                msg.sender,
+                tokenAddress,
+                DAIProxyAddress,
+                administrator,
+                swapFactory
+            ),
+            "Failed to init"
         );
-        isLoanContract[address(loanContract)] = true;
+        emit LoanContractCreated(loanContract, msg.sender);
 
-        emit LoanContractCreated(
-            address(this),
-            address(loanContract),
-            msg.sender,
-            loanMinAmount,
-            loanMaxAmount,
-            loanMinInterestRate,
-            loanMaxInterestRate,
-            termLength,
-            administrator,
-            operatorFee,
-            auctionLength,
-            tokenAddress
-        );
-
-        return address(loanContract);
+        return loanContract;
     }
 
-    function checkLoanContract(address loanAddress) external view returns (bool) {
-        return isLoanContract[loanAddress];
+    function isCloned(address target, address query) external view returns (bool result) {
+        return isClone(target, query);
     }
 }

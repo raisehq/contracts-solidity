@@ -1,0 +1,149 @@
+pragma solidity 0.5.12;
+
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./interfaces/IDAIProxy.sol";
+import "./interfaces/ILoanInstalments.sol";
+import "./interfaces/ISwapAndDeposit.sol";
+import "./interfaces/ISwapAndDepositFactory.sol";
+import "./libs/ERC20Wrapper.sol";
+import "@nomiclabs/buidler/console.sol";
+
+
+library LoanLib {
+    using SafeMath for uint256;
+
+    uint256 constant MONTH_SECONDS = 2592000;
+    uint256 constant ONE_HUNDRED = 100000000000000000000;
+
+
+    constructor() public {
+    }
+
+    function getWithdrawAmount(address lender, uint256 instalmentsPaid, ) public view returns (uint256) {
+        uint256 pendingInstalments = instalmentsPaid -
+            lenderPosition[msg.sender].instalmentsWithdrawed;
+        uint256 pendingPenalties = penaltiesPaid - lenderPosition[msg.sender].penaltiesWithdrawed;
+        return
+            (lenderPosition[lender].bidAmount.div(auctionBalance)).mul(
+                (getInstalmentAmount().mul(pendingInstalments)).add(
+                    getInstalmentPenalty().mul(pendingPenalties)
+                )
+            );
+    }
+
+
+    function getInstalmentDebt() public view returns (uint256) {
+        uint256 remainder = 0;
+        if (instalments == instalmentsPaid) {
+            return 0;
+        }
+
+        // Handle integer division remainder in the latest payment
+        if (getCurrentInstalment() == instalments) {
+            remainder = borrowerDebt.sub(getInstalmentAmount().mul(instalments));
+        }
+
+        uint256 penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
+        return
+            getInstalmentAmount().add(getInstalmentPenalty().mul(penaltyInstalments)).add(
+                remainder
+            );
+    }
+
+    function getTotalDebt() public view returns (uint256) {
+        if (instalments == instalmentsPaid) {
+            return 0;
+        }
+
+        return
+            getInstalmentAmount()
+                .mul(instalments.sub(instalmentsPaid))
+                .add(getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1)))
+                .add(borrowerDebt.sub(getInstalmentAmount().mul(instalments)));
+    }
+
+   
+    function isAuctionExpired() public view returns (bool) {
+        return block.timestamp > auctionEndTimestamp;
+    }
+
+    function isDefaulted() public view returns (bool) {
+        if (block.timestamp <= auctionEndTimestamp || block.timestamp <= termEndTimestamp) {
+            return false;
+        }
+
+        return true;
+    }
+
+   
+
+    function calculateValueWithInterest(uint256 value) public view returns (uint256) {
+        return
+            value.add(
+                value.mul(getInterestRate().mul(termLength).div(MONTH_SECONDS)).div(ONE_HUNDRED)
+            );
+    }
+
+    function getInterestRate() public view returns (uint256) {
+        if (currentState == LoanState.CREATED) {
+            return
+                (maxInterestRate.sub(minInterestRate))
+                    .mul(block.timestamp.sub(auctionStartTimestamp))
+                    .div(auctionEndTimestamp.sub(auctionStartTimestamp))
+                    .add(minInterestRate);
+        } else if (
+            currentState == LoanState.ACTIVE ||
+            currentState == LoanState.REPAID ||
+            currentState == LoanState.CLOSED
+        ) {
+            return
+                (maxInterestRate.sub(minInterestRate))
+                    .mul(lastFundedTimestamp.sub(auctionStartTimestamp))
+                    .div(auctionEndTimestamp.sub(auctionStartTimestamp))
+                    .add(minInterestRate);
+        } else {
+            return 0;
+        }
+    }
+
+
+    /*
+     * Formula to calculate in which instalment is the loan in this point in time:
+     * First we need to calculate the length of every instalment.
+     * then we calculate the amount of thime passed between the start of the term and the
+     * current point in time we devide it by the length of the instalment, and we add 1
+     * because the instalment end time is also included in the instalment
+     */
+
+    function getInstalmentLenght() public view returns (uint256) {
+        return (termEndTimestamp.sub(auctionEndTimestamp)).div(instalments);
+    }
+
+    function getCurrentInstalment() public view returns (uint256) {
+        uint256 timeSinceLoan = block.timestamp.sub(auctionEndTimestamp);
+        if (timeSinceLoan < getInstalmentLenght()) {
+            return 0;
+        }
+        uint256 currentInstalmentNumber = timeSinceLoan.mul(1000).div(getInstalmentLenght());
+        currentInstalmentNumber = ceil(currentInstalmentNumber, 1000).div(1000);
+        if (currentInstalmentNumber > instalments) {
+            return instalments;
+        }
+        return currentInstalmentNumber;
+    }
+
+    function getInstalmentAmount() public view returns (uint256) {
+        return borrowerDebt.div(instalments);
+    }
+
+    function getInstalmentPenalty() public view returns (uint256) {
+        return
+            (auctionBalance.add(auctionBalance.mul(operatorFee).div(ONE_HUNDRED)))
+                .mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS))
+                .div(ONE_HUNDRED);
+    }
+
+    function ceil(uint256 a, uint256 m) internal pure returns (uint256) {
+        return ((a.add(m).sub(1)).div(m)).mul(m);
+    }
+}

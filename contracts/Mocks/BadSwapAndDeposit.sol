@@ -2,12 +2,12 @@ pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./interfaces/ISwapAndDeposit.sol";
-import "./interfaces/IDepositRegistry.sol";
-import "./interfaces/IUniswapFactory.sol";
-import "./interfaces/IUniswapExchange.sol";
+import "../interfaces/ISwapAndDeposit.sol";
+import "../interfaces/IDepositRegistry.sol";
+import "../interfaces/IUniswapFactory.sol";
+import "../interfaces/IUniswapExchange.sol";
 
-contract SwapAndDeposit is ISwapAndDeposit {
+contract BadSwapAndDeposit is ISwapAndDeposit {
     using SafeMath for uint256;
 
     address depositAddress;
@@ -126,10 +126,6 @@ contract SwapAndDeposit is ISwapAndDeposit {
         );
         delegateDeposit(depositor, outputTokenAddress, DEPOSIT_AMOUNT, outputBalancePriorOps);
         emit SwapDeposit(msg.sender, depositor);
-        // mark this contract as destroyed, so external contract can know this contract is being selfdestruct
-        // during this tx, also prevents to call this function during the transaction
-        destroyed = true;
-        // Self destruct this contract
-        selfdestruct(depositor);
+        // mark this contract as NOT destroyed to test require at LoanWithInstalment.sol
     }
 }

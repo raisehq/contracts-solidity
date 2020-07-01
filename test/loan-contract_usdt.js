@@ -53,11 +53,11 @@ contract('LoanContract - USDT', (accounts) => {
         const operatorPercentFee = toWei(new BN(5));
        
 
-        beforeEach(async () => {
+        before (async () => {
             ERC20Wrapper = await ERC20WrapperContract.new();
-            await LoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
-            await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-        
+            await LoanContract.link(ERC20Wrapper);
+        })
+        beforeEach(async () => {
             USDToken = await USDTokenContract.new({from: owner});
             await USDToken.transferAmountToAddress(otherLender, web3.utils.toWei('3000'), {from: owner});
             await USDToken.transferAmountToAddress(lender, 150, {from: owner});
@@ -127,17 +127,15 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
                 );
             });
-            it('Expect onFundingReceived to revert if caller is NOT DaiProxy', async () => {
-                try {
-                    // LoanContract state should start with CREATED == 0
-                    const firstState = await Loan.currentState();
-                    expect(Number(firstState)).to.equal(0);
-
-                    await Loan.onFundingReceived(lender, 100);
-                    expect(false, 'execution should not reach here.');
-                } catch (error) {   
-                    expect(error.reason).equal('Caller is not the proxy');
-                }
+            it("Expect onFundingReceived to revert if caller is NOT DaiProxy", async () => {
+                // LoanContract state should start with CREATED == 0
+                const firstState = await Loan.currentState();
+                expect(Number(firstState)).to.equal(0);
+                await truffleAssert.fails(
+                  Loan.onFundingReceived(lender, 100),
+                  truffleAssert.ErrorType.REVERT,
+                  'Caller is not the proxy'
+                )
             });
             it('Expects Lender to be able to partially fund a Loan in CREATED state.', async () => {
                 try {
@@ -282,7 +280,10 @@ contract('LoanContract - USDT', (accounts) => {
 
                     // Try to fund the Loan
                     await USDToken.approve(DAIProxy.address, 100, { from: lender });
-                    await DAIProxy.fund(Loan.address, 100, {from: lender});
+                    await truffleAssert.fails(
+                        DAIProxy.fund(Loan.address, 100, {from: lender}),
+                        truffleAssert.ErrorType.REVERT
+                    );
 
                     // Check Loan funds inside contract, should be ZERO
                     const auctionBalanceAmount = await Loan.auctionBalance({from: owner});
@@ -290,9 +291,9 @@ contract('LoanContract - USDT', (accounts) => {
                     expect(Number(auctionBalanceAmount)).to.equal(0);
                     expect(Number(loanRawTokens)).to.equal(0);
 
-                    // Contract state should be mutated to FAILED_TO_FUND
+                    // Contract state should still be ACTIVE
                     const stateAfterFailedFund = await Loan.currentState();
-                    expect(Number(stateAfterFailedFund)).to.equal(1);
+                    expect(Number(stateAfterFailedFund)).to.equal(0);
 
                     // Lender ERC20 balance should still be 150
                     const lenderBalance = await USDToken.balanceOf(lender, {from: lender });

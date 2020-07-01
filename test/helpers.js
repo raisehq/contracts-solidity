@@ -70,6 +70,51 @@ const extractReceipt = function(message) {
   return JSON.parse(receiptString);
 };
 
+const revertToSnapShotId = id => {
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send(
+      {
+        jsonrpc: "2.0",
+        method: "evm_revert",
+        params: [id],
+        id: new Date().getTime()
+      },
+      (err, result) => {
+        if (err) {
+          return reject(err);
+        }
+        return resolve(result);
+      }
+    );
+  });
+};
+
+const revertToSnapShot = async id => {
+  const response = await revertToSnapShotId(id);
+  await advanceBlock();
+  return response;
+};
+
+const takeSnapshot = () => {
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send(
+      {
+        jsonrpc: "2.0",
+        method: "evm_snapshot",
+        params: [],
+        id: new Date().getTime()
+      },
+      async (err, snapshotId) => {
+        if (err) {
+          return reject(err);
+        }
+        await advanceBlock();
+        return resolve(snapshotId);
+      }
+    );
+  });
+};
+
 module.exports = {
   waitNBlocks,
   advanceBlock,
@@ -78,5 +123,7 @@ module.exports = {
   bigNums,
   calculatePendingDebt,
   calculateNetLoan,
-  extractReceipt
+  extractReceipt,
+  revertToSnapShot,
+  takeSnapshot
 };

@@ -31,6 +31,11 @@ contract("DAIProxy Contract USDT tests", function(accounts) {
   const other_user = accounts[4];
   const other_user_kyc_no_dai = accounts[5];
 
+  before(async () => {
+    ERC20Wrapper = await ERC20WrapperContract.new();
+    await DAIProxyContract.link(ERC20Wrapper);
+  });
+
   const migrate = async () => {
     try {
       RaiseToken = await RaiseTokenContract.new({from: owner});
@@ -47,8 +52,6 @@ contract("DAIProxy Contract USDT tests", function(accounts) {
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
       uniswapAddress = "0x0000000000000000000000000000000000000000";
 
-      ERC20Wrapper = await ERC20WrapperContract.new();
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
       DAIProxy = await DAIProxyContract.new(Auth.address, uniswapAddress);
       await DAIProxy.setAdministrator(admin, {from: owner});
 
@@ -86,8 +89,7 @@ contract("DAIProxy Contract USDT tests", function(accounts) {
         await USDTToken.approve(DAIProxy.address, 100, {from: other_user_kyc_no_dai});
         await truffleAssert.fails(
           DAIProxy.fund(LoanContract.address, 100, {from: other_user_kyc_no_dai}),
-          truffleAssert.ErrorType.REVERT,
-          "Not enough funds."
+          truffleAssert.ErrorType.REVERT
         );
       });
       it("Expects an error when user not KYC", async () => {
@@ -95,7 +97,7 @@ contract("DAIProxy Contract USDT tests", function(accounts) {
         await truffleAssert.fails(
           DAIProxy.fund(LoanContract.address, 100, {from: other_user}),
           truffleAssert.ErrorType.REVERT,
-          "user does not have KYC."
+          "user does not have KYC"
         );
       });
       it("Expects to fund SUCCESSFULLY when user has not hero tokens deposited and deposit requeriment is off", async () => {
@@ -147,7 +149,7 @@ contract("DAIProxy Contract USDT tests", function(accounts) {
         await truffleAssert.fails(
           DAIProxy.repay(LoanContract.address, 100, {from: other_user}),
           truffleAssert.ErrorType.REVERT,
-          "user does not have KYC."
+          "user does not have KYC"
         );
       });
     });

@@ -9,7 +9,6 @@ import "./interfaces/IUniswapSwapper.sol";
 import "./interfaces/IUniswapSwapperFactory.sol";
 import "./libs/ERC20Wrapper.sol";
 
-
 contract DAIProxy is IDAIProxy, Ownable {
     using SafeMath for uint256;
 
@@ -60,16 +59,16 @@ contract DAIProxy is IDAIProxy, Ownable {
         address outputTokenAddress = ILoanContract(loanAddress).getTokenAddress();
         uint256 newFundingAmount = _calculateFunds(loanAddress, fundingAmount);
         require(
-            ILoanContract(loanAddress).onFundingReceived(msg.sender, newFundingAmount),
-            "funding failed at loan contract"
-        );
-        require(
             _swapToken(inputTokenAddress, outputTokenAddress, inputTokenAmount, newFundingAmount),
             "error swap"
         );
         require(
-            ERC20Wrapper.transfer(outputTokenAddress, loanAddress, newFundingAmount),
-            "failed at transferFrom"
+            ERC20Wrapper.approve(outputTokenAddress, loanAddress, newFundingAmount),
+            "failed at approve"
+        );
+        require(
+            ILoanContract(loanAddress).onFundingReceived(msg.sender, newFundingAmount),
+            "funding failed at loan contract"
         );
         return true;
     }
@@ -84,14 +83,14 @@ contract DAIProxy is IDAIProxy, Ownable {
     {
         address outputTokenAddress = ILoanContract(loanAddress).getTokenAddress();
         uint256 newFundingAmount = _calculateFunds(loanAddress, fundingAmount);
+        require(_swapEth(outputTokenAddress, newFundingAmount), "error swap");
+        require(
+            ERC20Wrapper.approve(outputTokenAddress, loanAddress, newFundingAmount),
+            "failed at approve"
+        );
         require(
             ILoanContract(loanAddress).onFundingReceived(msg.sender, newFundingAmount),
             "funding failed at loan contract"
-        );
-        require(_swapEth(outputTokenAddress, newFundingAmount), "error swap");
-        require(
-            ERC20Wrapper.transfer(outputTokenAddress, loanAddress, newFundingAmount),
-            "failed at transferFrom"
         );
         return true;
     }
@@ -153,15 +152,19 @@ contract DAIProxy is IDAIProxy, Ownable {
         onlyKYCCanFund
     {
         uint256 newFundingAmount = _calculateFunds(loanAddress, fundingAmount);
+        address tokenAddress = ILoanContract(loanAddress).getTokenAddress();
+
+        ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), newFundingAmount);
+        ERC20Wrapper.approve(tokenAddress, loanAddress, newFundingAmount);
         require(
             ILoanContract(loanAddress).onFundingReceived(msg.sender, newFundingAmount),
             "funding failed at loan contract"
         );
-        require(transfer(loanAddress, newFundingAmount), "erc20 transfer failed");
     }
 
     function _calculateFunds(address loanAddress, uint256 fundingAmount)
         internal
+        view
         returns (uint256)
     {
         uint256 newFundingAmount = fundingAmount;

@@ -66,12 +66,13 @@ contract("Integration", accounts => {
     let Loan;
     const daiBalance = web3.utils.toWei(new BN(100, 10));
 
-    beforeEach(async () => {
+    before(async () => {
       ERC20Wrapper = await ERC20WrapperContract.new();
-      await LoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-      await LoanContractDispatcherContract.link("ERC20Wrapper", ERC20Wrapper.address);
-
+      await LoanContract.link(ERC20Wrapper);
+      await DAIProxyContract.link(ERC20Wrapper);
+      await LoanContractDispatcherContract.link(ERC20Wrapper);
+    });
+    beforeEach(async () => {
       DAIToken = await ERC20Mock.new("DAI", "DAI", {from: owner});
       USDCToken = await ERC20Mock.new("USDC", "USDC", {from: owner});
       RaiseToken = await ERC20Mock.new("RAISE", "RAISE", {from: owner});

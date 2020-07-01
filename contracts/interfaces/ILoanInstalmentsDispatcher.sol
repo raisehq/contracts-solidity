@@ -1,7 +1,21 @@
 pragma solidity 0.5.12;
 
-interface ILoanContractDispatcher {
-    event LoanContractCreated(address contractAddress, address indexed originator);
+interface ILoanInstalmentsDispatcher {
+    event LoanContractCreated(
+        address loanDispatcher,
+        address contractAddress,
+        address indexed originator,
+        uint256 minAmount,
+        uint256 maxAmount,
+        uint256 minInterestRate,
+        uint256 maxInterestRate,
+        uint256 termEndTimestamp,
+        address indexed administrator,
+        uint256 operatorFee,
+        uint256 auctionLength,
+        address indexed tokenAddress,
+        uint256 instalments
+    );
 
     event MinAmountUpdated(uint256 minAmount, address loanDispatcher);
     event MaxAmountUpdated(uint256 maxAmount, address loanDispatcher);
@@ -41,8 +55,6 @@ interface ILoanContractDispatcher {
         uint256 minTermLength
     );
 
-    function checkLoanContract(address loanAddress) external view returns (bool);
-
     function isTokenAccepted(address tokenAddress) external view returns (bool);
 
     function addTokenToAcceptedList(address tokenAddress) external;
@@ -54,6 +66,8 @@ interface ILoanContractDispatcher {
     function setDaiProxyAddress(address daiProxyAddress) external;
 
     function setAdministrator(address admin) external;
+
+    function setLoanTemplate(address _loanTemplate) external;
 
     function setOperatorFee(uint256 newFee) external;
 
@@ -76,6 +90,9 @@ interface ILoanContractDispatcher {
         uint256 loanMaxInterestRate,
         uint256 termLength,
         uint256 auctionLength,
-        address tokenAddress
+        address tokenAddress,
+        uint256 instalments
     ) external returns (address);
+
+    function isCloned(address target, address query) external view returns (bool result);
 }

@@ -52,6 +52,13 @@ contract("DAIProxy Contract", function(accounts) {
   const otherAdmin = accounts[6];
   const borrower = accounts[7];
 
+  before(async () => {
+    ERC20Wrapper = await ERC20WrapperContract.new();
+    await DAIProxyContract.link(ERC20Wrapper);
+    await RealLoanContract.link(ERC20Wrapper);
+    await LoanContractDispatcherContract.link(ERC20Wrapper);
+  });
+
   const migrate = async () => {
     try {
       RaiseToken = await RaiseContract.new({from: owner});
@@ -66,9 +73,6 @@ contract("DAIProxy Contract", function(accounts) {
         from: owner
       });
       Auth = await AuthContract.new(KYCRegistry.address, DepositRegistry.address);
-      ERC20Wrapper = await ERC20WrapperContract.new();
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-
       uniswapAddress = await initializeUniswap(web3, DAIToken.address, RaiseToken.address, owner);
       UniswapSwapperTemplate = await UniswapSwapper.new({from: owner});
       UniswapSwapperFactory = await UniswapSwapperFactoryContract.new(
@@ -101,10 +105,6 @@ contract("DAIProxy Contract", function(accounts) {
   const migrateFund = async () => {
     try {
       // link
-      ERC20Wrapper = await ERC20WrapperContract.new();
-      await DAIProxyContract.link("ERC20Wrapper", ERC20Wrapper.address);
-      await RealLoanContract.link("ERC20Wrapper", ERC20Wrapper.address);
-      await LoanContractDispatcherContract.link("ERC20Wrapper", ERC20Wrapper.address);
 
       RaiseToken = await RaiseContract.new({from: owner});
 
@@ -316,6 +316,7 @@ contract("DAIProxy Contract", function(accounts) {
         expect(OUTPUT_AMOUNT.eq(loanBalance));
         expect(userBalanceAfter.eq(userBalanceBefore - INPUT_AMOUNT));
 
+        await DAIToken.approve(DAIProxy.address, INPUT_AMOUNT, {from: user});
         await truffleAssert.fails(
           DAIProxy.swapTokenAndFund(LC.address, DAIToken.address, INPUT_AMOUNT, OUTPUT_AMOUNT, {
             from: user
@@ -337,7 +338,7 @@ contract("DAIProxy Contract", function(accounts) {
             from: user
           }),
           truffleAssert.ErrorType.REVERT,
-          "exchange can not be 0 address."
+          "exchange can not be 0 address"
         );
       });
     });
@@ -401,8 +402,7 @@ contract("DAIProxy Contract", function(accounts) {
         await DAIToken.approve(DAIProxy.address, 100, {from: other_user_kyc_no_dai});
         await truffleAssert.fails(
           DAIProxy.fund(LoanContract.address, 100, {from: other_user_kyc_no_dai}),
-          truffleAssert.ErrorType.REVERT,
-          "Not enough funds."
+          truffleAssert.ErrorType.REVERT
         );
       });
       it("Expects an error when user not KYC", async () => {
@@ -410,7 +410,7 @@ contract("DAIProxy Contract", function(accounts) {
         await truffleAssert.fails(
           DAIProxy.fund(LoanContract.address, 100, {from: other_user}),
           truffleAssert.ErrorType.REVERT,
-          "user does not have KYC."
+          "user does not have KYC"
         );
       });
       it("Expects to fund SUCCESSFULLY when user has not hero tokens deposited and deposit requeriment is off", async () => {
@@ -462,7 +462,7 @@ contract("DAIProxy Contract", function(accounts) {
         await truffleAssert.fails(
           DAIProxy.repay(LoanContract.address, 100, {from: other_user}),
           truffleAssert.ErrorType.REVERT,
-          "user does not have KYC."
+          "user does not have KYC"
         );
       });
     });

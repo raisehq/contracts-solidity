@@ -5,7 +5,6 @@ import "./interfaces/IDepositRegistry.sol";
 import "./interfaces/IKYCRegistry.sol";
 import "./interfaces/IAuthorization.sol";
 
-
 contract Authorization is IAuthorization, Ownable {
     address internal kycAddress;
     address internal depositAddress;

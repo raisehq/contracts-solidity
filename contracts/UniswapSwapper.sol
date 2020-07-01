@@ -6,7 +6,6 @@ import "./interfaces/IUniswapSwapper.sol";
 import "./interfaces/IUniswapFactory.sol";
 import "./interfaces/IUniswapExchange.sol";
 
-
 contract UniswapSwapper is IUniswapSwapper {
     using SafeMath for uint256;
 
@@ -96,11 +95,11 @@ contract UniswapSwapper is IUniswapSwapper {
         return destroyed;
     }
 
-    function swapEth(address payable guy, address outputTokenAddress, uint256 outputTokenAmount)
-        external
-        payable
-        notTemplate
-    {
+    function swapEth(
+        address payable guy,
+        address outputTokenAddress,
+        uint256 outputTokenAmount
+    ) external payable notTemplate {
         require(factoryAddress != address(0), "factory address not init");
         require(guy != address(0), "guy address can not be 0");
         require(outputTokenAddress != address(0), "output token can not be 0");

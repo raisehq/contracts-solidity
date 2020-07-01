@@ -6,7 +6,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "./interfaces/IAuthorization.sol";
 
-
 contract ReferralTracker is Ownable, Pausable {
     using SafeMath for uint256;
     ERC20 public token;

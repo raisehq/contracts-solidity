@@ -2,13 +2,16 @@ pragma solidity 0.5.12;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./interfaces/IDAIProxy.sol";
-import "./interfaces/ILoanContract.sol";
+import "./interfaces/ILoanInstalments.sol";
 import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/ISwapAndDepositFactory.sol";
+import "./libs/MonkCalcs.sol";
 import "./libs/ERC20Wrapper.sol";
+import "@nomiclabs/buidler/console.sol";
 
-contract LoanContract is ILoanContract {
+contract LoanInstalments is ILoanInstalments {
     using SafeMath for uint256;
+
     address public swapFactory;
     address public proxyAddress;
     address public tokenAddress;
@@ -16,6 +19,8 @@ contract LoanContract is ILoanContract {
     address public administrator;
 
     uint256 public minAmount;
+    uint256 public investors;
+    uint256 public totalWithdraws;
     uint256 public maxAmount;
     uint256 public auctionEndTimestamp;
     uint256 public auctionStartTimestamp;
@@ -30,12 +35,19 @@ contract LoanContract is ILoanContract {
     uint256 public maxInterestRate;
     uint256 public operatorFee;
     uint256 public operatorBalance;
+    uint256 public instalments;
+    uint256 public instalmentsPaid;
+    uint256 public penaltiesPaid;
+    uint256 public loanAmountPaid;
+
     uint256 constant MONTH_SECONDS = 2592000;
-    uint256 constant ONE_HUNDRED = 100000000000000000000;
+    uint256 constant ONE_HUNDRED = 100 ether;
 
     struct Position {
         uint256 bidAmount;
-        bool withdrawn;
+        bool loanWithdrawn;
+        uint256 instalmentsWithdrawed;
+        uint256 penaltiesWithdrawed;
     }
 
     mapping(address => Position) public lenderPosition;
@@ -45,7 +57,7 @@ contract LoanContract is ILoanContract {
         FAILED_TO_FUND, // not fully funded in timelimit
         ACTIVE, // fully funded, inside timelimit
         DEFAULTED, // not repaid in time loanRepaymentLength
-        REPAID, // the borrower repaid in full, lenders have yet to reclaim funds
+        REPAID, // All loan instalments paid
         CLOSED, // from failed_to_fund => last lender to withdraw triggers change / from repaid => fully witdrawn by lenders
         FROZEN // when admin unlocks withdrawals
     }
@@ -54,6 +66,7 @@ contract LoanContract is ILoanContract {
 
     bool public loanWithdrawn;
     bool public minimumReached;
+    bool private isTemplate;
 
     event LoanCreated(
         address indexed contractAddr,
@@ -64,9 +77,9 @@ contract LoanContract is ILoanContract {
         uint256 maxInterestRate,
         uint256 auctionStartTimestamp,
         uint256 auctionEndTimestamp,
-        address indexed administrator,
         uint256 operatorFee,
-        address tokenAddress
+        address tokenAddress,
+        uint256 instalments
     );
 
     event MinimumFundingReached(address loanAddress, uint256 currentBalance, uint256 interest);
@@ -130,9 +143,12 @@ contract LoanContract is ILoanContract {
         _;
     }
 
-    modifier onlyRepaid() {
+    modifier onlyActiveOrRepaid() {
         updateStateMachine();
-        require(currentState == LoanState.REPAID, "Loan status is not REPAID");
+        require(
+            currentState == LoanState.ACTIVE || currentState == LoanState.REPAID,
+            "Loan status is not ACTIVE or REPAID"
+        );
         _;
     }
 
@@ -152,25 +168,32 @@ contract LoanContract is ILoanContract {
         _;
     }
 
-    constructor(
+    constructor() public {
+        isTemplate = true;
+    }
+
+    function init(
         uint256 _termLength,
         uint256 _minAmount,
         uint256 _maxAmount,
         uint256 _minInterestRate,
         uint256 _maxInterestRate,
+        uint256 _operatorFee,
+        uint256 _auctionLength,
+        uint256 _instalments,
         address _originator,
         address _tokenAddress,
         address _proxyAddress,
         address _administrator,
-        uint256 _operatorFee,
-        uint256 _auctionLength,
         address _swapFactory
-    ) public {
+    ) public notTemplate returns (bool) {
+        require(tokenAddress == address(0), "loan have been initialized");
         tokenAddress = _tokenAddress;
         proxyAddress = _proxyAddress;
         originator = _originator;
         administrator = _administrator;
         swapFactory = _swapFactory;
+        instalments = _instalments;
 
         minInterestRate = _minInterestRate;
         maxInterestRate = _maxInterestRate;
@@ -179,15 +202,18 @@ contract LoanContract is ILoanContract {
 
         auctionLength = _auctionLength;
         auctionStartTimestamp = block.timestamp;
-        auctionEndTimestamp = auctionStartTimestamp + auctionLength;
+        auctionEndTimestamp = auctionStartTimestamp.add(auctionLength);
 
         termLength = _termLength;
+
+        termEndTimestamp = auctionEndTimestamp.add(termLength);
 
         loanWithdrawnAmount = 0;
 
         operatorFee = _operatorFee;
 
         setState(LoanState.CREATED);
+
         emit LoanCreated(
             address(this),
             originator,
@@ -197,10 +223,21 @@ contract LoanContract is ILoanContract {
             maxInterestRate,
             auctionStartTimestamp,
             auctionEndTimestamp,
-            administrator,
             operatorFee,
-            tokenAddress
+            tokenAddress,
+            instalments
         );
+
+        return true;
+    }
+
+    function isTemplateContract() external view returns (bool) {
+        return isTemplate;
+    }
+
+    modifier notTemplate() {
+        require(isTemplate == false, "you cant call template contract");
+        _;
     }
 
     function getMaxAmount() external view returns (uint256) {
@@ -216,19 +253,22 @@ contract LoanContract is ILoanContract {
     }
 
     function getLenderWithdrawn(address lender) external view returns (bool) {
-        return lenderPosition[lender].withdrawn;
+        return lenderPosition[lender].loanWithdrawn;
+    }
+
+    function getLenderInstalmentsWithdrawed(address lender) external view returns (uint256) {
+        return lenderPosition[lender].instalmentsWithdrawed;
     }
 
     function getTokenAddress() external view returns (address) {
         return tokenAddress;
     }
 
-    // Notes:
-    // - This function does not track if real IERC20 balance has changed. Needs to blindly "trust" DaiProxy.
     function onFundingReceived(address lender, uint256 amount)
         external
         onlyCreated
         onlyProxy
+        notTemplate
         returns (bool)
     {
         require(block.timestamp > auctionStartTimestamp, "can not invest prior the start");
@@ -239,7 +279,22 @@ contract LoanContract is ILoanContract {
             ERC20Wrapper.transferFrom(tokenAddress, msg.sender, address(this), amount),
             "failed to transfer"
         );
+
+        if (isAuctionExpired()) {
+            if (auctionBalance < minAmount) {
+                setState(LoanState.FAILED_TO_FUND);
+                emit FailedToFund(address(this), lender, amount);
+                return false;
+            } else {
+                require(setSuccessfulAuction(), "error while transitioning to successful auction");
+                emit FailedToFund(address(this), lender, amount);
+                return false;
+            }
+        }
         uint256 interest = getInterestRate();
+        if (lenderPosition[lender].bidAmount == 0) {
+            investors += 1;
+        }
         lenderPosition[lender].bidAmount = lenderPosition[lender].bidAmount.add(amount);
         auctionBalance = auctionBalance.add(amount);
 
@@ -266,12 +321,12 @@ contract LoanContract is ILoanContract {
         return true;
     }
 
-    function unlockFundsWithdrawal() external onlyAdmin {
+    function unlockFundsWithdrawal() external onlyAdmin notTemplate {
         setState(LoanState.FROZEN);
         emit LoanFundsUnlocked(auctionBalance);
     }
 
-    function withdrawFees() external onlyAdmin returns (bool) {
+    function withdrawFees() external onlyAdmin notTemplate returns (bool) {
         require(loanWithdrawn == true, "borrower didnt withdraw");
         require(operatorBalance > 0, "no funds to withdraw");
         uint256 allFees = operatorBalance;
@@ -281,14 +336,19 @@ contract LoanContract is ILoanContract {
         return true;
     }
 
-    function withdrawFundsUnlocked() external onlyFrozen {
+    function withdrawFundsUnlocked() external onlyFrozen notTemplate {
         require(!loanWithdrawn, "Loan already withdrawn");
-        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+        require(!lenderPosition[msg.sender].loanWithdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposit");
 
-        lenderPosition[msg.sender].withdrawn = true;
+        lenderPosition[msg.sender].loanWithdrawn = true;
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
+
+        if (loanWithdrawnAmount == auctionBalance) {
+            setState(LoanState.CLOSED);
+            emit FullyFundsUnlockedWithdrawn(address(this));
+        }
 
         require(
             ERC20Wrapper.transfer(tokenAddress, msg.sender, lenderPosition[msg.sender].bidAmount),
@@ -300,59 +360,62 @@ contract LoanContract is ILoanContract {
             msg.sender,
             lenderPosition[msg.sender].bidAmount
         );
-
-        if (loanWithdrawnAmount == auctionBalance.add(operatorBalance)) {
-            setState(LoanState.CLOSED);
-            emit FullyFundsUnlockedWithdrawn(address(this));
-        }
     }
 
-    function withdrawRefund() external onlyFailedToFund {
-        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
+    function withdrawRefund() external onlyFailedToFund notTemplate {
+        require(!lenderPosition[msg.sender].loanWithdrawn, "Lender already withdrawn");
         require(lenderPosition[msg.sender].bidAmount > 0, "Account did not deposited.");
 
-        lenderPosition[msg.sender].withdrawn = true;
+        lenderPosition[msg.sender].loanWithdrawn = true;
 
         loanWithdrawnAmount = loanWithdrawnAmount.add(lenderPosition[msg.sender].bidAmount);
 
         emit RefundWithdrawn(address(this), msg.sender, lenderPosition[msg.sender].bidAmount);
 
-        require(
-            ERC20Wrapper.transfer(tokenAddress, msg.sender, lenderPosition[msg.sender].bidAmount),
-            "error while transfer"
-        );
-
         if (loanWithdrawnAmount == auctionBalance) {
             setState(LoanState.CLOSED);
             emit FullyRefunded(address(this));
         }
+
+        require(
+            ERC20Wrapper.transfer(tokenAddress, msg.sender, lenderPosition[msg.sender].bidAmount),
+            "error while transfer"
+        );
     }
 
-    function withdrawRepayment() external onlyRepaid {
-        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
-        require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
-        uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
-        lenderPosition[msg.sender].withdrawn = true;
-
-        loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
-        require(ERC20Wrapper.transfer(tokenAddress, msg.sender, amount), "error while transfer");
-
-        emit RepaymentWithdrawn(address(this), msg.sender, amount);
-        if (loanWithdrawnAmount == borrowerDebt) {
-            setState(LoanState.CLOSED);
-            emit FullyRefunded(address(this));
+    function getWithdrawAmount(address lender) public view returns (uint256) {
+        uint256 _instalmentAmount;
+        uint256 _penaltyAmount;
+        uint256 pendingInstalments = instalmentsPaid -
+            lenderPosition[msg.sender].instalmentsWithdrawed;
+        uint256 pendingPenalties = penaltiesPaid - lenderPosition[msg.sender].penaltiesWithdrawed;
+        if (getInstalmentAmount().mul(instalmentsPaid) > 0) {
+            _instalmentAmount =
+                lenderPosition[lender].bidAmount.mul(getInstalmentAmount()).mul(
+                    pendingInstalments
+                ) /
+                auctionBalance;
         }
+        if (getInstalmentPenalty().mul(penaltiesPaid) > 0) {
+            _penaltyAmount =
+                lenderPosition[lender].bidAmount.mul(getInstalmentPenalty()).mul(pendingPenalties) /
+                auctionBalance;
+        }
+        return _instalmentAmount.add(_penaltyAmount);
     }
 
-    function withdrawRepaymentAndDeposit() external onlyRepaid {
+    function withdrawRepayment() external onlyActiveOrRepaid notTemplate {
+        uint256 amount = priorLenderWithdrawal();
+        emit RepaymentWithdrawn(address(this), msg.sender, amount);
+        require(ERC20Wrapper.transfer(tokenAddress, msg.sender, amount), "error while transfer");
+    }
+
+    function withdrawRepaymentAndDeposit() external onlyActiveOrRepaid notTemplate {
         require(swapFactory != address(0), "swap factory is 0");
-        require(!lenderPosition[msg.sender].withdrawn, "Lender already withdrawn");
-        require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
-        uint256 amount = calculateValueWithInterest(lenderPosition[msg.sender].bidAmount);
-        lenderPosition[msg.sender].withdrawn = true;
-        loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
         address swapAddress = ISwapAndDepositFactory(swapFactory).deploy();
         require(swapAddress != address(0), "error swap deploy");
+
+        uint256 amount = priorLenderWithdrawal();
         ERC20Wrapper.approve(tokenAddress, swapAddress, amount);
         ISwapAndDeposit(swapAddress).swapAndDeposit(msg.sender, tokenAddress, amount);
         require(
@@ -360,33 +423,124 @@ contract LoanContract is ILoanContract {
             "Swap contract error, should self-destruct"
         );
         emit RepaymentWithdrawn(address(this), msg.sender, amount);
-        if (loanWithdrawnAmount == borrowerDebt) {
-            setState(LoanState.CLOSED);
-            emit FullyRefunded(address(this));
-        }
     }
 
-    function withdrawLoan() external onlyActive onlyOriginator {
+    function priorLenderWithdrawal() internal onlyActiveOrRepaid notTemplate returns (uint256) {
+        require(lenderPosition[msg.sender].bidAmount != 0, "Account did not deposited");
+        require(!lenderPosition[msg.sender].loanWithdrawn, "Lender already withdrawn");
+        require(
+            lenderPosition[msg.sender].instalmentsWithdrawed < instalmentsPaid,
+            "Lender already withdrawn this instalment"
+        );
+        require(totalWithdraws < investors, "can not withdraw more");
+        // calculate value with pending instalments from the user
+        uint256 amount = getWithdrawAmount(msg.sender);
+        lenderPosition[msg.sender].instalmentsWithdrawed = instalmentsPaid;
+        lenderPosition[msg.sender].penaltiesWithdrawed = penaltiesPaid;
+
+        loanWithdrawnAmount = loanWithdrawnAmount.add(amount);
+
+        // If lender withdraw all payments, then cant claim frozen funds
+        if (lenderPosition[msg.sender].instalmentsWithdrawed == instalments) {
+            lenderPosition[msg.sender].loanWithdrawn = true;
+            totalWithdraws = totalWithdraws.add(1);
+        }
+        if (totalWithdraws == investors) {
+            setState(LoanState.CLOSED);
+            if (borrowerDebt > loanWithdrawnAmount) {
+                ERC20Wrapper.transfer(
+                    tokenAddress,
+                    administrator,
+                    borrowerDebt.sub(loanWithdrawnAmount)
+                );
+            }
+            emit FullyRefunded(address(this));
+        }
+        return amount;
+    }
+
+    function withdrawLoan() external onlyActive notTemplate {
         require(!loanWithdrawn, "Already withdrawn");
         loanWithdrawn = true;
-        emit LoanFundsWithdrawn(address(this), msg.sender, auctionBalance);
+        emit LoanFundsWithdrawn(address(this), originator, auctionBalance.sub(operatorBalance));
         require(
-            ERC20Wrapper.transfer(tokenAddress, msg.sender, auctionBalance),
+            ERC20Wrapper.transfer(tokenAddress, originator, auctionBalance.sub(operatorBalance)),
             "error while transfer"
         );
+    }
+
+    function getInstalmentDebt() public view returns (uint256) {
+        uint256 remainder = 0;
+        uint256 penaltyInstalments = 0;
+        // Return 0 debt if all instalments are paid, or if current instalment is paid
+        if (instalments == instalmentsPaid || getCurrentInstalment() == instalmentsPaid) {
+            return 0;
+        }
+        // Handle integer division remainder in the latest payment
+        if (getCurrentInstalment() == instalments) {
+            remainder = borrowerDebt.sub(getInstalmentAmount().mul(instalments));
+        }
+        if (getCurrentInstalment() > instalmentsPaid.add(1)) {
+            penaltyInstalments = getCurrentInstalment().sub(instalmentsPaid).sub(1);
+        }
+        return
+            getInstalmentAmount()
+                .mul(getCurrentInstalment().sub(instalmentsPaid))
+                .add(getInstalmentPenalty().mul(penaltyInstalments))
+                .add(remainder);
+    }
+
+    function getTotalDebt() public view returns (uint256) {
+        if (instalments == instalmentsPaid) {
+            return 0;
+        }
+
+        uint256 totalDebt = getInstalmentAmount().mul(instalments.sub(instalmentsPaid)).add(
+            borrowerDebt.sub(getInstalmentAmount().mul(instalments))
+        );
+        if (getCurrentInstalment() > instalmentsPaid.add(1)) {
+            totalDebt = totalDebt.add(
+                getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
+            );
+        }
+        return totalDebt;
     }
 
     function onRepaymentReceived(address from, uint256 amount)
         external
         onlyActive
         onlyProxy
+        notTemplate
         returns (bool)
     {
+        require(amount > 0, "amount can not be zero");
+        require(loanAmountPaid < borrowerDebt, "debt is paid");
+        require(instalmentsPaid < instalments, "instalments paid");
         require(from == originator, "from address is not the originator");
-        require(borrowerDebt == amount, "Repayment amount is not the same");
 
-        setState(LoanState.REPAID);
-        emit LoanRepaid(address(this), block.timestamp);
+        if (getCurrentInstalment() > instalmentsPaid.add(1)) {
+            // TODO: have a look penalty withdraw
+            // borrowerDebt = borrowerDebt.add(
+            //     getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
+            // );
+            penaltiesPaid = penaltiesPaid.add(getCurrentInstalment().sub(instalmentsPaid).sub(1));
+        }
+
+        if (amount == getInstalmentDebt()) {
+            instalmentsPaid = getCurrentInstalment();
+        } else if (amount == getTotalDebt()) {
+            instalmentsPaid = instalments;
+        } else {
+            revert("amount to be eq than getInstalmentDebt or getTotalDebt");
+        }
+
+        loanAmountPaid = loanAmountPaid.add(amount);
+
+        if (instalmentsPaid == instalments) {
+            setState(LoanState.REPAID);
+            emit LoanRepaid(address(this), block.timestamp);
+        }
+
         return true;
     }
 
@@ -395,14 +549,17 @@ contract LoanContract is ILoanContract {
     }
 
     function isDefaulted() public view returns (bool) {
-        if (block.timestamp <= auctionEndTimestamp || block.timestamp <= termEndTimestamp) {
+        if (
+            block.timestamp <= auctionEndTimestamp ||
+            block.timestamp <= termEndTimestamp.add(getInstalmentLenght())
+        ) {
             return false;
         }
 
         return true;
     }
 
-    function updateStateMachine() public returns (LoanState) {
+    function updateStateMachine() public notTemplate returns (LoanState) {
         if (isAuctionExpired() && currentState == LoanState.CREATED) {
             if (!minimumReached) {
                 setState(LoanState.FAILED_TO_FUND);
@@ -432,7 +589,11 @@ contract LoanContract is ILoanContract {
                     .mul(block.timestamp.sub(auctionStartTimestamp))
                     .div(auctionEndTimestamp.sub(auctionStartTimestamp))
                     .add(minInterestRate);
-        } else if (currentState == LoanState.ACTIVE || currentState == LoanState.REPAID) {
+        } else if (
+            currentState == LoanState.ACTIVE ||
+            currentState == LoanState.REPAID ||
+            currentState == LoanState.CLOSED
+        ) {
             return
                 (maxInterestRate.sub(minInterestRate))
                     .mul(lastFundedTimestamp.sub(auctionStartTimestamp))
@@ -443,21 +604,20 @@ contract LoanContract is ILoanContract {
         }
     }
 
-    function setState(LoanState state) internal {
+    function setState(LoanState state) internal notTemplate {
         currentState = state;
     }
 
-    function setSuccessfulAuction() internal onlyCreated returns (bool) {
+    function setSuccessfulAuction() internal notTemplate onlyCreated returns (bool) {
         setState(LoanState.ACTIVE);
         borrowerDebt = calculateValueWithInterest(auctionBalance);
         operatorBalance = auctionBalance.mul(operatorFee).div(ONE_HUNDRED);
-        auctionBalance = auctionBalance - operatorBalance;
 
         if (block.timestamp < auctionEndTimestamp) {
             termEndTimestamp = block.timestamp.add(termLength);
-        } else {
-            termEndTimestamp = auctionEndTimestamp.add(termLength);
         }
+
+        auctionEndTimestamp = block.timestamp;
 
         emit AuctionSuccessful(
             address(this),
@@ -470,8 +630,51 @@ contract LoanContract is ILoanContract {
         return true;
     }
 
-    function setProxyAddress(address _proxyAddress) external onlyAdmin {
+    function setProxyAddress(address _proxyAddress) external onlyAdmin notTemplate {
         proxyAddress = _proxyAddress;
         emit DaiProxyAddressUpdated(_proxyAddress, administrator, address(this));
+    }
+
+    /*
+     * Formula to calculate in which instalment is the loan in this point in time:
+     * First we need to calculate the length of every instalment.
+     * then we calculate the amount of thime passed between the start of the term and the
+     * current point in time we devide it by the length of the instalment, and we add 1
+     * because the instalment end time is also included in the instalment
+     */
+
+    function getInstalmentLenght() public view returns (uint256) {
+        return (termEndTimestamp.sub(auctionEndTimestamp)).div(instalments);
+    }
+
+    function getNextInstalmentDate() public view returns (uint256) {
+        return auctionEndTimestamp.add((getCurrentInstalment().add(1)).mul(getInstalmentLenght()));
+    }
+
+    function getCurrentInstalment() public view returns (uint256) {
+        uint256 timeSinceLoan = block.timestamp.sub(auctionEndTimestamp);
+        if (timeSinceLoan < getInstalmentLenght()) {
+            return 0;
+        }
+        uint256 currentInstalmentNumber = timeSinceLoan.div(getInstalmentLenght());
+        if (currentInstalmentNumber <= 0) {
+            return 0;
+        }
+        if (currentInstalmentNumber > instalments) {
+            return instalments;
+        }
+        return currentInstalmentNumber;
+    }
+
+    function getInstalmentAmount() public view returns (uint256) {
+        return calculateValueWithInterest(auctionBalance).div(instalments);
+    }
+
+    function getInstalmentPenalty() public view returns (uint256) {
+        return
+            auctionBalance
+                .mul(getInterestRate().mul(2).mul(termLength).div(MONTH_SECONDS))
+                .div(ONE_HUNDRED)
+                .div(instalments);
     }
 }
