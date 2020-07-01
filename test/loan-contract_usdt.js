@@ -126,6 +126,7 @@ contract('LoanContract - USDT', (accounts) => {
                     auctionLength,
                     SwapFactory.address
                 );
+                await helpers.increaseTime(1);
             });
             it("Expect onFundingReceived to revert if caller is NOT DaiProxy", async () => {
                 // LoanContract state should start with CREATED == 0
@@ -338,6 +339,8 @@ contract('LoanContract - USDT', (accounts) => {
                         auctionLength,
                         SwapFactory.address
                     );
+
+                    await helpers.increaseTime(1);
                 } catch (error) {
                     throw error;
                 }
@@ -389,6 +392,8 @@ contract('LoanContract - USDT', (accounts) => {
                     auctionLength,
                     SwapFactory.address
                 );
+                
+                await helpers.increaseTime(1);
             });
             it('Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ', async () => {
                 try {
@@ -521,6 +526,8 @@ contract('LoanContract - USDT', (accounts) => {
                     auctionLength,
                     SwapFactory.address
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expect withdrawLoan to allow Borrower take loan if state == ACTIVE', async () => {
                 try {
@@ -657,6 +664,8 @@ contract('LoanContract - USDT', (accounts) => {
                         SwapFactory.address
                     );
                     await helpers.waitNBlocks(1000);
+
+                    await helpers.increaseTime(1);
                     const isExpired = await Loan.isDefaulted();
                     expect(isExpired).to.equal(true);
 
@@ -715,6 +724,8 @@ contract('LoanContract - USDT', (accounts) => {
                     auctionLength,
                     SwapFactory.address
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID', async () => {
                 try {
@@ -914,6 +925,8 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
 
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expect withdrawRefund to allow Lender refund if state == FAILED_TO_FUND', async () => {
                 // Partially fund the Loan
@@ -1059,6 +1072,8 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
 
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID', async () => {
                 // Partially fund the Loan
@@ -1106,6 +1121,8 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
 
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expects to return true when block number is greater than the auction end block', async() => {
                 await helpers.increaseTime(auctionLength+10);
@@ -1136,6 +1153,8 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
 
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expects to return true when block timestamp is greater than the termEndTimestamp', async() => {
                 await helpers.increaseTime(auctionLength+10);
@@ -1166,6 +1185,8 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
 
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expects to calculate correctly the interest rate when loan is in state = CREATED', async () => {
                 await USDToken.approve(DAIProxy.address, 50, { from: lender });
@@ -1226,6 +1247,8 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
 
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expects lender to withdraw funds after unlocked', async() => {
                 const balanceBefore = Number(await USDToken.balanceOf(lender));
@@ -1272,6 +1295,8 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
 
                 );
+
+                await helpers.increaseTime(1);
             });
             it('Expects to unlock the funds if admin', async () => {
                 await Loan.unlockFundsWithdrawal({from: admin});
@@ -1322,6 +1347,8 @@ contract('LoanContract - USDT', (accounts) => {
                         SwapFactory.address
 
                     ); 
+
+                    await helpers.increaseTime(1);
                 } catch (error) { 
                     throw error; 
                 } 
@@ -1381,6 +1408,7 @@ contract('LoanContract - USDT', (accounts) => {
                     SwapFactory.address
 
                 );
+                await helpers.increaseTime(1);
             });
             it('Expect operators to withdraw the loan operator fee if borrower has withdraw', async () => {
                 const adminBalancePrior = await USDToken.balanceOf(admin);

@@ -25,10 +25,11 @@ const LoanContractDispatcherContract = artifacts.require("LoanContractDispatcher
 const UniswapExchangeAbi = artifacts.require("IUniswapExchange").abi;
 const UniswapFactoryAbi = artifacts.require("IUniswapFactory").abi;
 const {getWeb3} = require("../scripts/helpers.js");
+const {increaseTime} = require("./helpers");
 
 const HeroAmount = "200000000000000000000";
 
-contract("DAIProxy Contract", function(accounts) {
+describe("DAIProxy Contract", function() {
   let DAIProxy;
   let Auth;
   let RaiseToken;
@@ -42,17 +43,26 @@ contract("DAIProxy Contract", function(accounts) {
   let UniswapSwapperFactory;
   let LC;
   let ERC20Wrapper;
-
-  const owner = accounts[0];
-  const user = accounts[1];
-  const admin = accounts[2];
-  const other_kyc_user_no_deposit = accounts[3];
-  const other_user = accounts[4];
-  const other_user_kyc_no_dai = accounts[5];
-  const otherAdmin = accounts[6];
-  const borrower = accounts[7];
+  let accounts,
+    owner,
+    admin,
+    user,
+    other_kyc_user_no_deposit,
+    other_user,
+    other_user_kyc_no_dai,
+    otherAdmin,
+    borrower;
 
   before(async () => {
+    accounts = await web3.eth.getAccounts();
+    owner = accounts[0];
+    user = accounts[1];
+    admin = accounts[2];
+    other_kyc_user_no_deposit = accounts[3];
+    other_user = accounts[4];
+    other_user_kyc_no_dai = accounts[5];
+    otherAdmin = accounts[6];
+    borrower = accounts[7];
     ERC20Wrapper = await ERC20WrapperContract.new();
     await DAIProxyContract.link(ERC20Wrapper);
     await RealLoanContract.link(ERC20Wrapper);
@@ -179,6 +189,8 @@ contract("DAIProxy Contract", function(accounts) {
 
       // create loan instance from Loan.address
       LC = await RealLoanContract.at(loanAddress);
+
+      await increaseTime(1);
     } catch (error) {
       throw error;
     }

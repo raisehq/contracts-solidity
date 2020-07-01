@@ -165,6 +165,7 @@ contract("Integration", accounts => {
       // create loan instance from Loan.address
       Loan = await LoanContract.at(loanAddress);
       operatorPercentFee = await Loan.operatorFee();
+      await increaseTime(1);
     });
     it("Expects the flow to work correctly for one lender to fully fund a loan and for the borrower to repay", async () => {
       try {

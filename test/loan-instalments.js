@@ -190,7 +190,7 @@ describe("LoanInstalments", () => {
       INSTALMENTS
     );
     Loan = await LoanInstalments.at(loanAddress);
-    await helpers.increaseTime(1000);
+    await helpers.increaseTime(1);
   };
 
   beforeEach(async () => {
@@ -1162,7 +1162,7 @@ describe("LoanInstalments", () => {
 
           LoanBadSwapDeploy = await LoanInstalments.at(loanAddress);
           LoanBadSwapDestroy = await LoanInstalments.at(secondLoanAddress);
-          await helpers.increaseTime(1000);
+          await helpers.increaseTime(1);
         });
         it("Expects withdrawRepaymentAndDeposit to revert if error while swap deployment", async () => {
           const REVERT_ERROR = "error swap deploy";
@@ -2071,8 +2071,11 @@ describe("LoanInstalments", () => {
         termLength = 5000;
         await onBeforeEach();
       });
-      it("Expects to return true when block timestamp is greater than the termEndTimestamp", async () => {
-        await helpers.increaseTime(termLength + 5000);
+      it("Expects to returns true when block timestamp is greater than the termEndTimestamp", async () => {
+        const loanTime = (await Loan.termEndTimestamp()).add(new BN("5000"));
+        const {timestamp: currentTime} = await web3.eth.getBlock('latest')
+        const travelToTime = loanTime.sub(new BN(currentTime.toString()));
+        await helpers.increaseTime(Number(travelToTime.toString()));
         const isExpired = await Loan.isDefaulted();
         expect(isExpired).to.equal(true);
       });

@@ -103,24 +103,24 @@ contract("LoanContract", accounts => {
           from: owner
         }
       );
+      Loan = await LoanContract.new(
+        termLength,
+        minAmount,
+        maxAmount,
+        minInterestRate,
+        maxInterestRate,
+        borrower,
+        DAIToken.address,
+        DAIProxy.address,
+        admin,
+        operatorPercentFee,
+        auctionLength,
+        SwapFactory.address
+      );
+
+      await helpers.increaseTime(1);
     });
     describe("Method onFundingReceived", () => {
-      beforeEach(async () => {
-        Loan = await LoanContract.new(
-          termLength,
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          borrower,
-          DAIToken.address,
-          DAIProxy.address,
-          admin,
-          operatorPercentFee,
-          auctionLength,
-          SwapFactory.address
-        );
-      });
       it("Expect onFundingReceived to revert if caller is NOT DaiProxy", async () => {
         // LoanContract state should start with CREATED == 0
         const firstState = await Loan.currentState();
@@ -328,6 +328,8 @@ contract("LoanContract", accounts => {
             auctionLength,
             SwapFactory.address
           );
+
+          await helpers.increaseTime(1);
         } catch (error) {
           throw error;
         }
@@ -365,22 +367,6 @@ contract("LoanContract", accounts => {
       });
     });
     describe("Method getUpdateState", () => {
-      beforeEach(async () => {
-        Loan = await LoanContract.new(
-          termLength,
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          borrower,
-          DAIToken.address,
-          DAIProxy.address,
-          admin,
-          operatorPercentFee,
-          auctionLength,
-          SwapFactory.address
-        );
-      });
       it("Expects updateMachineState method to mutate Loan state from CREATED to FAILED_TO_FUND,  if funding is time expired ", async () => {
         try {
           // Contract init state should be CREATED
@@ -497,22 +483,6 @@ contract("LoanContract", accounts => {
       });
     });
     describe("Method withdrawLoan", () => {
-      beforeEach(async () => {
-        Loan = await LoanContract.new(
-          termLength,
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          borrower,
-          DAIToken.address,
-          DAIProxy.address,
-          admin,
-          operatorPercentFee,
-          auctionLength,
-          SwapFactory.address
-        );
-      });
       it("Expect withdrawLoan to allow Borrower take loan if state == ACTIVE", async () => {
         try {
           const fundAmount = new BN(100);
@@ -648,6 +618,7 @@ contract("LoanContract", accounts => {
             SwapFactory.address
           );
           await helpers.waitNBlocks(1000);
+          await helpers.increaseTime(1);
           const isExpired = await Loan.isDefaulted();
           expect(isExpired).to.equal(true);
 
@@ -707,6 +678,7 @@ contract("LoanContract", accounts => {
           auctionLength,
           SwapFactory.address
         );
+        await helpers.increaseTime(1);
       });
       it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         const balancee = await DAIToken.balanceOf(otherLender);
@@ -762,6 +734,7 @@ contract("LoanContract", accounts => {
           auctionLength,
           SwapFactory.address
         );
+        await helpers.increaseTime(1);
       });
       it("Expect withdrawRepayment to allow Lender take repaid loan + interest if state == REPAID", async () => {
         try {
@@ -888,6 +861,7 @@ contract("LoanContract", accounts => {
             auctionLength,
             SwapFactory.address
           );
+          await helpers.increaseTime(1);
           await helpers.waitNBlocks(1000);
           const isExpired = await Loan.isDefaulted();
           expect(isExpired).to.equal(true);
@@ -969,6 +943,7 @@ contract("LoanContract", accounts => {
           auctionLength,
           SwapFactory.address
         );
+        await helpers.increaseTime(1);
       });
       it("Expect withdrawRefund to allow Lender refund if state == FAILED_TO_FUND", async () => {
         // Partially fund the Loan
@@ -1097,22 +1072,6 @@ contract("LoanContract", accounts => {
       });
     });
     describe("Method onRepaymentReceived", () => {
-      beforeEach(async () => {
-        Loan = await LoanContract.new(
-          termLength,
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          borrower,
-          DAIToken.address,
-          DAIProxy.address,
-          admin,
-          operatorPercentFee,
-          auctionLength,
-          SwapFactory.address
-        );
-      });
       it("Expect onRepaymentReceived to let borrower return the loan and mutate state to REPAID", async () => {
         // Partially fund the Loan
         await DAIToken.approve(DAIProxy.address, 100, {from: lender});
@@ -1143,22 +1102,6 @@ contract("LoanContract", accounts => {
       });
     });
     describe("Method isAuctionExpired", () => {
-      beforeEach(async () => {
-        Loan = await LoanContract.new(
-          termLength,
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          borrower,
-          DAIToken.address,
-          DAIProxy.address,
-          admin,
-          operatorPercentFee,
-          auctionLength,
-          SwapFactory.address
-        );
-      });
       it("Expects to return true when block number is greater than the auction end block", async () => {
         await helpers.increaseTime(auctionLength + 10);
         const isExpired = await Loan.isAuctionExpired();
@@ -1187,6 +1130,8 @@ contract("LoanContract", accounts => {
           auctionLength,
           SwapFactory.address
         );
+
+        await helpers.increaseTime(1);
       });
       it("Expects to return true when block timestamp is greater than the termEndTimestamp", async () => {
         await helpers.increaseTime(auctionLength + 10);
@@ -1216,6 +1161,7 @@ contract("LoanContract", accounts => {
           auctionLength,
           SwapFactory.address
         );
+        await helpers.increaseTime(1);
       });
       it("Expects to calculate correctly the interest rate when loan is in state = CREATED", async () => {
         await DAIToken.approve(DAIProxy.address, 50, {from: lender});
@@ -1274,6 +1220,7 @@ contract("LoanContract", accounts => {
           auctionLength,
           SwapFactory.address
         );
+        await helpers.increaseTime(1);
       });
       it("Expects lender to withdraw funds after unlocked", async () => {
         const balanceBefore = Number(await DAIToken.balanceOf(lender));
@@ -1319,6 +1266,7 @@ contract("LoanContract", accounts => {
           auctionLength,
           SwapFactory.address
         );
+        await helpers.increaseTime(1);
       });
       it("Expects to unlock the funds if admin", async () => {
         await Loan.unlockFundsWithdrawal({from: admin});
@@ -1368,6 +1316,7 @@ contract("LoanContract", accounts => {
             auctionLength,
             SwapFactory.address
           );
+          await helpers.increaseTime(1);
         } catch (error) {
           throw error;
         }
@@ -1426,6 +1375,7 @@ contract("LoanContract", accounts => {
           auctionLength,
           SwapFactory.address
         );
+        await helpers.increaseTime(1);
       });
       it("Expect operators to withdraw the loan operator fee if borrower has withdraw", async () => {
         const adminBalancePrior = await DAIToken.balanceOf(admin);
@@ -1472,22 +1422,6 @@ contract("LoanContract", accounts => {
       });
     });
     describe("Method setDAIProxy", () => {
-      beforeEach(async () => {
-        Loan = await LoanContract.new(
-          termLength,
-          minAmount,
-          maxAmount,
-          minInterestRate,
-          maxInterestRate,
-          borrower,
-          DAIToken.address,
-          DAIProxy.address,
-          admin,
-          operatorPercentFee,
-          auctionLength,
-          SwapFactory.address
-        );
-      });
       it("Update DAI proxy address", async () => {
         const newDAIProxy = await DAIProxyContract.new(DAIToken.address, {from: owner});
         await Loan.setProxyAddress(newDAIProxy.address, {from: admin});
