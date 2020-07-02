@@ -98,7 +98,22 @@ contract LoanInstalments is ILoanInstalments {
         uint256 fundedTimestamp
     );
     event LoanRepaid(address loanAddress, uint256 indexed timestampRepaid);
-    event RepaymentWithdrawn(address loanAddress, address indexed to, uint256 amount);
+    event LoanPayment(
+        address indexed originator,
+        uint256 amount,
+        uint256 instalmentsPaid,
+        uint256 penaltiesPaid,
+        uint256 loanAmountPaid,
+        uint256 instalments
+    );
+    event RepaymentWithdrawn(
+        address loanAddress,
+        address indexed to,
+        uint256 amount,
+        uint256 instalmentsWithdrawed,
+        uint256 penaltiesWithdrawed,
+        bool loanWithdrawn
+    );
     event RefundWithdrawn(address loanAddress, address indexed lender, uint256 amount);
     event FullyRefunded(address loanAddress);
     event FailedToFund(address loanAddress, address indexed lender, uint256 amount);
@@ -406,8 +421,15 @@ contract LoanInstalments is ILoanInstalments {
 
     function withdrawRepayment() external notTemplate onlyActiveOrRepaid {
         uint256 amount = priorLenderWithdrawal();
-        emit RepaymentWithdrawn(address(this), msg.sender, amount);
         require(ERC20Wrapper.transfer(tokenAddress, msg.sender, amount), "error while transfer");
+        emit RepaymentWithdrawn(
+            address(this),
+            msg.sender,
+            amount,
+            lenderPosition[msg.sender].instalmentsWithdrawed,
+            lenderPosition[msg.sender].penaltiesWithdrawed,
+            lenderPosition[msg.sender].loanWithdrawn
+        );
     }
 
     function withdrawRepaymentAndDeposit() external notTemplate onlyActiveOrRepaid {
@@ -422,7 +444,14 @@ contract LoanInstalments is ILoanInstalments {
             ISwapAndDeposit(swapAddress).isDestroyed(),
             "Swap contract error, should self-destruct"
         );
-        emit RepaymentWithdrawn(address(this), msg.sender, amount);
+        emit RepaymentWithdrawn(
+            address(this),
+            msg.sender,
+            amount,
+            lenderPosition[msg.sender].instalmentsWithdrawed,
+            lenderPosition[msg.sender].penaltiesWithdrawed,
+            lenderPosition[msg.sender].loanWithdrawn
+        );
     }
 
     function priorLenderWithdrawal() internal notTemplate onlyActiveOrRepaid returns (uint256) {
@@ -519,10 +548,6 @@ contract LoanInstalments is ILoanInstalments {
         require(from == originator, "from address is not the originator");
 
         if (getCurrentInstalment() > instalmentsPaid.add(1)) {
-            // TODO: have a look penalty withdraw
-            // borrowerDebt = borrowerDebt.add(
-            //     getInstalmentPenalty().mul(getCurrentInstalment().sub(instalmentsPaid).sub(1))
-            // );
             penaltiesPaid = penaltiesPaid.add(getCurrentInstalment().sub(instalmentsPaid).sub(1));
         }
 
@@ -540,6 +565,14 @@ contract LoanInstalments is ILoanInstalments {
             setState(LoanState.REPAID);
             emit LoanRepaid(address(this), block.timestamp);
         }
+        emit LoanPayment(
+            from,
+            amount,
+            instalmentsPaid,
+            penaltiesPaid,
+            loanAmountPaid,
+            getCurrentInstalment()
+        );
 
         return true;
     }
