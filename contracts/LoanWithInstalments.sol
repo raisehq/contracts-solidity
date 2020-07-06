@@ -7,7 +7,6 @@ import "./interfaces/ISwapAndDeposit.sol";
 import "./interfaces/ISwapAndDepositFactory.sol";
 import "./libs/MonkCalcs.sol";
 import "./libs/ERC20Wrapper.sol";
-import "@nomiclabs/buidler/console.sol";
 
 contract LoanInstalments is ILoanInstalments {
     using SafeMath for uint256;

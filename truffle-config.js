@@ -38,6 +38,14 @@ module.exports = {
     KYC: {
       42: true,
       1: true
+    },
+    Deposit: {
+      42: true,
+      1: true
+    },
+    Auth: {
+      42: true,
+      1: true
     }
   },
   /**
