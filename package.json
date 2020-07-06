@@ -44,7 +44,7 @@
   "repository": "https://gitlab.com/herohq/contracts-solidity.git",
   "dependencies": {
     "@babel/polyfill": "^7.4.4",
-    "@truffle/hdwallet-provider": "^1.0.36",
+    "@truffle/hdwallet-provider": "^1.0.37",
     "@uniswap/sdk": "^1.0.0-beta.4",
     "axios": "^0.18.0",
     "bignumber.js": "^9.0.0",
